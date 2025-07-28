@@ -43,13 +43,6 @@ interface CustomTemplate {
   exercises: Exercise[]
 }
 
-interface CommonWorkout {
-  name: string
-  exercises: string[]
-  frequency: number
-  lastUsed: string
-}
-
 export function WorkoutPlanner({ userId }: WorkoutPlannerProps) {
   const [textInput, setTextInput] = useState(`Day 1 – Push:
 Bench Press 3×5
@@ -111,30 +104,15 @@ Calf Raises 4×15`)
 
   const [workoutInProgress, setWorkoutInProgress] = useState<boolean | null>(null)
 
-  // Common workouts based on user history
-  const [commonWorkouts] = useState<CommonWorkout[]>([
-    {
-      name: "Push Day",
-      exercises: ["Bench Press", "Overhead Press", "Tricep Dips"],
-      frequency: 15,
-      lastUsed: "2025-01-25",
-    },
-    { name: "Pull Day", exercises: ["Deadlift", "Pull-ups", "Barbell Rows"], frequency: 12, lastUsed: "2025-01-24" },
-    { name: "Leg Day", exercises: ["Squat", "Romanian Deadlift", "Leg Press"], frequency: 10, lastUsed: "2025-01-23" },
-    {
-      name: "Upper Body",
-      exercises: ["Bench Press", "Barbell Rows", "Overhead Press"],
-      frequency: 8,
-      lastUsed: "2025-01-22",
-    },
-    { name: "Full Body", exercises: ["Squat", "Bench Press", "Barbell Rows"], frequency: 6, lastUsed: "2025-01-21" },
-    {
-      name: "Cardio HIIT",
-      exercises: ["Treadmill Intervals", "Burpees", "Mountain Climbers"],
-      frequency: 20,
-      lastUsed: "2025-01-26",
-    },
-  ])
+  // Quick add workouts (similar to nutrition)
+  const quickWorkouts = [
+    { name: "Push Day", exercises: ["Bench Press", "Overhead Press", "Tricep Dips"], frequency: 15 },
+    { name: "Pull Day", exercises: ["Deadlift", "Pull-ups", "Barbell Rows"], frequency: 12 },
+    { name: "Leg Day", exercises: ["Squat", "Romanian Deadlift", "Leg Press"], frequency: 10 },
+    { name: "Upper Body", exercises: ["Bench Press", "Barbell Rows", "Overhead Press"], frequency: 8 },
+    { name: "Full Body", exercises: ["Squat", "Bench Press", "Barbell Rows"], frequency: 6 },
+    { name: "Cardio HIIT", exercises: ["Treadmill Intervals", "Burpees", "Mountain Climbers"], frequency: 20 },
+  ]
 
   const addExercise = () => {
     const newExercise: Exercise = {
@@ -148,56 +126,19 @@ Calf Raises 4×15`)
     }))
   }
 
-  const addCommonWorkout = (commonWorkout: CommonWorkout) => {
-    const exercises: Exercise[] = commonWorkout.exercises.map((exerciseName: string) => ({
+  const addQuickWorkout = (quickWorkout: any) => {
+    const exercises: Exercise[] = quickWorkout.exercises.map((exerciseName: string) => ({
       name: exerciseName,
-      sets: [{ reps: 0, weight: 0, unit: "lb" }],
+      sets:
+        currentWorkout.label === "cardio"
+          ? [{ distance: 0, time: 0, unit: "min" }]
+          : [{ reps: 0, weight: 0, unit: "lb" }],
     }))
 
     setCurrentWorkout((prev) => ({
       ...prev,
       exercises,
     }))
-  }
-
-  const updateExercise = (exerciseIndex: number, field: string, value: any) => {
-    const updatedExercises = [...(currentWorkout.exercises || [])]
-    if (field === "name") {
-      updatedExercises[exerciseIndex] = { ...updatedExercises[exerciseIndex], name: value }
-    }
-    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-  }
-
-  const updateSet = (exerciseIndex: number, setIndex: number, field: string, value: any) => {
-    const updatedExercises = [...(currentWorkout.exercises || [])]
-    updatedExercises[exerciseIndex].sets[setIndex] = {
-      ...updatedExercises[exerciseIndex].sets[setIndex],
-      [field]:
-        field === "reps" || field === "weight" || field === "distance" || field === "time"
-          ? Number.parseFloat(value) || 0
-          : value,
-    }
-    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-  }
-
-  const addSet = (exerciseIndex: number) => {
-    const updatedExercises = [...(currentWorkout.exercises || [])]
-    const newSet = { reps: 0, weight: 0, unit: "lb" }
-    updatedExercises[exerciseIndex].sets.push(newSet)
-    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-  }
-
-  const removeSet = (exerciseIndex: number, setIndex: number) => {
-    const updatedExercises = [...(currentWorkout.exercises || [])]
-    if (updatedExercises[exerciseIndex].sets.length > 1) {
-      updatedExercises[exerciseIndex].sets.splice(setIndex, 1)
-      setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-    }
-  }
-
-  const removeExercise = (exerciseIndex: number) => {
-    const updatedExercises = currentWorkout.exercises?.filter((_, i) => i !== exerciseIndex) || []
-    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
   }
 
   const saveAsTemplate = () => {
@@ -370,32 +311,27 @@ Plank 3×30s`,
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Play className="h-5 w-5" />
-                <span>Common Workouts</span>
+                <span>Quick Add Workouts</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 gap-2">
-                {commonWorkouts
-                  .sort((a, b) => new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime())
-                  .map((workout, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      className="h-auto p-3 justify-between bg-transparent"
-                      onClick={() => addCommonWorkout(workout)}
-                    >
-                      <div className="text-left">
-                        <p className="font-medium">{workout.name}</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">{workout.exercises.join(", ")}</p>
-                        <p className="text-xs text-gray-500">
-                          Last used: {new Date(workout.lastUsed).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {workout.frequency}x
-                      </Badge>
-                    </Button>
-                  ))}
+                {quickWorkouts.map((workout, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className="h-auto p-3 justify-between bg-transparent"
+                    onClick={() => addQuickWorkout(workout)}
+                  >
+                    <div className="text-left">
+                      <p className="font-medium">{workout.name}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">{workout.exercises.join(", ")}</p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {workout.frequency}x
+                    </Badge>
+                  </Button>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -417,21 +353,43 @@ Plank 3×30s`,
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="workout-type">Workout Type</Label>
+                <Select
+                  value={currentWorkout.label}
+                  onValueChange={(value) => setCurrentWorkout((prev) => ({ ...prev, label: value as any }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a workout type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="strength">Strength Training</SelectItem>
+                    <SelectItem value="cardio">Cardio</SelectItem>
+                    <SelectItem value="hypertrophy">Hypertrophy</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button onClick={addExercise} variant="outline" className="w-full bg-transparent">
                 Add Exercise
               </Button>
 
               {currentWorkout.exercises && currentWorkout.exercises.length > 0 && (
                 <div className="space-y-4">
-                  {currentWorkout.exercises.map((exercise, exerciseIndex) => (
-                    <Card key={exerciseIndex} className="border-l-4 border-l-blue-500">
+                  {currentWorkout.exercises.map((exercise, index) => (
+                    <Card key={index} className="border-l-4 border-l-blue-500">
                       <CardContent className="p-4 space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <Label>Exercise</Label>
                             <Select
                               value={exercise.name}
-                              onValueChange={(value) => updateExercise(exerciseIndex, "name", value)}
+                              onValueChange={(value) => {
+                                const updatedExercises = [...(currentWorkout.exercises || [])]
+                                updatedExercises[index] = { ...exercise, name: value }
+                                setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
+                              }}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select exercise" />
@@ -463,72 +421,149 @@ Plank 3×30s`,
                               <Input
                                 placeholder="Enter custom exercise name"
                                 className="mt-2"
-                                onChange={(e) => updateExercise(exerciseIndex, "name", e.target.value)}
+                                onChange={(e) => {
+                                  const updatedExercises = [...(currentWorkout.exercises || [])]
+                                  updatedExercises[index] = { ...exercise, name: e.target.value }
+                                  setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
+                                }}
                               />
                             )}
                           </div>
                           <div>
-                            <Label>Sets ({exercise.sets.length})</Label>
+                            <Label>Sets</Label>
                             <div className="flex items-center space-x-2">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => removeSet(exerciseIndex, exercise.sets.length - 1)}
+                                onClick={() => {
+                                  const updatedExercises = [...(currentWorkout.exercises || [])]
+                                  if (exercise.sets.length > 1) {
+                                    exercise.sets.pop()
+                                    updatedExercises[index] = exercise
+                                    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
+                                  }
+                                }}
                                 disabled={exercise.sets.length <= 1}
                               >
                                 <Minus className="h-3 w-3" />
                               </Button>
                               <span className="text-sm font-medium w-8 text-center">{exercise.sets.length}</span>
-                              <Button variant="outline" size="sm" onClick={() => addSet(exerciseIndex)}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const updatedExercises = [...(currentWorkout.exercises || [])]
+                                  const newSet =
+                                    currentWorkout.label === "cardio"
+                                      ? { distance: 0, time: 0, unit: "min" }
+                                      : { reps: 0, weight: 0, unit: "lb" }
+                                  exercise.sets.push(newSet)
+                                  updatedExercises[index] = exercise
+                                  setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
+                                }}
+                              >
                                 <Plus className="h-3 w-3" />
                               </Button>
                             </div>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-4 gap-2">
+                        <div
+                          className={`grid ${currentWorkout.label === "cardio" ? "grid-cols-3" : "grid-cols-3"} gap-2`}
+                        >
                           <div className="text-xs font-medium text-gray-500">Set</div>
-                          <div className="text-xs font-medium text-gray-500">Reps</div>
-                          <div className="text-xs font-medium text-gray-500">Weight (lb)</div>
-                          <div className="text-xs font-medium text-gray-500">Actions</div>
+                          {currentWorkout.label === "cardio" ? (
+                            <>
+                              <div className="text-xs font-medium text-gray-500">Distance (mi)</div>
+                              <div className="text-xs font-medium text-gray-500">Time (min)</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-xs font-medium text-gray-500">Reps</div>
+                              <div className="text-xs font-medium text-gray-500">Weight (lb)</div>
+                            </>
+                          )}
                         </div>
 
                         {exercise.sets.map((set, setIndex) => (
-                          <div key={setIndex} className="grid grid-cols-4 gap-2">
+                          <div
+                            key={setIndex}
+                            className={`grid ${currentWorkout.label === "cardio" ? "grid-cols-3" : "grid-cols-3"} gap-2`}
+                          >
                             <div className="flex items-center justify-center">
                               <span className="text-sm font-medium">{setIndex + 1}</span>
                             </div>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={set.reps || ""}
-                              onChange={(e) => updateSet(exerciseIndex, setIndex, "reps", e.target.value)}
-                              placeholder="0"
-                            />
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              value={set.weight || ""}
-                              onChange={(e) => updateSet(exerciseIndex, setIndex, "weight", e.target.value)}
-                              placeholder="0"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeSet(exerciseIndex, setIndex)}
-                              disabled={exercise.sets.length <= 1}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            {currentWorkout.label === "cardio" ? (
+                              <>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={set.distance || ""}
+                                  onChange={(e) => {
+                                    const updatedExercises = [...(currentWorkout.exercises || [])]
+                                    updatedExercises[index].sets[setIndex] = {
+                                      ...set,
+                                      distance: Number.parseFloat(e.target.value) || 0,
+                                    }
+                                    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
+                                  }}
+                                />
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={set.time || ""}
+                                  onChange={(e) => {
+                                    const updatedExercises = [...(currentWorkout.exercises || [])]
+                                    updatedExercises[index].sets[setIndex] = {
+                                      ...set,
+                                      time: Number.parseInt(e.target.value) || 0,
+                                    }
+                                    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
+                                  }}
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={set.reps || ""}
+                                  onChange={(e) => {
+                                    const updatedExercises = [...(currentWorkout.exercises || [])]
+                                    updatedExercises[index].sets[setIndex] = {
+                                      ...set,
+                                      reps: Number.parseInt(e.target.value) || 0,
+                                    }
+                                    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
+                                  }}
+                                />
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  value={set.weight || ""}
+                                  onChange={(e) => {
+                                    const updatedExercises = [...(currentWorkout.exercises || [])]
+                                    updatedExercises[index].sets[setIndex] = {
+                                      ...set,
+                                      weight: Number.parseFloat(e.target.value) || 0,
+                                    }
+                                    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
+                                  }}
+                                />
+                              </>
+                            )}
                           </div>
                         ))}
 
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeExercise(exerciseIndex)}
+                          onClick={() => {
+                            const updatedExercises = currentWorkout.exercises?.filter((_, i) => i !== index) || []
+                            setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
+                          }}
                           className="text-red-600 hover:text-red-700"
                         >
                           Remove Exercise

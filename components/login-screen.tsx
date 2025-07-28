@@ -8,17 +8,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dumbbell, User, Lock, Eye, EyeOff } from "lucide-react"
+import { Dumbbell, Mail, Lock, User, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "../app/contexts/auth-context"
 
 export function LoginScreen() {
   const { login, register } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [loginData, setLoginData] = useState({ username: "", password: "" })
+  const [loginData, setLoginData] = useState({ email: "", password: "" })
   const [registerData, setRegisterData] = useState({
     name: "",
-    username: "",
+    email: "",
     password: "",
     confirmPassword: "",
   })
@@ -26,7 +26,7 @@ export function LoginScreen() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    await login(loginData.username, loginData.password)
+    await login(loginData.email, loginData.password)
     setIsLoading(false)
   }
 
@@ -37,7 +37,7 @@ export function LoginScreen() {
     setIsLoading(true)
     await register({
       name: registerData.name,
-      username: registerData.username,
+      email: registerData.email,
     })
     setIsLoading(false)
   }
@@ -67,16 +67,16 @@ export function LoginScreen() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="email">Email</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      id="username"
-                      type="text"
-                      placeholder="Enter your username"
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
                       className="pl-10"
-                      value={loginData.username}
-                      onChange={(e) => setLoginData((prev) => ({ ...prev, username: e.target.value }))}
+                      value={loginData.email}
+                      onChange={(e) => setLoginData((prev) => ({ ...prev, email: e.target.value }))}
                       required
                     />
                   </div>
@@ -135,16 +135,16 @@ export function LoginScreen() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="register-username">Username</Label>
+                  <Label htmlFor="register-email">Email</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      id="register-username"
-                      type="text"
-                      placeholder="Choose a username"
+                      id="register-email"
+                      type="email"
+                      placeholder="Enter your email"
                       className="pl-10"
-                      value={registerData.username}
-                      onChange={(e) => setRegisterData((prev) => ({ ...prev, username: e.target.value }))}
+                      value={registerData.email}
+                      onChange={(e) => setRegisterData((prev) => ({ ...prev, email: e.target.value }))}
                       required
                     />
                   </div>
@@ -194,7 +194,11 @@ export function LoginScreen() {
           </Tabs>
 
           <div className="mt-6 text-center">
-            <Button variant="outline" className="w-full bg-transparent" onClick={() => login("demo", "demo")}>
+            <Button
+              variant="outline"
+              className="w-full bg-transparent"
+              onClick={() => login("demo@fittracker.com", "demo")}
+            >
               Try Demo Account
             </Button>
           </div>

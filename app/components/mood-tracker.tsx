@@ -1,178 +1,130 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Heart, Zap, Target, MessageCircle } from "lucide-react"
+import { Heart, Smile, Meh, Frown, Angry } from "lucide-react"
 import type { MoodLog } from "../../types/fitness"
 
-interface MoodTrackerWidgetProps {
+interface MoodTrackerProps {
   userId: string
   onMoodUpdate?: (mood: MoodLog) => void
 }
 
-const moodEmojis = ["😢", "😕", "😐", "😊", "😄"]
-const moodLabels = ["Very Bad", "Bad", "Okay", "Good", "Excellent"]
+const moodOptions = [
+  { value: 5, icon: Heart, label: "Excellent", color: "text-green-600" },
+  { value: 4, icon: Smile, label: "Good", color: "text-blue-600" },
+  { value: 3, icon: Meh, label: "Okay", color: "text-yellow-600" },
+  { value: 2, icon: Frown, label: "Poor", color: "text-orange-600" },
+  { value: 1, icon: Angry, label: "Terrible", color: "text-red-600" },
+]
 
-export function MoodTrackerWidget({ userId, onMoodUpdate }: MoodTrackerWidgetProps) {
-  const [currentMood, setCurrentMood] = useState<MoodLog>({
-    userId,
-    date: new Date().toISOString().split("T")[0],
-    mood: 3,
-    energy: 3,
-    motivation: 3,
-    notes: "",
-    timestamp: new Date().toISOString(),
-  })
+export function MoodTrackerWidget({ userId, onMoodUpdate }: MoodTrackerProps) {
+  const [selectedMood, setSelectedMood] = useState<number | null>(null)
+  const [notes, setNotes] = useState("")
   const [isExpanded, setIsExpanded] = useState(false)
-  const [hasLoggedToday, setHasLoggedToday] = useState(false)
 
-  const handleMoodChange = (type: "mood" | "energy" | "motivation", value: number) => {
-    setCurrentMood((prev) => ({
-      ...prev,
-      [type]: value as 1 | 2 | 3 | 4 | 5,
-      timestamp: new Date().toISOString(),
-    }))
+  const handleMoodSelect = (moodValue: number) => {
+    setSelectedMood(moodValue)
+    setIsExpanded(true)
   }
 
-  const handleSaveMood = () => {
-    onMoodUpdate?.(currentMood)
-    setHasLoggedToday(true)
-    setIsExpanded(false)
+  const handleSave = () => {
+    if (selectedMood) {
+      const moodLog: MoodLog = {
+        userId,
+        date: new Date().toISOString().split("T")[0],
+        mood: selectedMood,
+        notes,
+        timestamp: new Date().toISOString(),
+      }
+
+      onMoodUpdate?.(moodLog)
+      setIsExpanded(false)
+      setNotes("")
+    }
   }
 
-  const getMoodColor = (value: number) => {
-    const colors = [
-      "text-red-600 bg-red-100",
-      "text-orange-600 bg-orange-100",
-      "text-yellow-600 bg-yellow-100",
-      "text-green-600 bg-green-100",
-      "text-emerald-600 bg-emerald-100",
-    ]
-    return colors[value - 1] || colors[2]
-  }
-
-  const renderMoodSelector = (
-    type: "mood" | "energy" | "motivation",
-    value: number,
-    icon: React.ReactNode,
-    label: string,
-  ) => (
-    <div className="space-y-2">
-      <div className="flex items-center space-x-2">
-        {icon}
-        <span className="text-sm font-medium">{label}</span>
-        <Badge variant="outline" className={`text-xs ${getMoodColor(value)}`}>
-          {moodLabels[value - 1]}
-        </Badge>
-      </div>
-      <div className="flex space-x-1">
-        {[1, 2, 3, 4, 5].map((rating) => (
-          <Button
-            key={rating}
-            variant={value === rating ? "default" : "outline"}
-            size="sm"
-            className={`w-8 h-8 p-0 text-lg ${value === rating ? getMoodColor(rating) : ""}`}
-            onClick={() => handleMoodChange(type, rating)}
-          >
-            {moodEmojis[rating - 1]}
-          </Button>
-        ))}
-      </div>
-    </div>
-  )
+  const selectedMoodOption = moodOptions.find((option) => option.value === selectedMood)
 
   return (
-    <Card className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 border-pink-200 dark:border-pink-800">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between text-pink-700 dark:text-pink-400">
-          <div className="flex items-center space-x-2">
-            <Heart className="h-5 w-5" />
-            <span>Mood Tracker</span>
-          </div>
-          {hasLoggedToday && (
-            <Badge variant="outline" className="text-xs bg-green-100 text-green-700">
-              Logged
-            </Badge>
-          )}
+    <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center space-x-2 text-purple-700 dark:text-purple-400">
+          <Heart className="h-5 w-5" />
+          <span>Mood Tracker</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {!isExpanded ? (
-          <div className="text-center space-y-3">
-            <div className="text-6xl">{moodEmojis[currentMood.mood - 1]}</div>
-            <p className="text-lg font-medium text-pink-700 dark:text-pink-400">{moodLabels[currentMood.mood - 1]}</p>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="text-center">
-                <p className="font-medium">Energy</p>
-                <p className={`px-2 py-1 rounded ${getMoodColor(currentMood.energy || 3)}`}>
-                  {moodLabels[(currentMood.energy || 3) - 1]}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="font-medium">Motivation</p>
-                <p className={`px-2 py-1 rounded ${getMoodColor(currentMood.motivation || 3)}`}>
-                  {moodLabels[(currentMood.motivation || 3) - 1]}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="font-medium">Overall</p>
-                <p className={`px-2 py-1 rounded ${getMoodColor(currentMood.mood)}`}>
-                  {moodLabels[currentMood.mood - 1]}
-                </p>
-              </div>
+          <div className="space-y-3">
+            <p className="text-sm text-center text-gray-600 dark:text-gray-400">How are you feeling today?</p>
+            <div className="grid grid-cols-5 gap-2">
+              {moodOptions.map((mood) => {
+                const IconComponent = mood.icon
+                return (
+                  <Button
+                    key={mood.value}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleMoodSelect(mood.value)}
+                    className={`h-12 flex-col space-y-1 bg-transparent ${
+                      selectedMood === mood.value ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30" : ""
+                    }`}
+                  >
+                    <IconComponent className={`h-4 w-4 ${mood.color}`} />
+                    <span className="text-xs">{mood.label}</span>
+                  </Button>
+                )
+              })}
             </div>
-            <Button
-              onClick={() => setIsExpanded(true)}
-              variant="outline"
-              size="sm"
-              className="w-full bg-transparent"
-              disabled={hasLoggedToday}
-            >
-              {hasLoggedToday ? "Already Logged Today" : "Update Mood"}
-            </Button>
           </div>
         ) : (
           <div className="space-y-4">
-            {renderMoodSelector("mood", currentMood.mood, <Heart className="h-4 w-4 text-pink-600" />, "Mood")}
-            {renderMoodSelector(
-              "energy",
-              currentMood.energy || 3,
-              <Zap className="h-4 w-4 text-yellow-600" />,
-              "Energy",
-            )}
-            {renderMoodSelector(
-              "motivation",
-              currentMood.motivation || 3,
-              <Target className="h-4 w-4 text-blue-600" />,
-              "Motivation",
-            )}
+            <div className="text-center">
+              {selectedMoodOption && (
+                <div className="flex items-center justify-center space-x-2">
+                  <selectedMoodOption.icon className={`h-6 w-6 ${selectedMoodOption.color}`} />
+                  <span className="font-medium">{selectedMoodOption.label}</span>
+                </div>
+              )}
+            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <MessageCircle className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium">Notes (Optional)</span>
-              </div>
+            <div>
               <Textarea
-                placeholder="How are you feeling today? Any thoughts or reflections..."
-                value={currentMood.notes}
-                onChange={(e) => setCurrentMood((prev) => ({ ...prev, notes: e.target.value }))}
+                placeholder="Add a note about your mood (optional)..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
                 className="min-h-[80px] resize-none"
               />
             </div>
 
             <div className="flex space-x-2">
-              <Button onClick={() => setIsExpanded(false)} variant="outline" className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={handleSaveMood} className="flex-1">
+              <Button onClick={handleSave} className="flex-1">
                 Save Mood
               </Button>
+              <Button
+                onClick={() => {
+                  setIsExpanded(false)
+                  setSelectedMood(null)
+                  setNotes("")
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
             </div>
+          </div>
+        )}
+
+        {selectedMood && !isExpanded && (
+          <div className="text-center p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+            <p className="text-sm font-medium text-purple-700 dark:text-purple-400">
+              Today's mood: {selectedMoodOption?.label}
+            </p>
+            {notes && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">"{notes}"</p>}
           </div>
         )}
       </CardContent>

@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { TrendingUp, Dumbbell, Apple, Users, Moon, Sun, Zap, Clock, GripVertical, Trash2 } from "lucide-react"
+import { TrendingUp, Dumbbell, Apple, Users, Moon, Sun, Zap, Clock, GripVertical } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
@@ -35,7 +35,7 @@ interface Widget {
 }
 
 function FitnessApp() {
-  const { user, logout, updateUser, deleteAccount } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const [recentMetrics, setRecentMetrics] = useState<BodyMetrics | null>(null)
   const [todayWorkout, setTodayWorkout] = useState<WorkoutLog | null>(null)
@@ -44,7 +44,6 @@ function FitnessApp() {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [workoutInProgress, setWorkoutInProgress] = useState<WorkoutLog | null>(null)
   const [workoutStartTime, setWorkoutStartTime] = useState<Date | null>(null)
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
 
   const [editingWidgets, setEditingWidgets] = useState(false)
   const [showMetricsModal, setShowMetricsModal] = useState(false)
@@ -121,13 +120,6 @@ function FitnessApp() {
     setWorkoutStartTime(null)
     // Save workout logic here
     console.log("Workout saved:", workout)
-  }
-
-  const handleDeleteAccount = async () => {
-    const success = await deleteAccount()
-    if (success) {
-      setShowDeleteConfirmation(false)
-    }
   }
 
   const moveWidget = (
@@ -364,15 +356,6 @@ function FitnessApp() {
                     <button
                       onClick={() => {
                         setShowProfileMenu(false)
-                        setShowDeleteConfirmation(true)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Delete Account
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false)
                         logout()
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -459,36 +442,6 @@ function FitnessApp() {
           </TabsContent>
         </Tabs>
       </main>
-
-      {/* Delete Account Confirmation Modal */}
-      {showDeleteConfirmation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-red-600">
-                <Trash2 className="h-5 w-5" />
-                <span>Delete Account</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center space-y-2">
-                <p className="text-gray-700 dark:text-gray-300">Are you sure you want to delete your account?</p>
-                <p className="text-sm text-red-600">
-                  This action cannot be undone. All your data will be permanently deleted.
-                </p>
-              </div>
-              <div className="flex space-x-2">
-                <Button onClick={() => setShowDeleteConfirmation(false)} variant="outline" className="flex-1">
-                  Cancel
-                </Button>
-                <Button onClick={handleDeleteAccount} variant="destructive" className="flex-1">
-                  Delete Account
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Metrics Update Modal */}
       {showMetricsModal && (

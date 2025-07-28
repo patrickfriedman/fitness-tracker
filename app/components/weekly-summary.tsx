@@ -3,56 +3,49 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
-import { TrendingUp, Calendar, Target, Scale, Heart } from "lucide-react"
+import { TrendingUp, Calendar, Scale, Heart } from "lucide-react"
 import { ActivityHeatmapWidget } from "./activity-heatmap"
-import type { WeeklySummary as WeeklySummaryType } from "../../types/fitness"
 
 interface WeeklySummaryProps {
   userId: string
 }
 
-const weightData = [
-  { date: "Jan 20", weight: 184.2, bodyFat: 19.1 },
-  { date: "Jan 21", weight: 183.8, bodyFat: 18.9 },
-  { date: "Jan 22", weight: 183.5, bodyFat: 18.8 },
-  { date: "Jan 23", weight: 183.1, bodyFat: 18.6 },
-  { date: "Jan 24", weight: 182.9, bodyFat: 18.5 },
-  { date: "Jan 25", weight: 182.6, bodyFat: 18.3 },
-  { date: "Jan 26", weight: 182.4, bodyFat: 18.2 },
+const weeklyData = [
+  { day: "Mon", workouts: 1, calories: 2100, weight: 182.5, mood: 4 },
+  { day: "Tue", workouts: 0, calories: 2300, weight: 182.3, mood: 3 },
+  { day: "Wed", workouts: 1, calories: 1950, weight: 182.1, mood: 5 },
+  { day: "Thu", workouts: 1, calories: 2200, weight: 181.9, mood: 4 },
+  { day: "Fri", workouts: 0, calories: 2400, weight: 182.0, mood: 3 },
+  { day: "Sat", workouts: 1, calories: 2000, weight: 181.8, mood: 5 },
+  { day: "Sun", workouts: 1, calories: 2150, weight: 181.6, mood: 4 },
+]
+
+const monthlyWeightData = [
+  { week: "Week 1", weight: 184.2, bodyFat: 19.1 },
+  { week: "Week 2", weight: 183.5, bodyFat: 18.8 },
+  { week: "Week 3", weight: 182.8, bodyFat: 18.5 },
+  { week: "Week 4", weight: 182.1, bodyFat: 18.2 },
 ]
 
 const moodData = [
-  { date: "Jan 20", mood: 4, energy: 3, motivation: 4 },
-  { date: "Jan 21", mood: 3, energy: 4, motivation: 3 },
-  { date: "Jan 22", mood: 5, energy: 5, motivation: 5 },
-  { date: "Jan 23", mood: 4, energy: 4, motivation: 4 },
-  { date: "Jan 24", mood: 3, energy: 3, motivation: 3 },
-  { date: "Jan 25", mood: 4, energy: 4, motivation: 4 },
-  { date: "Jan 26", mood: 5, energy: 4, motivation: 5 },
+  { day: "Mon", mood: 4 },
+  { day: "Tue", mood: 3 },
+  { day: "Wed", mood: 5 },
+  { day: "Thu", mood: 4 },
+  { day: "Fri", mood: 3 },
+  { day: "Sat", mood: 5 },
+  { day: "Sun", mood: 4 },
 ]
 
 export function WeeklySummary({ userId }: WeeklySummaryProps) {
-  const [weeklyData] = useState<WeeklySummaryType>({
-    userId,
-    range: "Jan 20 - Jan 26, 2025",
-    averageWeight: 183.1,
-    averageBodyFat: 18.6,
-    totalWorkouts: 5,
-    caloriesTotal: 12450,
-    prChanges: {
-      "Bench Press": "+5 lbs",
-      Squat: "+10 lbs",
-      Deadlift: "+15 lbs",
-    },
-    goalProgress: {
-      weightRemaining: 3.1,
-      bodyFatRemaining: 3.6,
-    },
-    notes: "Great week! Increased all major lifts and stayed consistent with nutrition.",
-  })
+  const [selectedPeriod, setSelectedPeriod] = useState("week")
+
+  const totalWorkouts = weeklyData.reduce((sum, day) => sum + day.workouts, 0)
+  const avgCalories = Math.round(weeklyData.reduce((sum, day) => sum + day.calories, 0) / weeklyData.length)
+  const weightChange = weeklyData[weeklyData.length - 1].weight - weeklyData[0].weight
+  const avgMood = (weeklyData.reduce((sum, day) => sum + day.mood, 0) / weeklyData.length).toFixed(1)
 
   return (
     <div className="space-y-6">
@@ -100,54 +93,46 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
         <div id="weekly-overview-widget">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-5 w-5 text-blue-600" />
-                  <span>Weekly Summary</span>
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  {weeklyData.range}
-                </Badge>
+              <CardTitle className="flex items-center space-x-2">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                <span>This Week's Summary</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{weeklyData.totalWorkouts}</p>
+                  <p className="text-2xl font-bold text-blue-600">{totalWorkouts}</p>
                   <p className="text-sm text-gray-600">Workouts</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">{weeklyData.caloriesTotal.toLocaleString()}</p>
-                  <p className="text-sm text-gray-600">Calories Burned</p>
+                  <p className="text-2xl font-bold text-green-600">{avgCalories}</p>
+                  <p className="text-sm text-gray-600">Avg Calories</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-purple-600">{weeklyData.averageWeight}</p>
-                  <p className="text-sm text-gray-600">Avg Weight</p>
+                  <p className={`text-2xl font-bold ${weightChange < 0 ? "text-green-600" : "text-red-600"}`}>
+                    {weightChange > 0 ? "+" : ""}
+                    {weightChange.toFixed(1)}
+                  </p>
+                  <p className="text-sm text-gray-600">Weight Change</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-600">{weeklyData.averageBodyFat}%</p>
-                  <p className="text-sm text-gray-600">Avg Body Fat</p>
+                  <p className="text-2xl font-bold text-purple-600">{avgMood}</p>
+                  <p className="text-sm text-gray-600">Avg Mood</p>
                 </div>
               </div>
 
-              {/* PR Changes */}
-              <div className="space-y-3">
-                <h4 className="font-medium flex items-center space-x-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span>Personal Records</span>
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {Object.entries(weeklyData.prChanges).map(([exercise, change]) => (
-                    <div
-                      key={exercise}
-                      className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg"
-                    >
-                      <span className="text-sm font-medium">{exercise}</span>
-                      <Badge variant="outline" className="bg-green-100 text-green-700">
-                        {change}
-                      </Badge>
-                    </div>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-2">Daily Workouts</h4>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={weeklyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="workouts" fill="#3b82f6" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </CardContent>
@@ -178,47 +163,35 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Scale className="h-5 w-5 text-blue-600" />
-                <span>Weight & Body Fat Tracking</span>
+                <span>Body Composition Trends</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {/* Progress Indicators */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Weight Goal</span>
-                      <Badge variant="outline" className="text-xs">
-                        {weeklyData.goalProgress.weightRemaining.toFixed(1)} lbs to go
-                      </Badge>
-                    </div>
-                    <Progress value={85} className="h-2" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Body Fat Goal</span>
-                      <Badge variant="outline" className="text-xs">
-                        {weeklyData.goalProgress.bodyFatRemaining.toFixed(1)}% to go
-                      </Badge>
-                    </div>
-                    <Progress value={76} className="h-2" />
-                  </div>
-                </div>
-
-                {/* Weight Chart */}
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={weightData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis domain={["dataMin - 1", "dataMax + 1"]} />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} name="Weight (lbs)" />
-                      <Line type="monotone" dataKey="bodyFat" stroke="#f59e0b" strokeWidth={2} name="Body Fat (%)" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={monthlyWeightData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="week" />
+                  <YAxis yAxisId="weight" orientation="left" domain={["dataMin - 1", "dataMax + 1"]} />
+                  <YAxis yAxisId="bodyFat" orientation="right" domain={["dataMin - 1", "dataMax + 1"]} />
+                  <Tooltip />
+                  <Line
+                    yAxisId="weight"
+                    type="monotone"
+                    dataKey="weight"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    name="Weight (lbs)"
+                  />
+                  <Line
+                    yAxisId="bodyFat"
+                    type="monotone"
+                    dataKey="bodyFat"
+                    stroke="#f59e0b"
+                    strokeWidth={3}
+                    name="Body Fat (%)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>
@@ -246,23 +219,24 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Heart className="h-5 w-5 text-pink-600" />
-                <span>Mood & Energy Tracking</span>
+                <Heart className="h-5 w-5 text-purple-600" />
+                <span>Weekly Mood Trends</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={moodData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis domain={[0, 5]} />
-                    <Tooltip />
-                    <Bar dataKey="mood" fill="#ec4899" name="Mood" />
-                    <Bar dataKey="energy" fill="#f59e0b" name="Energy" />
-                    <Bar dataKey="motivation" fill="#3b82f6" name="Motivation" />
-                  </BarChart>
-                </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={moodData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis domain={[1, 5]} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="mood" stroke="#8b5cf6" strokeWidth={3} name="Mood (1-5)" />
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="mt-4 text-center">
+                <p className="text-sm text-gray-600">
+                  Average mood this week: <span className="font-bold text-purple-600">{avgMood}/5</span>
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -291,52 +265,53 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Target className="h-5 w-5 text-green-600" />
-                <span>Goals & Achievements</span>
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                <span>Monthly Goals</span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">Weekly Workout Goal</h4>
-                    <Badge variant="outline" className="bg-green-100 text-green-700">
-                      Completed
-                    </Badge>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Workout Frequency</span>
+                    <span>15/20 sessions</span>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Target: 4 workouts</span>
-                      <span>Completed: {weeklyData.totalWorkouts}</span>
-                    </div>
-                    <Progress value={100} className="h-2" />
-                  </div>
+                  <Progress value={75} className="h-2" />
                 </div>
 
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">Calorie Burn Goal</h4>
-                    <Badge variant="outline" className="bg-blue-100 text-blue-700">
-                      83% Complete
-                    </Badge>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Weight Loss Goal</span>
+                    <span>2.6/5 lbs</span>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Target: 15,000 calories</span>
-                      <span>Burned: {weeklyData.caloriesTotal.toLocaleString()}</span>
-                    </div>
-                    <Progress value={83} className="h-2" />
-                  </div>
+                  <Progress value={52} className="h-2" />
                 </div>
 
-                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">Consistency Streak</h4>
-                    <Badge variant="outline" className="bg-purple-100 text-purple-700">
-                      6 Days
-                    </Badge>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Body Fat Reduction</span>
+                    <span>0.9/3 %</span>
                   </div>
-                  <p className="text-sm text-gray-600">Keep it up! You're on track for your longest streak yet.</p>
+                  <Progress value={30} className="h-2" />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Consistency Streak</span>
+                    <span>12/30 days</span>
+                  </div>
+                  <Progress value={40} className="h-2" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-green-600">3</p>
+                  <p className="text-xs text-gray-600">Goals on track</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-orange-600">1</p>
+                  <p className="text-xs text-gray-600">Needs attention</p>
                 </div>
               </div>
             </CardContent>

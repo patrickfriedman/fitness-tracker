@@ -1,11 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Edit } from "lucide-react"
-import { WorkoutPlanner } from "./workout-planner"
+import { Dumbbell, Play, Square, Edit, Check, Trash2 } from "lucide-react"
 import type { WorkoutLog } from "../../types/fitness"
 
 interface WorkoutLoggerProps {
@@ -15,136 +17,336 @@ interface WorkoutLoggerProps {
   onWorkoutFinish?: (workout: WorkoutLog) => void
 }
 
+interface Exercise {
+  name: string
+  sets: {
+    reps?: number
+    weight?: number
+    unit: "lb" | "kg"
+    time?: number
+    distance?: number
+    intensity?: "low" | "medium" | "high"
+  }[]
+}
+
+const workoutTemplates = [
+  {
+    id: "push-day",
+    name: "Push Day",
+    category: "strength",
+    exercises: [
+      { name: "Bench Press", sets: 3, reps: "5", weight: 185, restTime: 180 },
+      { name: "Incline Dumbbell Press", sets: 3, reps: "8-10", weight: 60, restTime: 120 },
+      { name: "Overhead Press", sets: 3, reps: "6-8", weight: 135, restTime: 150 },
+      { name: "Tricep Dips", sets: 3, reps: "10-12", restTime: 90 },
+    ],
+    estimatedDuration: 45,
+  },
+  {
+    id: "pull-day",
+    name: "Pull Day",
+    category: "strength",
+    exercises: [
+      { name: "Deadlift", sets: 1, reps: "5", weight: 275, restTime: 300 },
+      { name: "Pull-ups", sets: 4, reps: "6-8", restTime: 120 },
+      { name: "Barbell Rows", sets: 4, reps: "8-10", weight: 155, restTime: 120 },
+      { name: "Face Pulls", sets: 3, reps: "12-15", weight: 40, restTime: 60 },
+    ],
+    estimatedDuration: 50,
+  },
+  {
+    id: "cardio-hiit",
+    name: "HIIT Cardio",
+    category: "cardio",
+    exercises: [
+      { name: "Treadmill Intervals", sets: 8, reps: "30s on/30s off", restTime: 30 },
+      { name: "Burpees", sets: 3, reps: "10", restTime: 60 },
+      { name: "Mountain Climbers", sets: 3, reps: "20", restTime: 45 },
+    ],
+    estimatedDuration: 25,
+  },
+]
+
 export function WorkoutLogger({ userId, workoutInProgress, onWorkoutStart, onWorkoutFinish }: WorkoutLoggerProps) {
+  const [currentWorkout, setCurrentWorkout] = useState<Partial<WorkoutLog>>({
+    userId,
+    date: new Date().toISOString().split("T")[0],
+    label: "strength",
+    exercises: [],
+    workingWeights: {},
+    notes: "",
+  })
+
+  const [workoutStartTime, setWorkoutStartTime] = useState<Date | null>(null)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [completedWorkout, setCompletedWorkout] = useState<WorkoutLog | null>(null)
 
-  const handleFinishWorkout = () => {
-    if (workoutInProgress) {
-      const finishedWorkout: WorkoutLog = {
+  const addExercise = () => {
+    const newExercise: Exercise = {
+      name: "",
+      sets: [{ reps: 0, weight: 0, unit: "lb" }],
+    }
+
+    setCurrentWorkout((prev) => ({
+      ...prev,
+      exercises: [...(prev.exercises || []), newExercise],
+    }))
+  }
+
+  const removeExercise = (index: number) => {
+    setCurrentWorkout((prev) => ({
+      ...prev,
+      exercises: prev.exercises?.filter((_, i) => i !== index) || [],
+    }))
+  }
+
+  const loadTemplate = (template: any) => {
+    const exercises: Exercise[] = template.exercises.map((ex: any) => ({
+      name: ex.name,
+      sets: Array(ex.sets)
+        .fill(null)
+        .map(() => ({
+          reps: template.category === "cardio" ? undefined : Number.parseInt(ex.reps.split("-")[0]) || 0,
+          weight: ex.weight || 0,
+          unit: "lb" as const,
+          time: template.category === "cardio" ? 30 : undefined,
+          distance: template.category === "cardio" ? 0.25 : undefined,
+          intensity: template.category === "cardio" ? ("medium" as const) : undefined,
+        })),
+    }))
+
+    setCurrentWorkout((prev) => ({
+      ...prev,
+      exercises,
+      label: template.category as any,
+    }))
+  }
+
+  const startWorkout = () => {
+    const startTime = new Date()
+    setWorkoutStartTime(startTime)
+    const workout: WorkoutLog = {
+      ...(currentWorkout as WorkoutLog),
+      startTime: startTime.toISOString(),
+      inProgress: true,
+    }
+    onWorkoutStart?.(workout)
+  }
+
+  const finishWorkout = () => {
+    if (workoutStartTime && workoutInProgress) {
+      const endTime = new Date()
+      const duration = Math.round((endTime.getTime() - workoutStartTime.getTime()) / 60000)
+
+      const workout = {
         ...workoutInProgress,
-        endTime: new Date().toISOString(),
-        duration: 45, // Mock duration
+        endTime: endTime.toISOString(),
+        duration,
         inProgress: false,
       }
-      setCompletedWorkout(finishedWorkout)
+
+      setCompletedWorkout(workout)
       setShowCompletionModal(true)
     }
   }
 
-  const handleConfirmWorkout = () => {
+  const confirmWorkout = () => {
     if (completedWorkout) {
       onWorkoutFinish?.(completedWorkout)
       setShowCompletionModal(false)
       setCompletedWorkout(null)
+      setWorkoutStartTime(null)
     }
-  }
-
-  const handleEditWorkout = () => {
-    // Allow editing of the completed workout
-    setShowCompletionModal(false)
-    // Could open an edit modal here
   }
 
   return (
     <div className="space-y-6">
-      {/* Workout In Progress Card */}
-      {workoutInProgress && (
-        <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between text-green-700">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-green-600 rounded-full animate-pulse"></div>
-                <span>Workout in Progress</span>
+      <div className="relative">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Quick Start Templates</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const widget = document.getElementById("quick-start-widget")
+              if (widget) {
+                widget.style.display = widget.style.display === "none" ? "block" : "none"
+              }
+            }}
+            className="h-6 w-6 p-0 text-gray-500"
+          >
+            <span className="text-xs">−</span>
+          </Button>
+        </div>
+        <div id="quick-start-widget">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center space-x-2">
+                <Dumbbell className="h-5 w-5 text-blue-600" />
+                <span>Quick Start Templates</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-3">
+                {workoutTemplates.map((template) => (
+                  <Button
+                    key={template.id}
+                    variant="outline"
+                    className="h-auto p-4 justify-start bg-transparent"
+                    onClick={() => loadTemplate(template)}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="text-left">
+                        <p className="font-medium">{template.name}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {template.exercises.length} exercises • ~{template.estimatedDuration}min
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="capitalize">
+                        {template.category}
+                      </Badge>
+                    </div>
+                  </Button>
+                ))}
               </div>
-              <Button onClick={handleFinishWorkout} size="sm" className="bg-green-600 hover:bg-green-700">
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Finish
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Type:</span>
-                <Badge variant="outline" className="capitalize">
-                  {workoutInProgress.label}
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Exercises:</span>
-                <span className="text-sm">{workoutInProgress.exercises?.length || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Started:</span>
-                <span className="text-sm">{new Date(workoutInProgress.startTime || "").toLocaleTimeString()}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-      {/* Workout Planner */}
-      <WorkoutPlanner userId={userId} />
+      <div className="relative">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Custom Workout</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const widget = document.getElementById("custom-workout-widget")
+              if (widget) {
+                widget.style.display = widget.style.display === "none" ? "block" : "none"
+              }
+            }}
+            className="h-6 w-6 p-0 text-gray-500"
+          >
+            <span className="text-xs">−</span>
+          </Button>
+        </div>
+        <div id="custom-workout-widget">
+          <Card>
+            <CardHeader>
+              <CardTitle>Custom Workout</CardTitle>
+              <CardDescription>Create your own workout or modify a template</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="workout-type">Workout Type</Label>
+                <Select
+                  value={currentWorkout.label}
+                  onValueChange={(value) => setCurrentWorkout((prev) => ({ ...prev, label: value as any }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a workout type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="strength">Strength Training</SelectItem>
+                    <SelectItem value="cardio">Cardio</SelectItem>
+                    <SelectItem value="hypertrophy">Hypertrophy</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button onClick={addExercise} variant="outline" className="w-full bg-transparent">
+                Add Exercise
+              </Button>
+
+              {currentWorkout.exercises && currentWorkout.exercises.length > 0 && (
+                <div className="space-y-4">
+                  {currentWorkout.exercises.map((exercise, index) => (
+                    <Card key={index} className="border-l-4 border-l-blue-500">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Input
+                            placeholder="Exercise name (e.g., Bench Press)"
+                            value={exercise.name}
+                            onChange={(e) => {
+                              const updatedExercises = [...(currentWorkout.exercises || [])]
+                              updatedExercises[index] = { ...exercise, name: e.target.value }
+                              setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
+                            }}
+                            className="flex-1 mr-2"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeExercise(index)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <p className="text-sm text-gray-600">Sets: {exercise.sets.length}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex space-x-2 pt-4">
+                <Button
+                  onClick={startWorkout}
+                  disabled={!currentWorkout.exercises?.length || workoutInProgress !== null}
+                  className="flex-1"
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Start Workout
+                </Button>
+                {workoutInProgress && (
+                  <Button onClick={finishWorkout} variant="outline" className="flex-1 bg-transparent">
+                    <Square className="h-4 w-4 mr-2" />
+                    Finish Workout
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Workout Completion Modal */}
       {showCompletionModal && completedWorkout && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
+          <Card className="w-full max-w-md max-h-[80vh] overflow-y-auto">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-green-600">
-                <CheckCircle className="h-5 w-5" />
+              <CardTitle className="flex items-center space-x-2">
+                <Check className="h-5 w-5 text-green-600" />
                 <span>Workout Complete!</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-center space-y-2">
-                <p className="text-lg font-semibold">Great job!</p>
-                <p className="text-sm text-gray-600">
-                  You completed a {completedWorkout.duration} minute {completedWorkout.label} workout
-                </p>
+              <div className="text-center">
+                <p className="text-lg font-semibold capitalize">{completedWorkout.label} Workout</p>
+                <p className="text-sm text-gray-600">Duration: {completedWorkout.duration} minutes</p>
               </div>
 
-              <div className="space-y-2">
-                <h4 className="font-medium">Workout Summary:</h4>
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span>Duration:</span>
-                    <span>{completedWorkout.duration} minutes</span>
+              <div className="space-y-3">
+                <h4 className="font-medium">Exercises Completed:</h4>
+                {completedWorkout.exercises?.map((exercise, index) => (
+                  <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <p className="font-medium">{exercise.name}</p>
+                    <p className="text-sm text-gray-600">{exercise.sets.length} sets</p>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Exercises:</span>
-                    <span>{completedWorkout.exercises?.length || 0}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Type:</span>
-                    <span className="capitalize">{completedWorkout.label}</span>
-                  </div>
-                </div>
+                ))}
               </div>
-
-              {completedWorkout.exercises && completedWorkout.exercises.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium">Exercises Completed:</h4>
-                  <div className="max-h-32 overflow-y-auto space-y-1">
-                    {completedWorkout.exercises.map((exercise, index) => (
-                      <div key={index} className="text-sm bg-gray-50 dark:bg-gray-800 rounded p-2">
-                        <span className="font-medium">{exercise.name}</span>
-                        <span className="text-gray-600 ml-2">{exercise.sets.length} sets</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               <div className="flex space-x-2">
-                <Button onClick={handleEditWorkout} variant="outline" className="flex-1 bg-transparent">
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit Workout
-                </Button>
-                <Button onClick={handleConfirmWorkout} className="flex-1">
-                  <CheckCircle className="h-4 w-4 mr-1" />
+                <Button onClick={confirmWorkout} className="flex-1">
+                  <Check className="h-4 w-4 mr-2" />
                   Confirm & Save
+                </Button>
+                <Button onClick={() => setShowCompletionModal(false)} variant="outline" className="flex-1">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Workout
                 </Button>
               </div>
             </CardContent>

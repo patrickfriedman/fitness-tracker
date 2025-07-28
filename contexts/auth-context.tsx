@@ -5,11 +5,10 @@ import type { User } from "../types/fitness"
 
 interface AuthContextType {
   user: User | null
-  login: (username: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<boolean>
   logout: () => void
   register: (userData: Partial<User>) => Promise<boolean>
   updateUser: (userData: Partial<User>) => void
-  deleteAccount: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -25,12 +24,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     // Mock authentication - in real app, this would call an API
     const mockUser: User = {
       id: `user-${Date.now()}`,
-      name: username === "demo" ? "Demo User" : username,
-      username,
+      name: email.split("@")[0],
+      email,
       primaryGoal: "hypertrophy",
       createdAt: new Date().toISOString(),
       preferences: {
@@ -49,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newUser: User = {
       id: `user-${Date.now()}`,
       name: userData.name || "",
-      username: userData.username || "",
+      email: userData.email || "",
       primaryGoal: userData.primaryGoal || "hypertrophy",
       createdAt: new Date().toISOString(),
       preferences: {
@@ -69,16 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("fitness-user")
   }
 
-  const deleteAccount = async (): Promise<boolean> => {
-    // In a real app, this would call an API to delete the account
-    setUser(null)
-    localStorage.removeItem("fitness-user")
-    localStorage.removeItem("fitness-workouts")
-    localStorage.removeItem("fitness-nutrition")
-    localStorage.removeItem("fitness-metrics")
-    return true
-  }
-
   const updateUser = (userData: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...userData }
@@ -87,11 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return (
-    <AuthContext.Provider value={{ user, login, logout, register, updateUser, deleteAccount }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={{ user, login, logout, register, updateUser }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

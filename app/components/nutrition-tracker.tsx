@@ -8,21 +8,11 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Apple, Plus, Search, Utensils, Target, Check, X, Trash2 } from "lucide-react"
+import { Apple, Plus, Search, Utensils, Target, Check, X } from "lucide-react"
 import type { NutritionLog, FoodItem } from "../../types/fitness"
 
 interface NutritionTrackerProps {
   userId: string
-}
-
-interface MealPlanItem {
-  id: string
-  name: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-  mealType: "breakfast" | "lunch" | "dinner" | "snacks"
 }
 
 const commonFoods: FoodItem[] = [
@@ -58,23 +48,8 @@ export function NutritionTracker({ userId }: NutritionTrackerProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [isEditingGoal, setIsEditingGoal] = useState(false)
   const [tempCalorieGoal, setTempCalorieGoal] = useState(todayLog.calorieLimit.toString())
-  const [customFoods, setCustomFoods] = useState<FoodItem[]>([])
-  const [isAddingCustomFood, setIsAddingCustomFood] = useState(false)
-  const [newCustomFood, setNewCustomFood] = useState<FoodItem>({
-    name: "",
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    serving: "",
-  })
 
-  // Meal planning state
-  const [mealPlan, setMealPlan] = useState<MealPlanItem[]>([])
-  const [isAddingToMealPlan, setIsAddingToMealPlan] = useState<string | null>(null)
-
-  const allFoods = [...commonFoods, ...customFoods]
-  const filteredFoods = allFoods.filter((food) => food.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredFoods = commonFoods.filter((food) => food.name.toLowerCase().includes(searchTerm.toLowerCase()))
 
   const addFood = (food: FoodItem) => {
     setTodayLog((prev) => ({
@@ -84,43 +59,6 @@ export function NutritionTracker({ userId }: NutritionTrackerProps) {
       carbs: prev.carbs + food.carbs,
       fat: prev.fat + food.fat,
     }))
-  }
-
-  const addCustomFood = () => {
-    if (newCustomFood.name && newCustomFood.calories > 0) {
-      setCustomFoods((prev) => [...prev, newCustomFood])
-      setNewCustomFood({
-        name: "",
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        serving: "",
-      })
-      setIsAddingCustomFood(false)
-    }
-  }
-
-  const addToMealPlan = (food: FoodItem, mealType: "breakfast" | "lunch" | "dinner" | "snacks") => {
-    const newMealItem: MealPlanItem = {
-      id: `meal-${Date.now()}`,
-      name: food.name,
-      calories: food.calories,
-      protein: food.protein,
-      carbs: food.carbs,
-      fat: food.fat,
-      mealType,
-    }
-    setMealPlan((prev) => [...prev, newMealItem])
-    setIsAddingToMealPlan(null)
-  }
-
-  const removeMealPlanItem = (id: string) => {
-    setMealPlan((prev) => prev.filter((item) => item.id !== id))
-  }
-
-  const getMealPlanByType = (mealType: "breakfast" | "lunch" | "dinner" | "snacks") => {
-    return mealPlan.filter((item) => item.mealType === mealType)
   }
 
   const handleGoalSave = () => {
@@ -268,14 +206,9 @@ export function NutritionTracker({ userId }: NutritionTrackerProps) {
         <div id="add-food-widget">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Plus className="h-5 w-5 text-blue-600" />
-                  <span>Add Food</span>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setIsAddingCustomFood(true)}>
-                  Add Custom Food
-                </Button>
+              <CardTitle className="flex items-center space-x-2">
+                <Plus className="h-5 w-5 text-blue-600" />
+                <span>Add Food</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -317,7 +250,7 @@ export function NutritionTracker({ userId }: NutritionTrackerProps) {
                 <div className="text-center py-8 text-gray-500">
                   <Utensils className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No foods found</p>
-                  <p className="text-sm">Try a different search term or add a custom food</p>
+                  <p className="text-sm">Try a different search term</p>
                 </div>
               )}
             </CardContent>
@@ -356,201 +289,50 @@ export function NutritionTracker({ userId }: NutritionTrackerProps) {
                   <TabsTrigger value="snacks">Snacks</TabsTrigger>
                 </TabsList>
 
-                {(["breakfast", "lunch", "dinner", "snacks"] as const).map((mealType) => (
-                  <TabsContent key={mealType} value={mealType} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium capitalize">{mealType}</h4>
-                      <Button variant="outline" size="sm" onClick={() => setIsAddingToMealPlan(mealType)}>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Food
-                      </Button>
-                    </div>
+                <TabsContent value="breakfast" className="space-y-3">
+                  <div className="text-center py-8 text-gray-500">
+                    <Utensils className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No breakfast logged yet</p>
+                    <Button variant="outline" size="sm" className="mt-2 bg-transparent">
+                      Add Breakfast
+                    </Button>
+                  </div>
+                </TabsContent>
 
-                    <div className="space-y-2">
-                      {getMealPlanByType(mealType).map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{item.name}</p>
-                            <p className="text-sm text-gray-600">
-                              {item.calories} cal • P: {item.protein}g • C: {item.carbs}g • F: {item.fat}g
-                            </p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeMealPlanItem(item.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                <TabsContent value="lunch" className="space-y-3">
+                  <div className="text-center py-8 text-gray-500">
+                    <Utensils className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No lunch logged yet</p>
+                    <Button variant="outline" size="sm" className="mt-2 bg-transparent">
+                      Add Lunch
+                    </Button>
+                  </div>
+                </TabsContent>
 
-                      {getMealPlanByType(mealType).length === 0 && (
-                        <div className="text-center py-8 text-gray-500">
-                          <Utensils className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>No {mealType} planned yet</p>
-                          <p className="text-sm">Add foods to plan your {mealType}</p>
-                        </div>
-                      )}
-                    </div>
-                  </TabsContent>
-                ))}
+                <TabsContent value="dinner" className="space-y-3">
+                  <div className="text-center py-8 text-gray-500">
+                    <Utensils className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No dinner logged yet</p>
+                    <Button variant="outline" size="sm" className="mt-2 bg-transparent">
+                      Add Dinner
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="snacks" className="space-y-3">
+                  <div className="text-center py-8 text-gray-500">
+                    <Utensils className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No snacks logged yet</p>
+                    <Button variant="outline" size="sm" className="mt-2 bg-transparent">
+                      Add Snacks
+                    </Button>
+                  </div>
+                </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
         </div>
       </div>
-
-      {/* Custom Food Modal */}
-      {isAddingCustomFood && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Add Custom Food</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="food-name">Food Name</Label>
-                <Input
-                  id="food-name"
-                  value={newCustomFood.name}
-                  onChange={(e) => setNewCustomFood((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Homemade Protein Smoothie"
-                />
-              </div>
-              <div>
-                <Label htmlFor="serving-size">Serving Size</Label>
-                <Input
-                  id="serving-size"
-                  value={newCustomFood.serving}
-                  onChange={(e) => setNewCustomFood((prev) => ({ ...prev, serving: e.target.value }))}
-                  placeholder="e.g., 1 cup, 100g, 1 medium"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="calories">Calories</Label>
-                  <Input
-                    id="calories"
-                    type="number"
-                    value={newCustomFood.calories || ""}
-                    onChange={(e) =>
-                      setNewCustomFood((prev) => ({ ...prev, calories: Number.parseFloat(e.target.value) || 0 }))
-                    }
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="protein">Protein (g)</Label>
-                  <Input
-                    id="protein"
-                    type="number"
-                    step="0.1"
-                    value={newCustomFood.protein || ""}
-                    onChange={(e) =>
-                      setNewCustomFood((prev) => ({ ...prev, protein: Number.parseFloat(e.target.value) || 0 }))
-                    }
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="carbs">Carbs (g)</Label>
-                  <Input
-                    id="carbs"
-                    type="number"
-                    step="0.1"
-                    value={newCustomFood.carbs || ""}
-                    onChange={(e) =>
-                      setNewCustomFood((prev) => ({ ...prev, carbs: Number.parseFloat(e.target.value) || 0 }))
-                    }
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="fat">Fat (g)</Label>
-                  <Input
-                    id="fat"
-                    type="number"
-                    step="0.1"
-                    value={newCustomFood.fat || ""}
-                    onChange={(e) =>
-                      setNewCustomFood((prev) => ({ ...prev, fat: Number.parseFloat(e.target.value) || 0 }))
-                    }
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              <div className="flex space-x-2">
-                <Button onClick={() => setIsAddingCustomFood(false)} variant="outline" className="flex-1">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={addCustomFood}
-                  className="flex-1"
-                  disabled={!newCustomFood.name || newCustomFood.calories <= 0}
-                >
-                  Add Food
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Add to Meal Plan Modal */}
-      {isAddingToMealPlan && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md max-h-[80vh] overflow-y-auto">
-            <CardHeader>
-              <CardTitle>Add to {isAddingToMealPlan}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search foods..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {filteredFoods.map((food, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    className="w-full h-auto p-3 justify-between bg-transparent"
-                    onClick={() =>
-                      addToMealPlan(food, isAddingToMealPlan as "breakfast" | "lunch" | "dinner" | "snacks")
-                    }
-                  >
-                    <div className="text-left">
-                      <p className="font-medium">{food.name}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {food.serving} • {food.calories} cal
-                      </p>
-                    </div>
-                    <div className="text-right text-xs text-gray-600 dark:text-gray-400">
-                      <p>P: {food.protein}g</p>
-                      <p>
-                        C: {food.carbs}g • F: {food.fat}g
-                      </p>
-                    </div>
-                  </Button>
-                ))}
-              </div>
-
-              <Button onClick={() => setIsAddingToMealPlan(null)} variant="outline" className="w-full">
-                Cancel
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }
