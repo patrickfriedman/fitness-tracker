@@ -24,6 +24,10 @@ html {
   --font-mono: ${GeistMono.variable};
 }
         `}</style>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+        <meta name="apple-mobile-web-app-title" content="FitTracker" />
+        <link rel="apple-touch-icon" href="/app-icon.png" />
       </head>
       <body>{children}</body>
     </html>
