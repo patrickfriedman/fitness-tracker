@@ -58,6 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     }
 
+    // Initialize empty data structures for new user
+    localStorage.setItem(`activity-data-${newUser.id}`, JSON.stringify([]));
+    localStorage.setItem(`nutrition-log-${newUser.id}`, JSON.stringify([]));
+    localStorage.setItem(`workout-log-${newUser.id}`, JSON.stringify([]));
+    localStorage.setItem(`body-metrics-${newUser.id}`, JSON.stringify([]));
+    localStorage.setItem(`mood-log-${newUser.id}`, JSON.stringify([]));
+
     setUser(newUser)
     localStorage.setItem("fitness-user", JSON.stringify(newUser))
     return true

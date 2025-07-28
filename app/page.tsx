@@ -22,8 +22,8 @@ import { MoodTrackerWidget } from "./components/mood-tracker"
 import { WorkoutLogger } from "./components/workout-logger"
 import { NutritionTracker } from "./components/nutrition-tracker"
 import { WeeklySummary } from "./components/weekly-summary"
-import { CompareTab } from "./components/compare-tab"
 import { BodyMetricsWidget } from "./components/body-metrics-widget"
+import { WaterTrackerWidget } from "./components/water-tracker"
 
 import type { BodyMetrics, WorkoutLog, NutritionLog, MoodLog } from "../types/fitness"
 
@@ -52,10 +52,11 @@ function FitnessApp() {
   const [todayWidgets, setTodayWidgets] = useState<Widget[]>([
     { id: "motivation", name: "Daily Motivation", component: "motivation", order: 0 },
     { id: "quick-stats", name: "Quick Stats", component: "quick-stats", order: 1 },
-    { id: "nutrition-summary", name: "Nutrition Summary", component: "nutrition-summary", order: 2 },
-    { id: "body-metrics", name: "Body Metrics", component: "body-metrics", order: 3 },
-    { id: "mood", name: "Mood Tracker", component: "mood", order: 4 },
-    { id: "heatmap", name: "Activity Heatmap", component: "heatmap", order: 5 },
+    { id: "water", name: "Water Tracker", component: "water", order: 2 },
+    { id: "nutrition-summary", name: "Nutrition Summary", component: "nutrition-summary", order: 3 },
+    { id: "body-metrics", name: "Body Metrics", component: "body-metrics", order: 4 },
+    { id: "mood", name: "Mood Tracker", component: "mood", order: 5 },
+    { id: "heatmap", name: "Activity Heatmap", component: "heatmap", order: 6 },
   ])
 
   const [workoutWidgets, setWorkoutWidgets] = useState<Widget[]>([
@@ -67,20 +68,6 @@ function FitnessApp() {
     { id: "daily-overview", name: "Daily Overview", component: "daily-overview", order: 0 },
     { id: "add-food", name: "Add Food", component: "add-food", order: 1 },
     { id: "meal-planning", name: "Meal Planning", component: "meal-planning", order: 2 },
-  ])
-
-  const [compareWidgets, setCompareWidgets] = useState<Widget[]>([
-    { id: "leaderboard", name: "Weekly Leaderboard", component: "leaderboard", order: 0 },
-    { id: "friends-activity", name: "Friends Activity", component: "friends-activity", order: 1 },
-    { id: "challenge-center", name: "Challenge Center", component: "challenge-center", order: 2 },
-  ])
-
-  const [progressWidgets, setProgressWidgets] = useState<Widget[]>([
-    { id: "progress-heatmap", name: "Activity Heatmap", component: "progress-heatmap", order: 0 },
-    { id: "weekly-overview", name: "Weekly Overview", component: "weekly-overview", order: 1 },
-    { id: "weight-progress", name: "Weight & Body Fat Progress", component: "weight-progress", order: 2 },
-    { id: "mood-progress", name: "Mood Tracking", component: "mood-progress", order: 3 },
-    { id: "goals-progress", name: "Goals Progress", component: "goals-progress", order: 4 },
   ])
 
   useEffect(() => {
@@ -271,6 +258,17 @@ function FitnessApp() {
       case "heatmap":
       case "progress-heatmap":
         return <ActivityHeatmapWidget userId={user?.id || ""} />
+      case "water":
+        return (
+          <WaterTrackerWidget
+            userId={user?.id || ""}
+            currentIntake={todayNutrition?.waterIntake}
+            goal={todayNutrition?.waterGoal}
+            onUpdate={(newIntake) => {
+              setTodayNutrition((prev) => (prev ? { ...prev, waterIntake: newIntake } : null))
+            }}
+          />
+        )
       default:
         return <div>Widget content for {widget.name}</div>
     }
@@ -392,7 +390,7 @@ function FitnessApp() {
         <Tabs defaultValue="today" className="w-full">
           {/* Mobile Tab Navigation */}
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800">
-            <TabsList className="grid w-full grid-cols-5 h-16 bg-transparent">
+            <TabsList className="grid w-full grid-cols-4 h-16 bg-transparent">
               <TabsTrigger value="today" className="flex-col space-y-1 h-full" data-tab="today">
                 <Zap className="h-4 w-4" />
                 <span className="text-xs">Today</span>
@@ -404,10 +402,6 @@ function FitnessApp() {
               <TabsTrigger value="nutrition" className="flex-col space-y-1 h-full" data-tab="nutrition">
                 <Apple className="h-4 w-4" />
                 <span className="text-xs">Nutrition</span>
-              </TabsTrigger>
-              <TabsTrigger value="compare" className="flex-col space-y-1 h-full" data-tab="compare">
-                <Users className="h-4 w-4" />
-                <span className="text-xs">Compare</span>
               </TabsTrigger>
               <TabsTrigger value="progress" className="flex-col space-y-1 h-full" data-tab="progress">
                 <TrendingUp className="h-4 w-4" />
@@ -431,10 +425,6 @@ function FitnessApp() {
 
           <TabsContent value="nutrition" className="p-4">
             <NutritionTracker userId={user.id} />
-          </TabsContent>
-
-          <TabsContent value="compare" className="p-4">
-            <CompareTab userId={user.id} />
           </TabsContent>
 
           <TabsContent value="progress" className="p-4">
@@ -506,9 +496,9 @@ function FitnessApp() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <FitnessApp />
-      </AuthProvider>
-    </ThemeProvider>
+      <AuthProvider>er>
+        <FitnessApp />ssApp />
+      </AuthProvider>AuthProvider>
+    </ThemeProvider>eProvider>
   )
 }

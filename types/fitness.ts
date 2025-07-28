@@ -153,3 +153,35 @@ export interface FoodItem {
   fat: number
   serving: string
 }
+
+export const initializeUserData = (userId: string) => {
+  const dataKeys = [
+    'activity-data',
+    'nutrition-log',
+    'workout-log',
+    'body-metrics',
+    'mood-log',
+    'water-tracker',
+    'custom-templates'
+  ];
+
+  dataKeys.forEach(key => {
+    localStorage.setItem(`${key}-${userId}`, JSON.stringify([]));
+  });
+}
+
+export const clearUserData = (userId: string) => {
+  const dataKeys = [
+    'activity-data',
+    'nutrition-log',
+    'workout-log',
+    'body-metrics',
+    'mood-log',
+    'water-tracker',
+    'custom-templates'
+  ];
+
+  dataKeys.forEach(key => {
+    localStorage.removeItem(`${key}-${userId}`);
+  });
+}

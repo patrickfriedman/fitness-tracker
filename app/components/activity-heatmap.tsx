@@ -19,29 +19,43 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapProps) {
   const [activityData, setActivityData] = useState<ActivityData[]>([])
 
   useEffect(() => {
-    generateMockData()
-  }, [])
+    loadUserActivityData(userId)
+  }, [userId])
 
-  const generateMockData = () => {
-    const data: ActivityData[] = []
+  const loadUserActivityData = (userId: string) => {
+    // Demo account uses mock data
+    if (userId === "demo") {
+      generateMockData()
+      return
+    }
+
+    // Load from localStorage for actual users
+    const storedData = localStorage.getItem(`activity-data-${userId}`)
+    if (storedData) {
+      setActivityData(JSON.parse(storedData))
+    } else {
+      // Initialize empty data structure for new users
+      const emptyData: ActivityData[] = generateEmptyData()
+      setActivityData(emptyData)
+      localStorage.setItem(`activity-data-${userId}`, JSON.stringify(emptyData))
+    }
+  }
+
+  const generateEmptyData = () => {
+    const emptyData: ActivityData[] = []
     const today = new Date()
 
-    // Generate data for 20 weeks * 15 days = 300 days
     for (let i = 299; i >= 0; i--) {
       const date = new Date(today)
       date.setDate(date.getDate() - i)
-
-      const intensity = Math.random() > 0.3 ? Math.floor(Math.random() * 4) + 1 : 0
-      const workouts = intensity > 0 ? Math.floor(Math.random() * 3) + 1 : 0
-
-      data.push({
+      emptyData.push({
         date: date.toISOString().split("T")[0],
-        intensity,
-        workouts,
+        intensity: 0,
+        workouts: 0,
       })
     }
 
-    setActivityData(data)
+    return emptyData
   }
 
   const getIntensityColor = (intensity: number) => {
@@ -96,8 +110,12 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapProps) {
             {activityData.map((day, index) => (
               <div
                 key={index}
-                className={`aspect-square rounded-sm cursor-pointer transition-all hover:scale-125 ${getIntensityColor(day.intensity)}`}
-                title={`${formatDate(day.date)}: ${day.workouts} workout${day.workouts !== 1 ? "s" : ""}`}
+                className={`aspect-square rounded-sm cursor-pointer transition-all hover:scale-125 ${getIntensityColor(
+                  day.intensity
+                )}`}
+                title={`${formatDate(day.date)}: ${day.workouts} workout${
+                  day.workouts !== 1 ? "s" : ""
+                }`}
               />
             ))}
           </div>
@@ -121,19 +139,30 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapProps) {
               <p className="text-sm font-bold text-green-700 dark:text-green-400">
                 {activityData.filter((d) => d.intensity > 0).length}
               </p>
-              <p className="text-[0.5rem] text-gray-600 dark:text-gray-400">Active days</p>
+              <p className="text-[0.5rem] text-gray-600 dark:text-gray-400">
+                Active days
+              </p>
             </div>
             <div className="text-center">
               <p className="text-sm font-bold text-green-700 dark:text-green-400">
-                {Math.round((activityData.filter((d) => d.intensity > 0).length / activityData.length) * 100)}%
+                {Math.round(
+                  (activityData.filter((d) => d.intensity > 0).length /
+                    activityData.length) *
+                    100
+                )}
+                %
               </p>
-              <p className="text-[0.5rem] text-gray-600 dark:text-gray-400">Consistency</p>
+              <p className="text-[0.5rem] text-gray-600 dark:text-gray-400">
+                Consistency
+              </p>
             </div>
             <div className="text-center">
               <p className="text-sm font-bold text-green-700 dark:text-green-400">
                 {activityData.reduce((sum, d) => sum + d.workouts, 0)}
               </p>
-              <p className="text-[0.5rem] text-gray-600 dark:text-gray-400">Total workouts</p>
+              <p className="text-[0.5rem] text-gray-600 dark:text-gray-400">
+                Total workouts
+              </p>
             </div>
           </div>
         </div>
