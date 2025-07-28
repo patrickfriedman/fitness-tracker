@@ -75,10 +75,10 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapProps) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2 text-green-700 dark:text-green-400">
-            <Calendar className="h-4 w-4" />
-            <span className="text-sm">Activity Heatmap</span>
+            <Calendar className="h-3 w-3" />
+            <span className="text-xs">Activity Heatmap</span>
           </div>
-          <Badge variant="outline" className="text-[0.65rem]">
+          <Badge variant="outline" className="text-[0.5rem]">
             Last 345 days
           </Badge>
         </CardTitle>
@@ -103,7 +103,7 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapProps) {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-between text-[0.65rem] text-gray-600 dark:text-gray-400">
+          <div className="flex items-center justify-between text-[0.5rem] text-gray-600 dark:text-gray-400">
             <span>Less</span>
             <div className="flex items-center space-x-1">
               <div className="w-2 h-2 rounded-sm bg-gray-100 dark:bg-gray-800"></div>
@@ -118,22 +118,22 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapProps) {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 pt-2 border-t border-green-200 dark:border-green-800">
             <div className="text-center">
-              <p className="text-base font-bold text-green-700 dark:text-green-400">
+              <p className="text-sm font-bold text-green-700 dark:text-green-400">
                 {activityData.filter((d) => d.intensity > 0).length}
               </p>
-              <p className="text-[0.65rem] text-gray-600 dark:text-gray-400">Active days</p>
+              <p className="text-[0.5rem] text-gray-600 dark:text-gray-400">Active days</p>
             </div>
             <div className="text-center">
-              <p className="text-base font-bold text-green-700 dark:text-green-400">
+              <p className="text-sm font-bold text-green-700 dark:text-green-400">
                 {Math.round((activityData.filter((d) => d.intensity > 0).length / activityData.length) * 100)}%
               </p>
-              <p className="text-[0.65rem] text-gray-600 dark:text-gray-400">Consistency</p>
+              <p className="text-[0.5rem] text-gray-600 dark:text-gray-400">Consistency</p>
             </div>
             <div className="text-center">
-              <p className="text-base font-bold text-green-700 dark:text-green-400">
+              <p className="text-sm font-bold text-green-700 dark:text-green-400">
                 {activityData.reduce((sum, d) => sum + d.workouts, 0)}
               </p>
-              <p className="text-[0.65rem] text-gray-600 dark:text-gray-400">Total workouts</p>
+              <p className="text-[0.5rem] text-gray-600 dark:text-gray-400">Total workouts</p>
             </div>
           </div>
         </div>
