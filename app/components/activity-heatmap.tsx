@@ -22,8 +22,8 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapWidgetProps) {
     const data: ActivityHeatmap[] = []
     const today = new Date()
 
-    // Generate data for 55 weeks * 7 days = 385 days (55 wide x 7 tall)
-    for (let i = 384; i >= 0; i--) {
+    // Generate data for 55 weeks * 15 days = 825 days (55 wide x 15 tall)
+    for (let i = 824; i >= 0; i--) {
       const date = new Date(today)
       date.setDate(date.getDate() - i)
 
@@ -66,10 +66,10 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapWidgetProps) {
     return `${date}: ${item.count} ${item.count === 1 ? "activity" : "activities"}`
   }
 
-  // Organize data into weeks (55 weeks x 7 days)
+  // Organize data into weeks (55 weeks x 15 days)
   const weeks: ActivityHeatmap[][] = []
-  for (let i = 0; i < heatmapData.length; i += 7) {
-    weeks.push(heatmapData.slice(i, i + 7))
+  for (let i = 0; i < heatmapData.length; i += 15) {
+    weeks.push(heatmapData.slice(i, i + 15))
   }
 
   const totalActivities = heatmapData.reduce((sum, item) => sum + item.count, 0)
