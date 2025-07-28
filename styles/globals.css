@@ -88,3 +88,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+:root {
+  font-size: 70%; /* Reduces text size by 30% */
+}
+
+/* Ensure the base font size is inherited */
+body {
+  font-size: inherit;
+}
