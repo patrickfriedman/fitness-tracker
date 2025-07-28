@@ -496,9 +496,9 @@ function FitnessApp() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>er>
-        <FitnessApp />ssApp />
-      </AuthProvider>AuthProvider>
-    </ThemeProvider>eProvider>
+      <AuthProvider>
+        <FitnessApp />
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
