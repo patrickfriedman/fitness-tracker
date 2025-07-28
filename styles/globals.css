@@ -97,3 +97,31 @@
 body {
   font-size: inherit;
 }
+
+/* Modal and Widget Text Styles */
+[data-dialog],
+[role="dialog"] {
+  --modal-title: 1.25rem;      /* 20px */
+  --modal-text: 0.875rem;      /* 14px */
+  --modal-small: 0.75rem;      /* 12px */
+  --modal-micro: 0.625rem;     /* 10px */
+}
+
+/* Base modal content styles */
+[role="dialog"] {
+  font-size: var(--modal-text);
+}
+
+[role="dialog"] h2,
+[role="dialog"] .title {
+  font-size: var(--modal-title);
+  line-height: 1.3;
+}
+
+[role="dialog"] .small-text {
+  font-size: var(--modal-small);
+}
+
+[role="dialog"] .micro-text {
+  font-size: var(--modal-micro);
+}
