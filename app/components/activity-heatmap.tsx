@@ -26,8 +26,8 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapProps) {
     const data: ActivityData[] = []
     const today = new Date()
 
-    // Generate data for 17 weeks * 15 days = 255 days
-    for (let i = 254; i >= 0; i--) {
+    // Generate data for 20 weeks * 15 days = 300 days
+    for (let i = 299; i >= 0; i--) {
       const date = new Date(today)
       date.setDate(date.getDate() - i)
 
@@ -79,17 +79,17 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapProps) {
             <span className="text-xs">Activity Heatmap</span>
           </div>
           <Badge variant="outline" className="text-[0.5rem]">
-            Last 255 days
+            Last 300 days
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {/* Heatmap Grid - 17 wide x 15 tall */}
+          {/* Heatmap Grid - 20 wide x 15 tall */}
           <div
             className="grid gap-1 overflow-x-auto min-w-[400px]"
             style={{
-              gridTemplateColumns: "repeat(17, minmax(8px, 1fr))",
+              gridTemplateColumns: "repeat(20, minmax(8px, 1fr))",
               gridTemplateRows: "repeat(15, minmax(8px, 1fr))",
             }}
           >
