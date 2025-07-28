@@ -84,33 +84,33 @@ export function ActivityHeatmapWidget({ userId }: ActivityHeatmapProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-3 p-1">
           {/* Heatmap Grid - 20 wide x 15 tall */}
           <div
-            className="grid gap-1 overflow-x-auto min-w-[400px]"
+            className="grid gap-[2px] overflow-x-auto"
             style={{
-              gridTemplateColumns: "repeat(20, minmax(8px, 1fr))",
-              gridTemplateRows: "repeat(15, minmax(8px, 1fr))",
+              gridTemplateColumns: "repeat(20, minmax(12px, 1fr))",
+              gridTemplateRows: "repeat(15, minmax(12px, 1fr))",
             }}
           >
             {activityData.map((day, index) => (
               <div
                 key={index}
-                className={`w-2 h-2 rounded-sm cursor-pointer transition-all hover:scale-125 ${getIntensityColor(day.intensity)}`}
+                className={`aspect-square rounded-sm cursor-pointer transition-all hover:scale-125 ${getIntensityColor(day.intensity)}`}
                 title={`${formatDate(day.date)}: ${day.workouts} workout${day.workouts !== 1 ? "s" : ""}`}
               />
             ))}
           </div>
 
-          {/* Legend */}
-          <div className="flex items-center justify-between text-[0.5rem] text-gray-600 dark:text-gray-400">
+          {/* Legend - adjusted sizes to match grid */}
+          <div className="flex items-center justify-between text-[0.5rem] text-gray-600 dark:text-gray-400 px-1">
             <span>Less</span>
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 rounded-sm bg-gray-100 dark:bg-gray-800"></div>
-              <div className="w-2 h-2 rounded-sm bg-green-200 dark:bg-green-900"></div>
-              <div className="w-2 h-2 rounded-sm bg-green-400 dark:bg-green-700"></div>
-              <div className="w-2 h-2 rounded-sm bg-green-600 dark:bg-green-500"></div>
-              <div className="w-2 h-2 rounded-sm bg-green-800 dark:bg-green-400"></div>
+            <div className="flex items-center gap-[2px]">
+              <div className="w-3 h-3 rounded-sm bg-gray-100 dark:bg-gray-800"></div>
+              <div className="w-3 h-3 rounded-sm bg-green-200 dark:bg-green-900"></div>
+              <div className="w-3 h-3 rounded-sm bg-green-400 dark:bg-green-700"></div>
+              <div className="w-3 h-3 rounded-sm bg-green-600 dark:bg-green-500"></div>
+              <div className="w-3 h-3 rounded-sm bg-green-800 dark:bg-green-400"></div>
             </div>
             <span>More</span>
           </div>
