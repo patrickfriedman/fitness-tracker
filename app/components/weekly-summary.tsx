@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { TrendingUp, Calendar, Target, Scale, Heart } from "lucide-react"
 import { ActivityHeatmapWidget } from "./activity-heatmap"
-import type { WeeklySummaryType } from "../../types/fitness"
+import type { WeeklySummary as WeeklySummaryType } from "../../types/fitness"
 
 interface WeeklySummaryProps {
   userId: string
@@ -34,7 +34,7 @@ const moodData = [
   { date: "Jan 26", mood: 5, energy: 4, motivation: 5 },
 ]
 
-export function WeeklySummaryComponent({ userId }: WeeklySummaryProps) {
+export function WeeklySummary({ userId }: WeeklySummaryProps) {
   const [weeklyData] = useState<WeeklySummaryType>({
     userId,
     range: "Jan 20 - Jan 26, 2025",
