@@ -47,8 +47,8 @@ export function LoginScreen() {
     try {
       await register({
         name: registerData.name,
-        email: registerData.email
-        // password: registerData.password // Removed to match Partial<User> type
+        email: registerData.email,
+        password: registerData.password
       })
       alert("Account created successfully!")
     } catch (error) {

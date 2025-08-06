@@ -8,7 +8,7 @@ import type { User as FitnessUser } from "@/types/fitness"
 interface AuthContextType {
   user: FitnessUser | null
   login: (email: string, password: string) => Promise<void>
-  register: (userData: Partial<FitnessUser>) => Promise<void>
+  register: (userData: Partial<FitnessUser> & { password: string }) => Promise<void>
   logout: () => Promise<void>
   updateUser: (userData: FitnessUser) => Promise<void>
 }
@@ -103,7 +103,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) {
       console.error("Error fetching user profile:", error)
-      return
+      // Create user profile if it doesn't exist
+      const { error: createError } = await supabase
+        .from('users')
+        .insert({
+          id: authUser.id,
+          name: authUser.user_metadata?.name || '',
+          email: authUser.email,
+          primary_goal: 'strength',
+          created_at: new Date().toISOString(),
+          preferences: {
+            theme: 'light',
+            units: 'metric',
+            todayWidgets: [],
+          },
+        })
+      
+      if (createError) {
+        console.error("Error creating user profile:", createError)
+        return
+      }
+      
+      // Fetch the newly created profile
+      return await fetchUserProfile(authUser)
     }
 
     if (data) {

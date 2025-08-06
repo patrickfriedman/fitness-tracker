@@ -4,7 +4,20 @@ import type React from "react"
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/component              onClick={async () => {
+                try {
+                  setIsLoading(true);
+                  await login("demo@example.com", "demopassword123");
+                } catch (error) {
+                  console.error("Demo login error:", error);
+                  alert("Failed to log in with demo account. Please try again later.");
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              disabled={isLoading}
+              >
+              {isLoading ? "Logging in..." : "Try Demo Account"}i/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -32,15 +45,25 @@ export function LoginScreen() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (registerData.password !== registerData.confirmPassword) return
+    if (registerData.password !== registerData.confirmPassword) {
+      alert("Passwords do not match")
+      return
+    }
 
     setIsLoading(true)
-    await register({
-      name: registerData.name,
-      email: registerData.email
-      // password: registerData.password // Removed to match Partial<User> type
-    })
-    setIsLoading(false)
+    try {
+      await register({
+        name: registerData.name,
+        email: registerData.email,
+        password: registerData.password
+      })
+      alert("Account created successfully!")
+    } catch (error) {
+      console.error("Registration error:", error)
+      alert(error instanceof Error ? error.message : "Failed to create account")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

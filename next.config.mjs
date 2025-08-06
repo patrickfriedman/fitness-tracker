@@ -9,6 +9,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    turbo: {
+      loaders: {},
+      resolvers: {},
+    },
+  },
 }
 
 export default nextConfig
