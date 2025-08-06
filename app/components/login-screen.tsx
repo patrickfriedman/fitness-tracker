@@ -1,18 +1,17 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dumbbell, Mail, Lock, User, Eye, EyeOff, AlertCircle } from "lucide-react"
-import { useAuth } from "../../contexts/auth-context"
+import { Dumbbell, Mail, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { useAuth } from "@/contexts/auth-context"
 
 export function LoginScreen() {
-  const { login, register, user } = useAuth() // Add user to check current state
+  const { login, register } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string>("")
@@ -24,25 +23,17 @@ export function LoginScreen() {
     confirmPassword: "",
   })
 
-  // Debug: Log current user state
-  console.log("LoginScreen - Current user:", user)
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
     
-    console.log("Attempting login with:", loginData.email)
-    
     try {
-      const result = await login(loginData.email, loginData.password)
-      console.log("Login result:", result)
-      
-      // Don't set loading to false immediately - let the auth context update
-      // setIsLoading(false) will be handled after state updates
+      await login(loginData.email, loginData.password)
     } catch (error) {
       console.error("Login error:", error)
       setError(error instanceof Error ? error.message : "Invalid login credentials")
+    } finally {
       setIsLoading(false)
     }
   }
@@ -60,13 +51,14 @@ export function LoginScreen() {
     try {
       await register({
         name: registerData.name,
+        username: registerData.email,
         email: registerData.email,
         password: registerData.password
       })
-      // Success - the auth context should handle the redirect
     } catch (error) {
       console.error("Registration error:", error)
       setError(error instanceof Error ? error.message : "Failed to create account")
+    } finally {
       setIsLoading(false)
     }
   }
@@ -76,37 +68,13 @@ export function LoginScreen() {
     setIsLoading(true)
     
     try {
-      // Try different demo credentials that might work with your system
-      const demoCredentials = [
-        { email: "demo@fittracker.com", password: "demo123" },
-        { email: "demo@example.com", password: "demopassword123" },
-        { email: "test@test.com", password: "password" }
-      ]
-      
-      for (const credentials of demoCredentials) {
-        try {
-          console.log("Trying demo login with:", credentials.email)
-          await login(credentials.email, credentials.password)
-          return // Success, exit the function
-        } catch (err) {
-          console.log(`Demo login failed for ${credentials.email}:`, err)
-          // Continue to next credentials
-        }
-      }
-      
-      // If we get here, all demo logins failed
-      throw new Error("Demo account not available. Please create an account or contact support.")
+      await login("demo@fittracker.com", "demo123")
     } catch (error) {
       console.error("Demo login error:", error)
-      setError(error instanceof Error ? error.message : "Failed to log in with demo account")
+      setError("Demo account not available. Please create an account.")
+    } finally {
       setIsLoading(false)
     }
-  }
-
-  // If user exists, we should not see the login screen
-  // This might indicate the auth context isn't working properly
-  if (user) {
-    console.log("User exists but LoginScreen is still showing:", user)
   }
 
   return (
@@ -287,14 +255,6 @@ export function LoginScreen() {
               {isLoading ? "Logging in..." : "Try Demo Account"}
             </Button>
           </div>
-
-          {/* Debug Information (remove in production) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-              <p>Debug: User state = {user ? 'Logged in' : 'Not logged in'}</p>
-              <p>Loading: {isLoading.toString()}</p>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

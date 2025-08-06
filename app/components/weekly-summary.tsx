@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
-import { TrendingUp, Calendar, Scale, Heart, Dumbbell, Apple, Target } from 'lucide-react'
+import { TrendingUp, Calendar, Scale, Heart, Dumbbell, Apple, Target, Zap, Award } from 'lucide-react'
 import { ActivityHeatmapWidget } from "./activity-heatmap"
 
 interface WeeklySummaryProps {
@@ -39,6 +39,12 @@ const moodData = [
   { day: "Sun", mood: 4 },
 ]
 
+const achievements = [
+  { name: "Consistency King", description: "7 day streak!", icon: "🔥" },
+  { name: "Heavy Lifter", description: "New PR this week", icon: "💪" },
+  { name: "Cardio Champion", description: "150+ minutes cardio", icon: "🏃" },
+]
+
 export function WeeklySummary({ userId }: WeeklySummaryProps) {
   const [selectedPeriod, setSelectedPeriod] = useState("week")
 
@@ -46,12 +52,15 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
   const avgCalories = Math.round(weeklyData.reduce((sum, day) => sum + day.calories, 0) / weeklyData.length)
   const weightChange = weeklyData[weeklyData.length - 1].weight - weeklyData[0].weight
   const avgMood = (weeklyData.reduce((sum, day) => sum + day.mood, 0) / weeklyData.length).toFixed(1)
+  const totalMinutes = weeklyData.reduce((sum, day) => sum + day.workouts * 60, 0) // Assuming each workout is 60 minutes
 
   const weeklyStats = {
-    workouts: { completed: totalWorkouts, goal: 5 },
-    calories: { avg: avgCalories, goal: 2200 },
-    steps: { avg: 8500, goal: 10000 },
-    sleep: { avg: 7.2, goal: 8 },
+    workoutsCompleted: totalWorkouts,
+    workoutsPlanned: 5,
+    totalMinutes: totalMinutes,
+    caloriesBurned: avgCalories,
+    avgMood: parseFloat(avgMood),
+    streak: 7, // Placeholder for streak calculation
   }
 
   return (
@@ -107,69 +116,36 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Dumbbell className="h-4 w-4 text-blue-500" />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Workouts</span>
+                    <span className="text-sm text-gray-500">
+                      {weeklyStats.workoutsCompleted}/{weeklyStats.workoutsPlanned}
+                    </span>
                   </div>
-                  <span className="text-sm text-gray-600">
-                    {weeklyStats.workouts.completed}/{weeklyStats.workouts.goal}
-                  </span>
+                  <Progress value={(weeklyStats.workoutsCompleted / weeklyStats.workoutsPlanned) * 100} />
                 </div>
-                <Progress value={(weeklyStats.workouts.completed / weeklyStats.workouts.goal) * 100} className="h-2" />
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Apple className="h-4 w-4 text-green-500" />
-                    <span className="text-sm font-medium">Avg Calories</span>
-                  </div>
-                  <span className="text-sm text-gray-600">
-                    {weeklyStats.calories.avg}/{weeklyStats.calories.goal}
-                  </span>
-                </div>
-                <Progress value={(weeklyStats.calories.avg / weeklyStats.calories.goal) * 100} className="h-2" />
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Target className="h-4 w-4 text-purple-500" />
-                    <span className="text-sm font-medium">Avg Steps</span>
-                  </div>
-                  <span className="text-sm text-gray-600">
-                    {weeklyStats.steps.avg.toLocaleString()}/{weeklyStats.steps.goal.toLocaleString()}
-                  </span>
-                </div>
-                <Progress value={(weeklyStats.steps.avg / weeklyStats.steps.goal) * 100} className="h-2" />
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <TrendingUp className="h-4 w-4 text-indigo-500" />
-                    <span className="text-sm font-medium">Avg Sleep</span>
-                  </div>
-                  <span className="text-sm text-gray-600">
-                    {weeklyStats.sleep.avg}h/{weeklyStats.sleep.goal}h
-                  </span>
-                </div>
-                <Progress value={(weeklyStats.sleep.avg / weeklyStats.sleep.goal) * 100} className="h-2" />
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600">{totalWorkouts}</p>
-                    <p className="text-sm text-gray-600">Workouts</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{weeklyStats.totalMinutes}</div>
+                    <div className="text-xs text-gray-600">Minutes Active</div>
                   </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600">{avgCalories}</p>
-                    <p className="text-sm text-gray-600">Avg Calories</p>
+                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{weeklyStats.caloriesBurned}</div>
+                    <div className="text-xs text-gray-600">Calories Burned</div>
                   </div>
-                  <div className="text-center">
-                    <p className={`text-2xl font-bold ${weightChange < 0 ? "text-green-600" : "text-red-600"}`}>
-                      {weightChange > 0 ? "+" : ""}
-                      {weightChange.toFixed(1)}
-                    </p>
-                    <p className="text-sm text-gray-600">Weight Change</p>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-2">
+                    <Zap className="h-4 w-4 text-yellow-500" />
+                    <span className="text-sm">Avg Mood</span>
+                    <Badge variant="outline">{weeklyStats.avgMood}/5</Badge>
                   </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-purple-600">{avgMood}</p>
-                    <p className="text-sm text-gray-600">Avg Mood</p>
+                  <div className="flex items-center space-x-2">
+                    <Target className="h-4 w-4 text-orange-500" />
+                    <span className="text-sm">{weeklyStats.streak} day streak</span>
                   </div>
                 </div>
 
@@ -288,7 +264,7 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
               </ResponsiveContainer>
               <div className="mt-4 text-center">
                 <p className="text-sm text-gray-600">
-                  Average mood this week: <span className="font-bold text-purple-600">{avgMood}/5</span>
+                  Average mood this week: <span className="font-bold text-purple-600">{weeklyStats.avgMood}/5</span>
                 </p>
               </div>
             </CardContent>
@@ -367,6 +343,47 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
                   <p className="text-xs text-gray-600">Needs attention</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Achievements */}
+      <div className="relative">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">This Week's Achievements</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const widget = document.getElementById("achievements-widget")
+              if (widget) {
+                widget.style.display = widget.style.display === "none" ? "block" : "none"
+              }
+            }}
+            className="h-6 w-6 p-0 text-gray-500"
+          >
+            <span className="text-xs">−</span>
+          </Button>
+        </div>
+        <div id="achievements-widget">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Award className="h-5 w-5 text-green-600" />
+                <span>Achievements</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {achievements.map((achievement, index) => (
+                <div key={index} className="flex items-center space-x-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                  <span className="text-lg">{achievement.icon}</span>
+                  <div>
+                    <div className="text-sm font-medium">{achievement.name}</div>
+                    <div className="text-xs text-gray-600">{achievement.description}</div>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>

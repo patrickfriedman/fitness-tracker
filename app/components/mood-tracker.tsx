@@ -3,68 +3,52 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Smile, Meh, Frown } from 'lucide-react'
+import { Heart } from 'lucide-react'
+
+const moods = [
+  { emoji: "😴", label: "Tired", value: 1 },
+  { emoji: "😔", label: "Low", value: 2 },
+  { emoji: "😐", label: "Okay", value: 3 },
+  { emoji: "😊", label: "Good", value: 4 },
+  { emoji: "🚀", label: "Energized", value: 5 },
+]
 
 export function MoodTracker() {
-  const [mood, setMood] = useState<number | null>(null)
-  const [energy, setEnergy] = useState<number | null>(null)
+  const [selectedMood, setSelectedMood] = useState<number | null>(null)
+  const [todaysMood, setTodaysMood] = useState<number | null>(4)
 
-  const moodOptions = [
-    { value: 1, icon: Frown, label: "Poor", color: "text-red-500" },
-    { value: 2, icon: Frown, label: "Fair", color: "text-orange-500" },
-    { value: 3, icon: Meh, label: "Good", color: "text-yellow-500" },
-    { value: 4, icon: Smile, label: "Great", color: "text-green-500" },
-    { value: 5, icon: Smile, label: "Excellent", color: "text-blue-500" },
-  ]
+  const handleMoodSelect = (value: number) => {
+    setSelectedMood(value)
+    setTodaysMood(value)
+  }
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium">How are you feeling?</CardTitle>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg flex items-center">
+          <Heart className="h-5 w-5 text-red-500 mr-2" />
+          How are you feeling?
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <p className="text-sm font-medium mb-2">Mood</p>
-          <div className="flex space-x-2">
-            {moodOptions.map((option) => {
-              const Icon = option.icon
-              return (
-                <Button
-                  key={option.value}
-                  variant={mood === option.value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setMood(option.value)}
-                  className="flex-1"
-                >
-                  <Icon className={`h-4 w-4 ${mood === option.value ? "text-white" : option.color}`} />
-                </Button>
-              )
-            })}
-          </div>
+        <div className="flex justify-between">
+          {moods.map((mood) => (
+            <Button
+              key={mood.value}
+              variant={todaysMood === mood.value ? "default" : "ghost"}
+              size="sm"
+              className="flex flex-col h-auto p-2"
+              onClick={() => handleMoodSelect(mood.value)}
+            >
+              <span className="text-2xl mb-1">{mood.emoji}</span>
+              <span className="text-xs">{mood.label}</span>
+            </Button>
+          ))}
         </div>
         
-        <div>
-          <p className="text-sm font-medium mb-2">Energy Level</p>
-          <div className="flex space-x-2">
-            {[1, 2, 3, 4, 5].map((level) => (
-              <Button
-                key={level}
-                variant={energy === level ? "default" : "outline"}
-                size="sm"
-                onClick={() => setEnergy(level)}
-                className="flex-1"
-              >
-                {level}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {mood && energy && (
-          <div className="text-center p-2 bg-green-50 rounded-lg">
-            <p className="text-sm text-green-700">
-              Mood: {moodOptions.find(o => o.value === mood)?.label} | Energy: {energy}/5
-            </p>
+        {todaysMood && (
+          <div className="text-center text-sm text-gray-600">
+            You're feeling {moods.find(m => m.value === todaysMood)?.label.toLowerCase()} today
           </div>
         )}
       </CardContent>

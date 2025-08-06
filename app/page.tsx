@@ -1,226 +1,202 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { AlertTriangle } from 'lucide-react'
-import { Home, Dumbbell, Apple, TrendingUp, Settings, User, LogOut, Trash2, GripVertical, Play, Pause, Square, CheckCircle } from 'lucide-react'
 import { useAuth } from "@/contexts/auth-context"
-import { LoginScreen } from "@/components/login-screen"
-import { OnboardingFlow } from "./components/onboarding-flow"
-import { BodyMetricsWidget } from "./components/body-metrics-widget"
-import { MoodTracker } from "./components/mood-tracker"
-import { MotivationalQuote } from "./components/motivational-quote"
-import { WorkoutLogger } from "./components/workout-logger"
-import { NutritionTracker } from "./components/nutrition-tracker"
-import { ActivityHeatmap } from "./components/activity-heatmap"
-import { WeeklySummary } from "./components/weekly-summary"
-import { WorkoutPlanner } from "./components/workout-planner"
-import type { Workout, WorkoutExercise } from "@/types/fitness"
+import { LoginScreen } from "@/app/components/login-screen"
+import { OnboardingFlow } from "@/app/components/onboarding-flow"
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Dumbbell, Plus, Calendar, TrendingUp, Settings, User, LogOut, Trash2, Home, Activity, Target, BarChart3 } from 'lucide-react'
+import { BodyMetricsWidget } from "@/app/components/body-metrics-widget"
+import { MoodTracker } from "@/app/components/mood-tracker"
+import { MotivationalQuote } from "@/app/components/motivational-quote"
+import { WorkoutLogger } from "@/app/components/workout-logger"
+import { NutritionTracker } from "@/app/components/nutrition-tracker"
+import { ActivityHeatmap } from "@/app/components/activity-heatmap"
+import { WeeklySummary } from "@/app/components/weekly-summary"
+import { WorkoutPlanner } from "@/app/components/workout-planner"
+import { WaterTracker } from "@/app/components/water-tracker"
 
-interface ActiveWorkout {
-  workout: Workout
-  currentExerciseIndex: number
-  startTime: Date
-}
-
-export default function FitnessApp() {
+export default function HomePage() {
   const { user, logout, deleteAccount } = useAuth()
-  const [activeTab, setActiveTab] = useState("today")
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(null)
-  const [showWorkoutComplete, setShowWorkoutComplete] = useState(false)
-  const [completedWorkout, setCompletedWorkout] = useState<Workout | null>(null)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-
-  console.log("FitnessApp render - user:", user)
+  const [activeTab, setActiveTab] = useState("today")
 
   useEffect(() => {
-    if (user && !user.primaryGoal) {
+    // Check if user needs onboarding (new user without complete profile)
+    if (user && (!user.preferences || !user.primaryGoal)) {
       setShowOnboarding(true)
     }
   }, [user])
 
-  const handleStartWorkout = (workout: Workout) => {
-    setActiveWorkout({
-      workout,
-      currentExerciseIndex: 0,
-      startTime: new Date(),
-    })
-  }
-
-  const handleFinishWorkout = () => {
-    if (activeWorkout) {
-      const duration = Math.floor((new Date().getTime() - activeWorkout.startTime.getTime()) / 1000 / 60)
-      const finishedWorkout = {
-        ...activeWorkout.workout,
-        duration,
-        date: new Date().toISOString(),
-      }
-      setCompletedWorkout(finishedWorkout)
-      setShowWorkoutComplete(true)
-      setActiveWorkout(null)
-    }
-  }
-
-  const handleSaveWorkout = () => {
-    if (completedWorkout) {
-      const existingWorkouts = JSON.parse(localStorage.getItem("fitness-workouts") || "[]")
-      existingWorkouts.push(completedWorkout)
-      localStorage.setItem("fitness-workouts", JSON.stringify(existingWorkouts))
-      setShowWorkoutComplete(false)
-      setCompletedWorkout(null)
-    }
-  }
-
   const handleDeleteAccount = async () => {
     try {
       await deleteAccount()
-      setShowDeleteDialog(false)
+      // User will be automatically logged out and redirected to login
     } catch (error) {
       console.error("Failed to delete account:", error)
-      alert("Failed to delete account. Please try again.")
     }
   }
 
   // Show login screen if no user
   if (!user) {
-    console.log("No user found, showing LoginScreen")
     return <LoginScreen />
   }
 
+  // Show onboarding if needed
   if (showOnboarding) {
     return <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
   }
 
-  const renderWidgets = (widgetList: string[]) => {
-    return widgetList.map((widget) => {
-      switch (widget) {
-        case "metrics":
-          return (
-            <div key={widget} className="relative group">
-              <GripVertical className="absolute top-2 right-2 h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-move" />
-              <BodyMetricsWidget />
-            </div>
-          )
-        case "mood":
-          return (
-            <div key={widget} className="relative group">
-              <GripVertical className="absolute top-2 right-2 h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-move" />
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "today":
+        return (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <BodyMetricsWidget />
+            <div className="space-y-6">
               <MoodTracker />
+              <WaterTracker />
             </div>
-          )
-        case "quote":
-          return (
-            <div key={widget} className="relative group">
-              <GripVertical className="absolute top-2 right-2 h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-move" />
+            <div className="space-y-6">
               <MotivationalQuote />
-            </div>
-          )
-        case "quick-actions":
-          return (
-            <div key={widget} className="relative group">
-              <GripVertical className="absolute top-2 right-2 h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-move" />
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <CardTitle className="text-lg">Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <Button className="w-full" variant="outline">
-                    <Dumbbell className="mr-2 h-4 w-4" />
-                    Start Quick Workout
+                  <Button className="w-full justify-start" variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Log Workout
                   </Button>
-                  <Button className="w-full" variant="outline">
-                    <Apple className="mr-2 h-4 w-4" />
-                    Log Meal
+                  <Button className="w-full justify-start" variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Meal
+                  </Button>
+                  <Button className="w-full justify-start" variant="outline">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Plan Workout
                   </Button>
                 </CardContent>
               </Card>
             </div>
-          )
-        default:
-          return null
-      }
-    })
+          </div>
+        )
+      case "workouts":
+        return (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <WorkoutLogger />
+            <WorkoutPlanner />
+          </div>
+        )
+      case "nutrition":
+        return (
+          <div className="grid gap-6">
+            <NutritionTracker />
+          </div>
+        )
+      case "progress":
+        return (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <WeeklySummary />
+            <ActivityHeatmap />
+          </div>
+        )
+      default:
+        return null
+    }
   }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Active Workout Banner */}
-      {activeWorkout && (
-        <div className="bg-green-500 text-white px-4 py-2 text-center sticky top-0 z-50">
-          <div className="flex items-center justify-center space-x-4">
-            <Play className="h-4 w-4" />
-            <span className="font-medium">
-              Workout in Progress: {activeWorkout.workout.name} - Exercise{" "}
-              {activeWorkout.currentExerciseIndex + 1} of {activeWorkout.workout.exercises.length}
-            </span>
-            <Button size="sm" variant="secondary" onClick={handleFinishWorkout}>
-              <Square className="h-3 w-3 mr-1" />
-              Finish
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
                 <Dumbbell className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                FitTracker Pro
-              </h1>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  FitTracker Pro
+                </h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Welcome back, {user.name}
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center space-x-4">
-              <Badge variant="secondary" className="hidden sm:inline-flex">
-                {user.primaryGoal?.replace("_", " ").toUpperCase()}
+              <Badge variant="outline" className="hidden sm:inline-flex">
+                Goal: {user.primaryGoal}
               </Badge>
-
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                      <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                      <AvatarImage src="/placeholder-user.jpg" alt={user.name} />
+                      <AvatarFallback>
+                        {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuItem className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user.username}</p>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="font-medium">{user.name}</p>
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">
+                        {user.username}
+                      </p>
                     </div>
-                  </DropdownMenuItem>
+                  </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                    Profile
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
+                    Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    <span>Delete Account</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={logout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    Log out
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Account
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete your
+                          account and remove all your data from our servers.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteAccount}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Delete Account
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -228,118 +204,40 @@ export default function FitnessApp() {
         </div>
       </header>
 
-      {/* Navigation */}
-      <nav className="bg-white dark:bg-gray-800 border-b">
+      {/* Navigation Tabs */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-4">
-              <TabsTrigger value="today" className="flex items-center space-x-2">
-                <Home className="h-4 w-4" />
-                <span className="hidden sm:inline">Today</span>
-              </TabsTrigger>
-              <TabsTrigger value="workouts" className="flex items-center space-x-2">
-                <Dumbbell className="h-4 w-4" />
-                <span className="hidden sm:inline">Workouts</span>
-              </TabsTrigger>
-              <TabsTrigger value="nutrition" className="flex items-center space-x-2">
-                <Apple className="h-4 w-4" />
-                <span className="hidden sm:inline">Nutrition</span>
-              </TabsTrigger>
-              <TabsTrigger value="progress" className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4" />
-                <span className="hidden sm:inline">Progress</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <nav className="flex space-x-8">
+            {[
+              { id: "today", label: "Today", icon: Home },
+              { id: "workouts", label: "Workouts", icon: Activity },
+              { id: "nutrition", label: "Nutrition", icon: Target },
+              { id: "progress", label: "Progress", icon: BarChart3 },
+            ].map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === tab.id
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
+          </nav>
         </div>
-      </nav>
+      </div>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsContent value="today" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {renderWidgets(user.preferences.todayWidgets)}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="workouts">
-            <WorkoutPlanner onStartWorkout={handleStartWorkout} />
-          </TabsContent>
-
-          <TabsContent value="nutrition">
-            <NutritionTracker />
-          </TabsContent>
-
-          <TabsContent value="progress" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ActivityHeatmap />
-              <WeeklySummary />
-            </div>
-          </TabsContent>
-        </Tabs>
+        {renderTabContent()}
       </main>
-
-      {/* Workout Completion Modal */}
-      <Dialog open={showWorkoutComplete} onOpenChange={setShowWorkoutComplete}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span>Workout Complete!</span>
-            </DialogTitle>
-            <DialogDescription>Great job! Here's a summary of your workout:</DialogDescription>
-          </DialogHeader>
-          {completedWorkout && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold">{completedWorkout.name}</h3>
-                <p className="text-sm text-gray-600">Duration: {completedWorkout.duration} minutes</p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-medium">Exercises:</h4>
-                {completedWorkout.exercises.map((exercise, index) => (
-                  <div key={index} className="text-sm">
-                    <span className="font-medium">{exercise.exerciseName}</span>
-                    <span className="text-gray-600 ml-2">
-                      {exercise.sets.length} sets completed
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowWorkoutComplete(false)}>
-              Edit Workout
-            </Button>
-            <Button onClick={handleSaveWorkout}>Save & Continue</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Account Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" />
-              <span>Delete Account</span>
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete your account? This action cannot be undone and will permanently remove all your data including workouts, nutrition logs, and progress tracking.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteAccount}>
-              Delete Account
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

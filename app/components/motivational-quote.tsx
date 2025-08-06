@@ -1,9 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { RefreshCw, Quote } from 'lucide-react'
+import { Card, CardContent } from "@/components/ui/card"
+import { Quote } from 'lucide-react'
 
 const quotes = [
   {
@@ -15,54 +13,34 @@ const quotes = [
     author: "Unknown"
   },
   {
-    text: "Strength doesn't come from what you can do. It comes from overcoming the things you once thought you couldn't.",
-    author: "Rikki Rogers"
+    text: "Success is what comes after you stop making excuses.",
+    author: "Luis Galarza"
   },
   {
     text: "The groundwork for all happiness is good health.",
     author: "Leigh Hunt"
-  },
-  {
-    text: "Take care of your body. It's the only place you have to live.",
-    author: "Jim Rohn"
   }
 ]
 
 export function MotivationalQuote() {
-  const [currentQuote, setCurrentQuote] = useState(quotes[0])
-
-  const getRandomQuote = () => {
-    const randomIndex = Math.floor(Math.random() * quotes.length)
-    setCurrentQuote(quotes[randomIndex])
-  }
-
-  useEffect(() => {
-    getRandomQuote()
-  }, [])
+  // Get a consistent quote for today based on date
+  const today = new Date().toDateString()
+  const quoteIndex = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % quotes.length
+  const todaysQuote = quotes[quoteIndex]
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Daily Motivation</CardTitle>
-        <Quote className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <blockquote className="text-sm italic">
-            "{currentQuote.text}"
-          </blockquote>
-          <p className="text-xs text-muted-foreground text-right">
-            — {currentQuote.author}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={getRandomQuote}
-            className="w-full"
-          >
-            <RefreshCw className="h-3 w-3 mr-2" />
-            New Quote
-          </Button>
+    <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+      <CardContent className="p-4">
+        <div className="flex items-start space-x-3">
+          <Quote className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+              "{todaysQuote.text}"
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              — {todaysQuote.author}
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>

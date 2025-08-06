@@ -3,36 +3,43 @@ export interface User {
   name: string
   username: string
   email?: string
-  avatar?: string
-  primaryGoal: "strength" | "hypertrophy" | "endurance" | "weight_loss" | "general_fitness"
+  primaryGoal: "weight-loss" | "muscle-gain" | "endurance" | "general-fitness" | "hypertrophy"
   createdAt: string
   preferences: {
     theme: "light" | "dark"
-    units: "metric" | "imperial"
+    units: "imperial" | "metric"
     todayWidgets: string[]
   }
 }
 
 export interface BodyMetrics {
+  id: string
   userId: string
   date: string
   weight?: number
-  bodyFatPercentage?: number
+  bodyFat?: number
   muscleMass?: number
-  goalWeight?: number
-  goalBodyFat?: number
+  measurements?: {
+    chest?: number
+    waist?: number
+    hips?: number
+    arms?: number
+    thighs?: number
+  }
 }
 
-export interface WorkoutSet {
+export interface Set {
   reps: number
   weight?: number
   duration?: number
-  restTime?: number
+  distance?: number
 }
 
-export interface WorkoutExercise {
-  exerciseName: string
-  sets: WorkoutSet[]
+export interface Exercise {
+  id: string
+  name: string
+  sets: Set[]
+  restTime?: number
   notes?: string
 }
 
@@ -42,16 +49,50 @@ export interface WorkoutLog {
   name: string
   date: string
   duration?: number
-  exercises: WorkoutExercise[]
+  exercises: Exercise[]
   notes?: string
 }
 
 export interface Workout {
   id: string
+  userId: string
   name: string
-  exercises: WorkoutExercise[]
-  duration?: number
-  date?: string
+  date: string
+  duration: number
+  exercises: Exercise[]
+  notes?: string
+}
+
+export interface NutritionEntry {
+  id: string
+  userId: string
+  date: string
+  meals: Meal[]
+  totalCalories: number
+  totalProtein: number
+  totalCarbs: number
+  totalFat: number
+}
+
+export interface Meal {
+  id: string
+  name: string
+  foods: FoodItem[]
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
+export interface FoodItem {
+  id: string
+  name: string
+  quantity: number
+  unit: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
 }
 
 export interface NutritionLog {

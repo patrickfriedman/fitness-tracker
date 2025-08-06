@@ -3,279 +3,154 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus, Dumbbell, Play, Trash2 } from 'lucide-react'
-import type { Workout, WorkoutExercise } from "@/types/fitness"
+import { Badge } from "@/components/ui/badge"
+import { Calendar, Clock, Plus, Play } from 'lucide-react'
 
-interface WorkoutPlannerProps {
-  onStartWorkout: (workout: Workout) => void
+interface PlannedWorkout {
+  id: string
+  name: string
+  date: string
+  time: string
+  duration: number
+  type: string
+  exercises: string[]
 }
 
-export function WorkoutPlanner({ onStartWorkout }: WorkoutPlannerProps) {
-  const [workouts, setWorkouts] = useState<Workout[]>([
+export function WorkoutPlanner() {
+  const [plannedWorkouts, setPlannedWorkouts] = useState<PlannedWorkout[]>([
     {
       id: "1",
-      name: "Push Day",
-      exercises: [
-        {
-          exerciseName: "Bench Press",
-          sets: [
-            { reps: 10, weight: 135 },
-            { reps: 8, weight: 155 },
-            { reps: 6, weight: 175 }
-          ]
-        },
-        {
-          exerciseName: "Shoulder Press",
-          sets: [
-            { reps: 12, weight: 65 },
-            { reps: 10, weight: 75 },
-            { reps: 8, weight: 85 }
-          ]
-        }
-      ]
+      name: "Upper Body Strength",
+      date: "2024-01-16",
+      time: "09:00",
+      duration: 60,
+      type: "Strength",
+      exercises: ["Bench Press", "Pull-ups", "Shoulder Press", "Rows"]
     },
     {
       id: "2",
-      name: "Pull Day",
-      exercises: [
-        {
-          exerciseName: "Pull-ups",
-          sets: [
-            { reps: 8 },
-            { reps: 6 },
-            { reps: 5 }
-          ]
-        },
-        {
-          exerciseName: "Barbell Rows",
-          sets: [
-            { reps: 10, weight: 135 },
-            { reps: 8, weight: 155 }
-          ]
-        }
-      ]
+      name: "Cardio & Core",
+      date: "2024-01-17",
+      time: "18:00",
+      duration: 45,
+      type: "Cardio",
+      exercises: ["Treadmill", "Planks", "Russian Twists", "Mountain Climbers"]
+    },
+    {
+      id: "3",
+      name: "Leg Day",
+      date: "2024-01-18",
+      time: "10:00",
+      duration: 75,
+      type: "Strength",
+      exercises: ["Squats", "Deadlifts", "Lunges", "Calf Raises"]
     }
   ])
 
-  const [isCreating, setIsCreating] = useState(false)
-  const [newWorkout, setNewWorkout] = useState<Partial<Workout>>({
-    name: "",
-    exercises: []
-  })
-
-  const handleCreateWorkout = () => {
-    if (newWorkout.name && newWorkout.exercises) {
-      const workout: Workout = {
-        id: Date.now().toString(),
-        name: newWorkout.name,
-        exercises: newWorkout.exercises
-      }
-      setWorkouts([...workouts, workout])
-      setNewWorkout({ name: "", exercises: [] })
-      setIsCreating(false)
+  const getTypeColor = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'strength':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+      case 'cardio':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+      case 'flexibility':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
     }
   }
 
-  const handleDeleteWorkout = (workoutId: string) => {
-    setWorkouts(workouts.filter(w => w.id !== workoutId))
+  const isToday = (date: string) => {
+    const today = new Date().toISOString().split('T')[0]
+    return date === today
+  }
+
+  const isPast = (date: string) => {
+    const today = new Date().toISOString().split('T')[0]
+    return date < today
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Workout Planner</h2>
-        <Dialog open={isCreating} onOpenChange={setIsCreating}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Workout
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Workout</DialogTitle>
-            </DialogHeader>
-            <WorkoutForm
-              workout={newWorkout}
-              onChange={setNewWorkout}
-              onSave={handleCreateWorkout}
-              onCancel={() => setIsCreating(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {workouts.map((workout) => (
-          <Card key={workout.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg">{workout.name}</CardTitle>
-              <div className="flex space-x-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onStartWorkout(workout)}
-                >
-                  <Play className="h-3 w-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDeleteWorkout(workout.id)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600">
-                  {workout.exercises.length} exercises
-                </p>
-                <ul className="text-sm space-y-1">
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-lg font-medium flex items-center">
+          <Calendar className="h-5 w-5 mr-2" />
+          Workout Planner
+        </CardTitle>
+        <Button size="sm" variant="outline">
+          <Plus className="h-4 w-4 mr-1" />
+          Plan Workout
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {plannedWorkouts.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No workouts planned</p>
+            <p className="text-sm">Plan your first workout to get started!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {plannedWorkouts.map((workout) => (
+              <div 
+                key={workout.id} 
+                className={`border rounded-lg p-4 ${
+                  isToday(workout.date) ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 
+                  isPast(workout.date) ? 'opacity-60' : ''
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <h4 className="font-medium">{workout.name}</h4>
+                    {isToday(workout.date) && (
+                      <Badge variant="default" className="text-xs">Today</Badge>
+                    )}
+                  </div>
+                  <Badge className={`text-xs ${getTypeColor(workout.type)}`}>
+                    {workout.type}
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                  <div className="flex items-center space-x-1">
+                    <Calendar className="h-4 w-4" />
+                    <span>{new Date(workout.date).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Clock className="h-4 w-4" />
+                    <span>{workout.time} ({workout.duration}min)</span>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap gap-1 mb-3">
                   {workout.exercises.slice(0, 3).map((exercise, index) => (
-                    <li key={index} className="flex items-center space-x-2">
-                      <Dumbbell className="h-3 w-3" />
-                      <span>{exercise.exerciseName}</span>
-                      <span className="text-gray-500">
-                        {exercise.sets.length} sets
-                      </span>
-                    </li>
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {exercise}
+                    </Badge>
                   ))}
                   {workout.exercises.length > 3 && (
-                    <li className="text-gray-500">
-                      +{workout.exercises.length - 3} more exercises
-                    </li>
+                    <Badge variant="outline" className="text-xs">
+                      +{workout.exercises.length - 3} more
+                    </Badge>
                   )}
-                </ul>
+                </div>
+                
+                <div className="flex space-x-2">
+                  {isToday(workout.date) && (
+                    <Button size="sm" className="flex-1">
+                      <Play className="h-4 w-4 mr-1" />
+                      Start Workout
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className={isToday(workout.date) ? '' : 'flex-1'}>
+                    View Details
+                  </Button>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function WorkoutForm({ 
-  workout, 
-  onChange, 
-  onSave, 
-  onCancel 
-}: {
-  workout: Partial<Workout>
-  onChange: (workout: Partial<Workout>) => void
-  onSave: () => void
-  onCancel: () => void
-}) {
-  const [newExercise, setNewExercise] = useState<Partial<WorkoutExercise>>({
-    exerciseName: "",
-    sets: [{ reps: 10, weight: 0 }]
-  })
-
-  const addExercise = () => {
-    if (newExercise.exerciseName && newExercise.sets) {
-      const exercises = [...(workout.exercises || []), newExercise as WorkoutExercise]
-      onChange({ ...workout, exercises })
-      setNewExercise({ exerciseName: "", sets: [{ reps: 10, weight: 0 }] })
-    }
-  }
-
-  const removeExercise = (index: number) => {
-    const exercises = workout.exercises?.filter((_, i) => i !== index) || []
-    onChange({ ...workout, exercises })
-  }
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <Label htmlFor="workoutName">Workout Name</Label>
-        <Input
-          id="workoutName"
-          value={workout.name || ""}
-          onChange={(e) => onChange({ ...workout, name: e.target.value })}
-          placeholder="Enter workout name"
-        />
-      </div>
-
-      <div>
-        <h3 className="text-lg font-medium mb-4">Exercises</h3>
-        <div className="space-y-4">
-          {workout.exercises?.map((exercise, index) => (
-            <div key={index} className="border rounded-lg p-4">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="font-medium">{exercise.exerciseName}</h4>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => removeExercise(index)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-              <div className="text-sm text-gray-600">
-                {exercise.sets.length} sets
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 mt-4">
-          <h4 className="font-medium mb-4">Add Exercise</h4>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="exerciseName">Exercise Name</Label>
-              <Input
-                id="exerciseName"
-                value={newExercise.exerciseName || ""}
-                onChange={(e) => setNewExercise({ ...newExercise, exerciseName: e.target.value })}
-                placeholder="e.g., Bench Press"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="reps">Reps</Label>
-                <Input
-                  id="reps"
-                  type="number"
-                  value={newExercise.sets?.[0]?.reps || 10}
-                  onChange={(e) => {
-                    const sets = [{ ...newExercise.sets?.[0], reps: Number(e.target.value) }]
-                    setNewExercise({ ...newExercise, sets })
-                  }}
-                />
-              </div>
-              <div>
-                <Label htmlFor="weight">Weight (lbs)</Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  value={newExercise.sets?.[0]?.weight || 0}
-                  onChange={(e) => {
-                    const sets = [{ ...newExercise.sets?.[0], weight: Number(e.target.value) }]
-                    setNewExercise({ ...newExercise, sets })
-                  }}
-                />
-              </div>
-            </div>
-            <Button onClick={addExercise} className="w-full">
-              Add Exercise
-            </Button>
+            ))}
           </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button onClick={onSave} disabled={!workout.name || !workout.exercises?.length}>
-          Create Workout
-        </Button>
-      </div>
-    </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
