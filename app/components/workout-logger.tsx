@@ -370,24 +370,3 @@ export function WorkoutLogger({ userId, workoutInProgress, onWorkoutStart, onWor
     </div>
   )
 }
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex space-x-2">
-                <Button onClick={confirmWorkout} className="flex-1">
-                  <Check className="h-4 w-4 mr-2" />
-                  Confirm & Save
-                </Button>
-                <Button onClick={() => setShowCompletionModal(false)} variant="outline" className="flex-1">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Workout
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-  )
-}
