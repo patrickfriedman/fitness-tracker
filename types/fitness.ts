@@ -4,73 +4,69 @@ export interface User {
   username: string
   email?: string
   avatar?: string
-  primaryGoal: string
-  fitnessLevel?: string
-  workoutDays?: string[]
+  primaryGoal: "weight_loss" | "muscle_gain" | "maintenance" | "endurance" | "hypertrophy"
   createdAt: string
   preferences: {
     theme: "light" | "dark"
-    units: "imperial" | "metric"
+    units: "metric" | "imperial"
     todayWidgets: string[]
   }
-}
-
-export interface Workout {
-  id: string
-  name: string
-  type: string
-  exercises: WorkoutExercise[]
-  duration?: number
-  date?: string
-  notes?: string
-}
-
-export interface WorkoutExercise {
-  exerciseName: string
-  sets: WorkoutSet[]
-  notes?: string
 }
 
 export interface WorkoutSet {
   reps: number
   weight: number
-  completed?: boolean
+  completed: boolean
+  restTime?: number
 }
 
-export interface Exercise {
+export interface WorkoutExercise {
+  id: string
+  exerciseName: string
+  sets: WorkoutSet[]
+  restTime: number
+  notes: string
+}
+
+export interface Workout {
   id: string
   name: string
-  category: string
-  muscleGroups: string[]
-  equipment?: string
-  instructions?: string[]
+  date: string
+  duration: number
+  exercises: WorkoutExercise[]
+  notes: string
 }
 
 export interface NutritionEntry {
   id: string
-  name: string
+  date: string
+  meal: "breakfast" | "lunch" | "dinner" | "snack"
+  food: string
   calories: number
   protein: number
   carbs: number
   fat: number
-  date: string
 }
 
 export interface BodyMetrics {
   id: string
+  date: string
   weight?: number
-  height?: number
   bodyFat?: number
   muscleMass?: number
-  date: string
+  measurements?: {
+    chest?: number
+    waist?: number
+    hips?: number
+    arms?: number
+    thighs?: number
+  }
 }
 
-export interface Goal {
+export interface MoodEntry {
   id: string
-  type: "weight" | "strength" | "endurance" | "custom"
-  target: number
-  current: number
-  unit: string
-  deadline?: string
-  description: string
+  date: string
+  mood: "great" | "good" | "okay" | "bad"
+  energy: number
+  notes?: string
 }

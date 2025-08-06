@@ -19,66 +19,68 @@ export function WaterTracker() {
   }, [])
 
   const updateWater = (amount: number) => {
-    const newAmount = Math.max(0, waterIntake + amount)
-    setWaterIntake(newAmount)
+    const newIntake = Math.max(0, waterIntake + amount)
+    setWaterIntake(newIntake)
     
     const today = new Date().toDateString()
-    localStorage.setItem(`water-${today}`, newAmount.toString())
+    localStorage.setItem(`water-${today}`, newIntake.toString())
   }
 
-  const progress = (waterIntake / goal) * 100
+  const progress = Math.min((waterIntake / goal) * 100, 100)
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center space-x-2">
-          <Droplets className="h-5 w-5 text-blue-500" />
-          <span>Water Intake</span>
+        <CardTitle className="text-lg font-medium flex items-center">
+          <Droplets className="h-5 w-5 mr-2 text-blue-500" />
+          Water Intake
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-blue-600">
-            {waterIntake} oz
+      <CardContent>
+        <div className="space-y-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">
+              {waterIntake} oz
+            </div>
+            <div className="text-sm text-gray-500">
+              of {goal} oz goal
+            </div>
           </div>
-          <div className="text-sm text-gray-500">
-            of {goal} oz goal
+          
+          <Progress value={progress} className="h-2" />
+          
+          <div className="flex justify-center space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => updateWater(-8)}
+              disabled={waterIntake === 0}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => updateWater(8)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              8 oz
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => updateWater(16)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              16 oz
+            </Button>
           </div>
+          
+          {progress >= 100 && (
+            <div className="text-center text-sm text-green-600 font-medium">
+              🎉 Daily goal achieved!
+            </div>
+          )}
         </div>
-        
-        <Progress value={progress} className="w-full" />
-        
-        <div className="flex justify-center space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => updateWater(-8)}
-            disabled={waterIntake === 0}
-          >
-            <Minus className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => updateWater(8)}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            8 oz
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => updateWater(16)}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            16 oz
-          </Button>
-        </div>
-        
-        {progress >= 100 && (
-          <div className="text-center text-green-600 text-sm font-medium">
-            🎉 Daily goal achieved!
-          </div>
-        )}
       </CardContent>
     </Card>
   )

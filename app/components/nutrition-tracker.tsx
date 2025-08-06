@@ -11,15 +11,9 @@ import { Plus, Apple, Utensils } from 'lucide-react'
 
 interface NutritionEntry {
   id: string
-  name: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
   date: string
-}
-
-interface DailyGoals {
+  meal: string
+  food: string
   calories: number
   protein: number
   carbs: number
@@ -30,70 +24,73 @@ export function NutritionTracker() {
   const [entries, setEntries] = useState<NutritionEntry[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [newEntry, setNewEntry] = useState({
-    name: "",
+    meal: "breakfast",
+    food: "",
     calories: "",
     protein: "",
     carbs: "",
-    fat: ""
+    fat: "",
   })
 
-  const goals: DailyGoals = {
+  const dailyGoals = {
     calories: 2000,
     protein: 150,
     carbs: 250,
-    fat: 65
+    fat: 65,
   }
 
   useEffect(() => {
-    const stored = localStorage.getItem("fitness-nutrition")
+    const today = new Date().toDateString()
+    const stored = localStorage.getItem(`nutrition-${today}`)
     if (stored) {
       setEntries(JSON.parse(stored))
     }
   }, [])
 
-  const handleSaveEntry = () => {
+  const handleSave = () => {
     const entry: NutritionEntry = {
       id: Date.now().toString(),
-      name: newEntry.name,
+      date: new Date().toISOString(),
+      meal: newEntry.meal,
+      food: newEntry.food,
       calories: parseInt(newEntry.calories) || 0,
       protein: parseInt(newEntry.protein) || 0,
       carbs: parseInt(newEntry.carbs) || 0,
       fat: parseInt(newEntry.fat) || 0,
-      date: new Date().toISOString()
     }
 
-    const updated = [entry, ...entries]
-    setEntries(updated)
-    localStorage.setItem("fitness-nutrition", JSON.stringify(updated))
+    const updatedEntries = [...entries, entry]
+    setEntries(updatedEntries)
+    
+    const today = new Date().toDateString()
+    localStorage.setItem(`nutrition-${today}`, JSON.stringify(updatedEntries))
     
     setNewEntry({
-      name: "",
+      meal: "breakfast",
+      food: "",
       calories: "",
       protein: "",
       carbs: "",
-      fat: ""
+      fat: "",
     })
     setIsOpen(false)
   }
 
-  // Calculate today's totals
-  const today = new Date().toDateString()
-  const todayEntries = entries.filter(entry => 
-    new Date(entry.date).toDateString() === today
+  const todayTotals = entries.reduce(
+    (totals, entry) => ({
+      calories: totals.calories + entry.calories,
+      protein: totals.protein + entry.protein,
+      carbs: totals.carbs + entry.carbs,
+      fat: totals.fat + entry.fat,
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
   )
-
-  const totals = todayEntries.reduce((acc, entry) => ({
-    calories: acc.calories + entry.calories,
-    protein: acc.protein + entry.protein,
-    carbs: acc.carbs + entry.carbs,
-    fat: acc.fat + entry.fat
-  }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-lg font-medium">Today's Nutrition</CardTitle>
+          <CardTitle className="text-lg font-medium">Daily Nutrition</CardTitle>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
@@ -103,16 +100,30 @@ export function NutritionTracker() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add Food Entry</DialogTitle>
+                <DialogTitle>Log Food</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="food-name">Food Name</Label>
+                  <Label htmlFor="meal">Meal</Label>
+                  <select
+                    id="meal"
+                    value={newEntry.meal}
+                    onChange={(e) => setNewEntry(prev => ({ ...prev, meal: e.target.value }))}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                    <option value="snack">Snack</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="food">Food Item</Label>
                   <Input
-                    id="food-name"
-                    value={newEntry.name}
-                    onChange={(e) => setNewEntry(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="e.g., Chicken Breast"
+                    id="food"
+                    value={newEntry.food}
+                    onChange={(e) => setNewEntry(prev => ({ ...prev, food: e.target.value }))}
+                    placeholder="e.g., Chicken Breast, Rice"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -123,7 +134,7 @@ export function NutritionTracker() {
                       type="number"
                       value={newEntry.calories}
                       onChange={(e) => setNewEntry(prev => ({ ...prev, calories: e.target.value }))}
-                      placeholder="0"
+                      placeholder="300"
                     />
                   </div>
                   <div>
@@ -133,7 +144,7 @@ export function NutritionTracker() {
                       type="number"
                       value={newEntry.protein}
                       onChange={(e) => setNewEntry(prev => ({ ...prev, protein: e.target.value }))}
-                      placeholder="0"
+                      placeholder="25"
                     />
                   </div>
                   <div>
@@ -143,7 +154,7 @@ export function NutritionTracker() {
                       type="number"
                       value={newEntry.carbs}
                       onChange={(e) => setNewEntry(prev => ({ ...prev, carbs: e.target.value }))}
-                      placeholder="0"
+                      placeholder="30"
                     />
                   </div>
                   <div>
@@ -153,46 +164,52 @@ export function NutritionTracker() {
                       type="number"
                       value={newEntry.fat}
                       onChange={(e) => setNewEntry(prev => ({ ...prev, fat: e.target.value }))}
-                      placeholder="0"
+                      placeholder="10"
                     />
                   </div>
                 </div>
-                <Button onClick={handleSaveEntry} className="w-full">
-                  Add Entry
+                <Button 
+                  onClick={handleSave} 
+                  className="w-full"
+                  disabled={!newEntry.food}
+                >
+                  Add Food
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Calories</span>
-                <span>{totals.calories} / {goals.calories}</span>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Calories</span>
+                  <span>{todayTotals.calories}/{dailyGoals.calories}</span>
+                </div>
+                <Progress value={(todayTotals.calories / dailyGoals.calories) * 100} />
               </div>
-              <Progress value={(totals.calories / goals.calories) * 100} />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Protein</span>
-                <span>{totals.protein}g / {goals.protein}g</span>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Protein</span>
+                  <span>{todayTotals.protein}g/{dailyGoals.protein}g</span>
+                </div>
+                <Progress value={(todayTotals.protein / dailyGoals.protein) * 100} />
               </div>
-              <Progress value={(totals.protein / goals.protein) * 100} />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Carbs</span>
-                <span>{totals.carbs}g / {goals.carbs}g</span>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Carbs</span>
+                  <span>{todayTotals.carbs}g/{dailyGoals.carbs}g</span>
+                </div>
+                <Progress value={(todayTotals.carbs / dailyGoals.carbs) * 100} />
               </div>
-              <Progress value={(totals.carbs / goals.carbs) * 100} />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Fat</span>
-                <span>{totals.fat}g / {goals.fat}g</span>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Fat</span>
+                  <span>{todayTotals.fat}g/{dailyGoals.fat}g</span>
+                </div>
+                <Progress value={(todayTotals.fat / dailyGoals.fat) * 100} />
               </div>
-              <Progress value={(totals.fat / goals.fat) * 100} />
             </div>
           </div>
         </CardContent>
@@ -200,19 +217,22 @@ export function NutritionTracker() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Today's Meals</CardTitle>
+          <CardTitle className="text-lg font-medium">Today's Meals</CardTitle>
         </CardHeader>
         <CardContent>
-          {todayEntries.length > 0 ? (
+          {entries.length > 0 ? (
             <div className="space-y-3">
-              {todayEntries.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Apple className="h-5 w-5 text-green-500" />
+              {entries.map((entry) => (
+                <div key={entry.id} className="p-3 border rounded-lg">
+                  <div className="flex justify-between items-start mb-1">
                     <div>
-                      <div className="font-medium">{entry.name}</div>
-                      <div className="text-sm text-gray-500">
-                        {entry.calories} cal • {entry.protein}g protein
+                      <h3 className="font-medium capitalize">{entry.meal}</h3>
+                      <p className="text-sm text-gray-600">{entry.food}</p>
+                    </div>
+                    <div className="text-right text-sm">
+                      <div className="font-medium">{entry.calories} cal</div>
+                      <div className="text-gray-500">
+                        P: {entry.protein}g | C: {entry.carbs}g | F: {entry.fat}g
                       </div>
                     </div>
                   </div>
@@ -221,9 +241,12 @@ export function NutritionTracker() {
             </div>
           ) : (
             <div className="text-center py-6">
-              <Utensils className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-              <p className="text-gray-500">No meals logged today</p>
-              <p className="text-gray-400 text-sm">Start tracking your nutrition</p>
+              <Apple className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500 mb-3">No meals logged today</p>
+              <Button size="sm" onClick={() => setIsOpen(true)}>
+                <Utensils className="h-4 w-4 mr-1" />
+                Log First Meal
+              </Button>
             </div>
           )}
         </CardContent>

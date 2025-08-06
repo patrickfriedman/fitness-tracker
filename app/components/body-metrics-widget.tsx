@@ -6,22 +6,24 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Scale, Ruler, Plus } from 'lucide-react'
+import { Badge } from "@/components/ui/badge"
+import { Scale, TrendingUp, TrendingDown, Plus } from 'lucide-react'
 
-interface BodyMetrics {
-  weight: number
-  height: number
-  bodyFat?: number
+interface BodyMetric {
+  id: string
   date: string
+  weight?: number
+  bodyFat?: number
+  muscleMass?: number
 }
 
 export function BodyMetricsWidget() {
-  const [metrics, setMetrics] = useState<BodyMetrics[]>([])
+  const [metrics, setMetrics] = useState<BodyMetric[]>([])
   const [isOpen, setIsOpen] = useState(false)
-  const [newMetrics, setNewMetrics] = useState({
+  const [newMetric, setNewMetric] = useState({
     weight: "",
-    height: "",
-    bodyFat: ""
+    bodyFat: "",
+    muscleMass: "",
   })
 
   useEffect(() => {
@@ -32,27 +34,35 @@ export function BodyMetricsWidget() {
   }, [])
 
   const handleSave = () => {
-    const metricsData: BodyMetrics = {
-      weight: parseFloat(newMetrics.weight),
-      height: parseFloat(newMetrics.height),
-      bodyFat: newMetrics.bodyFat ? parseFloat(newMetrics.bodyFat) : undefined,
-      date: new Date().toISOString()
+    const metric: BodyMetric = {
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+      weight: newMetric.weight ? parseFloat(newMetric.weight) : undefined,
+      bodyFat: newMetric.bodyFat ? parseFloat(newMetric.bodyFat) : undefined,
+      muscleMass: newMetric.muscleMass ? parseFloat(newMetric.muscleMass) : undefined,
     }
 
-    const updated = [metricsData, ...metrics.slice(0, 9)] // Keep last 10 entries
-    setMetrics(updated)
-    localStorage.setItem("fitness-metrics", JSON.stringify(updated))
+    const updatedMetrics = [metric, ...metrics]
+    setMetrics(updatedMetrics)
+    localStorage.setItem("fitness-metrics", JSON.stringify(updatedMetrics))
     
-    setNewMetrics({ weight: "", height: "", bodyFat: "" })
+    setNewMetric({ weight: "", bodyFat: "", muscleMass: "" })
     setIsOpen(false)
   }
 
-  const latestMetrics = metrics[0]
-  const previousMetrics = metrics[1]
+  const latestMetric = metrics[0]
+  const previousMetric = metrics[1]
 
-  const weightChange = latestMetrics && previousMetrics 
-    ? latestMetrics.weight - previousMetrics.weight 
-    : 0
+  const getWeightTrend = () => {
+    if (!latestMetric?.weight || !previousMetric?.weight) return null
+    const diff = latestMetric.weight - previousMetric.weight
+    return {
+      value: Math.abs(diff),
+      direction: diff > 0 ? "up" : diff < 0 ? "down" : "same",
+    }
+  }
+
+  const weightTrend = getWeightTrend()
 
   return (
     <Card>
@@ -67,7 +77,7 @@ export function BodyMetricsWidget() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Body Metrics</DialogTitle>
+              <DialogTitle>Log Body Metrics</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -75,29 +85,32 @@ export function BodyMetricsWidget() {
                 <Input
                   id="weight"
                   type="number"
-                  value={newMetrics.weight}
-                  onChange={(e) => setNewMetrics(prev => ({ ...prev, weight: e.target.value }))}
+                  step="0.1"
+                  value={newMetric.weight}
+                  onChange={(e) => setNewMetric(prev => ({ ...prev, weight: e.target.value }))}
                   placeholder="Enter weight"
                 />
               </div>
               <div>
-                <Label htmlFor="height">Height (inches)</Label>
-                <Input
-                  id="height"
-                  type="number"
-                  value={newMetrics.height}
-                  onChange={(e) => setNewMetrics(prev => ({ ...prev, height: e.target.value }))}
-                  placeholder="Enter height"
-                />
-              </div>
-              <div>
-                <Label htmlFor="bodyFat">Body Fat % (optional)</Label>
+                <Label htmlFor="bodyFat">Body Fat (%)</Label>
                 <Input
                   id="bodyFat"
                   type="number"
-                  value={newMetrics.bodyFat}
-                  onChange={(e) => setNewMetrics(prev => ({ ...prev, bodyFat: e.target.value }))}
+                  step="0.1"
+                  value={newMetric.bodyFat}
+                  onChange={(e) => setNewMetric(prev => ({ ...prev, bodyFat: e.target.value }))}
                   placeholder="Enter body fat percentage"
+                />
+              </div>
+              <div>
+                <Label htmlFor="muscleMass">Muscle Mass (lbs)</Label>
+                <Input
+                  id="muscleMass"
+                  type="number"
+                  step="0.1"
+                  value={newMetric.muscleMass}
+                  onChange={(e) => setNewMetric(prev => ({ ...prev, muscleMass: e.target.value }))}
+                  placeholder="Enter muscle mass"
                 />
               </div>
               <Button onClick={handleSave} className="w-full">
@@ -108,51 +121,55 @@ export function BodyMetricsWidget() {
         </Dialog>
       </CardHeader>
       <CardContent>
-        {latestMetrics ? (
+        {latestMetric ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Scale className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-gray-600">Weight</span>
-              </div>
-              <div className="text-right">
-                <div className="font-semibold">{latestMetrics.weight} lbs</div>
-                {weightChange !== 0 && (
-                  <div className={`text-xs ${weightChange > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                    {weightChange > 0 ? '+' : ''}{weightChange.toFixed(1)} lbs
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Ruler className="h-4 w-4 text-green-500" />
-                <span className="text-sm text-gray-600">Height</span>
-              </div>
-              <div className="font-semibold">{latestMetrics.height}"</div>
-            </div>
-
-            {latestMetrics.bodyFat && (
+            {latestMetric.weight && (
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Body Fat</span>
-                <div className="font-semibold">{latestMetrics.bodyFat}%</div>
-              </div>
-            )}
-
-            {latestMetrics.weight && latestMetrics.height && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">BMI</span>
-                <div className="font-semibold">
-                  {((latestMetrics.weight / (latestMetrics.height * latestMetrics.height)) * 703).toFixed(1)}
+                <div className="flex items-center space-x-2">
+                  <Scale className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium">Weight</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg font-bold">{latestMetric.weight} lbs</span>
+                  {weightTrend && (
+                    <Badge variant={weightTrend.direction === "up" ? "destructive" : "default"}>
+                      {weightTrend.direction === "up" ? (
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 mr-1" />
+                      )}
+                      {weightTrend.value.toFixed(1)}
+                    </Badge>
+                  )}
                 </div>
               </div>
             )}
+            
+            {latestMetric.bodyFat && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Body Fat</span>
+                <span className="text-lg font-bold">{latestMetric.bodyFat}%</span>
+              </div>
+            )}
+            
+            {latestMetric.muscleMass && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Muscle Mass</span>
+                <span className="text-lg font-bold">{latestMetric.muscleMass} lbs</span>
+              </div>
+            )}
+            
+            <p className="text-xs text-gray-500">
+              Last updated: {new Date(latestMetric.date).toLocaleDateString()}
+            </p>
           </div>
         ) : (
-          <div className="text-center py-4">
-            <p className="text-gray-500 text-sm">No metrics recorded yet</p>
-            <p className="text-gray-400 text-xs">Add your first measurement to get started</p>
+          <div className="text-center py-6">
+            <Scale className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500 mb-3">No metrics recorded yet</p>
+            <Button size="sm" onClick={() => setIsOpen(true)}>
+              Add First Metric
+            </Button>
           </div>
         )}
       </CardContent>

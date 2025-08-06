@@ -8,24 +8,15 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Dumbbell, Clock, Calendar } from 'lucide-react'
-
-interface WorkoutLog {
-  id: string
-  name: string
-  exercises: {
-    name: string
-    sets: { reps: number; weight: number }[]
-  }[]
-  duration: number
-  date: string
-}
+import type { Workout } from "@/types/fitness"
 
 export function WorkoutLogger() {
-  const [workouts, setWorkouts] = useState<WorkoutLog[]>([])
+  const [workouts, setWorkouts] = useState<Workout[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [newWorkout, setNewWorkout] = useState({
     name: "",
-    exercises: [{ name: "", sets: [{ reps: 0, weight: 0 }] }]
+    duration: "",
+    exercises: "",
   })
 
   useEffect(() => {
@@ -35,43 +26,31 @@ export function WorkoutLogger() {
     }
   }, [])
 
-  const handleSaveWorkout = () => {
-    const workout: WorkoutLog = {
+  const handleSave = () => {
+    const workout: Workout = {
       id: Date.now().toString(),
       name: newWorkout.name,
-      exercises: newWorkout.exercises.filter(ex => ex.name.trim() !== ""),
-      duration: 45, // Default duration
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
+      duration: parseInt(newWorkout.duration),
+      exercises: newWorkout.exercises.split(',').map((exercise, index) => ({
+        id: `${Date.now()}-${index}`,
+        exerciseName: exercise.trim(),
+        sets: [],
+        restTime: 60,
+        notes: ""
+      })),
+      notes: ""
     }
 
-    const updated = [workout, ...workouts]
-    setWorkouts(updated)
-    localStorage.setItem("fitness-workouts", JSON.stringify(updated))
+    const updatedWorkouts = [workout, ...workouts]
+    setWorkouts(updatedWorkouts)
+    localStorage.setItem("fitness-workouts", JSON.stringify(updatedWorkouts))
     
-    setNewWorkout({
-      name: "",
-      exercises: [{ name: "", sets: [{ reps: 0, weight: 0 }] }]
-    })
+    setNewWorkout({ name: "", duration: "", exercises: "" })
     setIsOpen(false)
   }
 
-  const addExercise = () => {
-    setNewWorkout(prev => ({
-      ...prev,
-      exercises: [...prev.exercises, { name: "", sets: [{ reps: 0, weight: 0 }] }]
-    }))
-  }
-
-  const updateExercise = (index: number, field: string, value: string) => {
-    setNewWorkout(prev => ({
-      ...prev,
-      exercises: prev.exercises.map((ex, i) => 
-        i === index ? { ...ex, [field]: value } : ex
-      )
-    }))
-  }
-
-  const recentWorkouts = workouts.slice(0, 5)
+  const recentWorkouts = workouts.slice(0, 3)
 
   return (
     <Card>
@@ -84,7 +63,7 @@ export function WorkoutLogger() {
               Log Workout
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Log New Workout</DialogTitle>
             </DialogHeader>
@@ -98,25 +77,30 @@ export function WorkoutLogger() {
                   placeholder="e.g., Push Day, Leg Day"
                 />
               </div>
-              
-              <div className="space-y-3">
-                <Label>Exercises</Label>
-                {newWorkout.exercises.map((exercise, index) => (
-                  <div key={index} className="border rounded p-3 space-y-2">
-                    <Input
-                      value={exercise.name}
-                      onChange={(e) => updateExercise(index, "name", e.target.value)}
-                      placeholder="Exercise name"
-                    />
-                  </div>
-                ))}
-                <Button type="button" variant="outline" onClick={addExercise}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Exercise
-                </Button>
+              <div>
+                <Label htmlFor="duration">Duration (minutes)</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  value={newWorkout.duration}
+                  onChange={(e) => setNewWorkout(prev => ({ ...prev, duration: e.target.value }))}
+                  placeholder="60"
+                />
               </div>
-              
-              <Button onClick={handleSaveWorkout} className="w-full">
+              <div>
+                <Label htmlFor="exercises">Exercises (comma separated)</Label>
+                <Input
+                  id="exercises"
+                  value={newWorkout.exercises}
+                  onChange={(e) => setNewWorkout(prev => ({ ...prev, exercises: e.target.value }))}
+                  placeholder="Bench Press, Squats, Deadlifts"
+                />
+              </div>
+              <Button 
+                onClick={handleSave} 
+                className="w-full"
+                disabled={!newWorkout.name || !newWorkout.duration}
+              >
                 Save Workout
               </Button>
             </div>
@@ -127,31 +111,31 @@ export function WorkoutLogger() {
         {recentWorkouts.length > 0 ? (
           <div className="space-y-3">
             {recentWorkouts.map((workout) => (
-              <div key={workout.id} className="border rounded-lg p-3">
+              <div key={workout.id} className="p-3 border rounded-lg">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium">{workout.name}</h4>
-                  <Badge variant="secondary">
-                    {new Date(workout.date).toLocaleDateString()}
+                  <h3 className="font-medium">{workout.name}</h3>
+                  <Badge variant="outline">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {workout.duration}m
                   </Badge>
                 </div>
-                <div className="flex items-center space-x-4 text-sm text-gray-600">
-                  <div className="flex items-center space-x-1">
-                    <Dumbbell className="h-4 w-4" />
-                    <span>{workout.exercises.length} exercises</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Clock className="h-4 w-4" />
-                    <span>{workout.duration} min</span>
-                  </div>
+                <div className="flex items-center text-sm text-gray-500 mb-2">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {new Date(workout.date).toLocaleDateString()}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {workout.exercises.length} exercises
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="text-center py-6">
-            <Dumbbell className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-500">No workouts logged yet</p>
-            <p className="text-gray-400 text-sm">Start by logging your first workout</p>
+            <Dumbbell className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500 mb-3">No workouts logged yet</p>
+            <Button size="sm" onClick={() => setIsOpen(true)}>
+              Log First Workout
+            </Button>
           </div>
         )}
       </CardContent>

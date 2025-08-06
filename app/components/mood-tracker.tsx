@@ -6,92 +6,109 @@ import { Button } from "@/components/ui/button"
 import { Smile, Meh, Frown, Heart, Zap } from 'lucide-react'
 
 interface MoodEntry {
-  mood: string
   date: string
+  mood: string
+  energy: number
 }
 
 export function MoodTracker() {
-  const [todayMood, setTodayMood] = useState<string | null>(null)
-  const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([])
+  const [todayMood, setTodayMood] = useState<MoodEntry | null>(null)
+  const [selectedMood, setSelectedMood] = useState("")
+  const [selectedEnergy, setSelectedEnergy] = useState(3)
 
   useEffect(() => {
-    const stored = localStorage.getItem("fitness-mood")
+    const today = new Date().toDateString()
+    const stored = localStorage.getItem(`mood-${today}`)
     if (stored) {
-      const history = JSON.parse(stored)
-      setMoodHistory(history)
-      
-      const today = new Date().toDateString()
-      const todayEntry = history.find((entry: MoodEntry) => 
-        new Date(entry.date).toDateString() === today
-      )
-      if (todayEntry) {
-        setTodayMood(todayEntry.mood)
-      }
+      const mood = JSON.parse(stored)
+      setTodayMood(mood)
+      setSelectedMood(mood.mood)
+      setSelectedEnergy(mood.energy)
     }
   }, [])
 
-  const moods = [
-    { id: "great", label: "Great", icon: Heart, color: "text-green-500" },
-    { id: "good", label: "Good", icon: Smile, color: "text-blue-500" },
-    { id: "okay", label: "Okay", icon: Meh, color: "text-yellow-500" },
-    { id: "tired", label: "Tired", icon: Frown, color: "text-orange-500" },
-    { id: "stressed", label: "Stressed", icon: Zap, color: "text-red-500" }
-  ]
-
-  const handleMoodSelect = (moodId: string) => {
+  const saveMood = () => {
     const today = new Date().toDateString()
-    const newEntry: MoodEntry = {
-      mood: moodId,
-      date: new Date().toISOString()
+    const moodEntry: MoodEntry = {
+      date: today,
+      mood: selectedMood,
+      energy: selectedEnergy,
     }
-
-    // Remove any existing entry for today
-    const filteredHistory = moodHistory.filter(entry => 
-      new Date(entry.date).toDateString() !== today
-    )
     
-    const updatedHistory = [newEntry, ...filteredHistory].slice(0, 30) // Keep last 30 days
-    
-    setMoodHistory(updatedHistory)
-    setTodayMood(moodId)
-    localStorage.setItem("fitness-mood", JSON.stringify(updatedHistory))
+    setTodayMood(moodEntry)
+    localStorage.setItem(`mood-${today}`, JSON.stringify(moodEntry))
   }
+
+  const moods = [
+    { id: "great", label: "Great", icon: Smile, color: "text-green-500" },
+    { id: "good", label: "Good", icon: Heart, color: "text-blue-500" },
+    { id: "okay", label: "Okay", icon: Meh, color: "text-yellow-500" },
+    { id: "bad", label: "Bad", icon: Frown, color: "text-red-500" },
+  ]
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg">How are you feeling?</CardTitle>
+        <CardTitle className="text-lg font-medium">Daily Mood</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-5 gap-2">
-          {moods.map((mood) => {
-            const Icon = mood.icon
-            const isSelected = todayMood === mood.id
-            
-            return (
-              <Button
-                key={mood.id}
-                variant={isSelected ? "default" : "outline"}
-                size="sm"
-                className={`flex flex-col items-center p-2 h-auto ${
-                  isSelected ? "" : "hover:bg-gray-50"
-                }`}
-                onClick={() => handleMoodSelect(mood.id)}
-              >
-                <Icon className={`h-5 w-5 ${isSelected ? "text-white" : mood.color}`} />
-                <span className={`text-xs mt-1 ${isSelected ? "text-white" : "text-gray-600"}`}>
-                  {mood.label}
-                </span>
-              </Button>
-            )
-          })}
-        </div>
-        
-        {todayMood && (
-          <div className="mt-3 text-center text-sm text-gray-600">
-            Mood logged for today
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-medium mb-2">How are you feeling?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {moods.map((mood) => {
+                const Icon = mood.icon
+                return (
+                  <Button
+                    key={mood.id}
+                    variant={selectedMood === mood.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedMood(mood.id)}
+                    className="flex items-center space-x-1"
+                  >
+                    <Icon className={`h-4 w-4 ${mood.color}`} />
+                    <span>{mood.label}</span>
+                  </Button>
+                )
+              })}
+            </div>
           </div>
-        )}
+          
+          <div>
+            <p className="text-sm font-medium mb-2 flex items-center">
+              <Zap className="h-4 w-4 mr-1" />
+              Energy Level: {selectedEnergy}/5
+            </p>
+            <div className="flex space-x-1">
+              {[1, 2, 3, 4, 5].map((level) => (
+                <Button
+                  key={level}
+                  variant={selectedEnergy >= level ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedEnergy(level)}
+                  className="w-8 h-8 p-0"
+                >
+                  {level}
+                </Button>
+              ))}
+            </div>
+          </div>
+          
+          <Button
+            onClick={saveMood}
+            disabled={!selectedMood}
+            className="w-full"
+            size="sm"
+          >
+            {todayMood ? "Update Mood" : "Save Mood"}
+          </Button>
+          
+          {todayMood && (
+            <div className="text-center text-sm text-gray-500">
+              Mood logged for today ✓
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

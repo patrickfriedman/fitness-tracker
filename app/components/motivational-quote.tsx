@@ -15,8 +15,8 @@ const quotes = [
     author: "Unknown"
   },
   {
-    text: "Success is what comes after you stop making excuses.",
-    author: "Luis Galarza"
+    text: "Fitness is not about being better than someone else. It's about being better than you used to be.",
+    author: "Khloe Kardashian"
   },
   {
     text: "The groundwork for all happiness is good health.",
@@ -27,15 +27,11 @@ const quotes = [
     author: "Jim Rohn"
   },
   {
-    text: "Fitness is not about being better than someone else. It's about being better than you used to be.",
-    author: "Khloe Kardashian"
+    text: "A healthy outside starts from the inside.",
+    author: "Robert Urich"
   },
   {
-    text: "The pain you feel today will be the strength you feel tomorrow.",
-    author: "Unknown"
-  },
-  {
-    text: "Don't wish for it, work for it.",
+    text: "Exercise is a celebration of what your body can do, not a punishment for what you ate.",
     author: "Unknown"
   }
 ]
@@ -44,43 +40,50 @@ export function MotivationalQuote() {
   const [currentQuote, setCurrentQuote] = useState(quotes[0])
 
   useEffect(() => {
-    // Set a random quote on component mount
-    const randomIndex = Math.floor(Math.random() * quotes.length)
-    setCurrentQuote(quotes[randomIndex])
+    const today = new Date().toDateString()
+    const stored = localStorage.getItem(`quote-${today}`)
+    if (stored) {
+      setCurrentQuote(JSON.parse(stored))
+    } else {
+      const randomQuote = quotes[Math.floor(Math.random() * quotes.length)]
+      setCurrentQuote(randomQuote)
+      localStorage.setItem(`quote-${today}`, JSON.stringify(randomQuote))
+    }
   }, [])
 
   const getNewQuote = () => {
-    let newQuote
-    do {
-      const randomIndex = Math.floor(Math.random() * quotes.length)
-      newQuote = quotes[randomIndex]
-    } while (newQuote === currentQuote && quotes.length > 1)
-    
-    setCurrentQuote(newQuote)
+    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)]
+    setCurrentQuote(randomQuote)
+    const today = new Date().toDateString()
+    localStorage.setItem(`quote-${today}`, JSON.stringify(randomQuote))
   }
 
   return (
-    <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20">
-      <CardContent className="p-6">
-        <div className="flex items-start space-x-3">
-          <Quote className="h-6 w-6 text-blue-500 mt-1 flex-shrink-0" />
-          <div className="flex-1">
-            <blockquote className="text-gray-700 dark:text-gray-300 italic mb-2">
-              "{currentQuote.text}"
-            </blockquote>
-            <div className="flex items-center justify-between">
-              <cite className="text-sm text-gray-500 dark:text-gray-400 not-italic">
+    <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          <div className="flex items-start space-x-2">
+            <Quote className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
+            <div className="space-y-2">
+              <p className="text-sm font-medium italic text-gray-700 dark:text-gray-300">
+                "{currentQuote.text}"
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 — {currentQuote.author}
-              </cite>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={getNewQuote}
-                className="text-blue-600 hover:text-blue-700"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+              </p>
             </div>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={getNewQuote}
+              className="text-xs"
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              New Quote
+            </Button>
           </div>
         </div>
       </CardContent>
