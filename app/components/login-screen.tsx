@@ -4,20 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/component              onClick={async () => {
-                try {
-                  setIsLoading(true);
-                  await login("demo@example.com", "demopassword123");
-                } catch (error) {
-                  console.error("Demo login error:", error);
-                  alert("Failed to log in with demo account. Please try again later.");
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
-              disabled={isLoading}
-              >
-              {isLoading ? "Logging in..." : "Try Demo Account"}i/button"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -221,9 +208,20 @@ export function LoginScreen() {
             <Button
               variant="outline"
               className="w-full bg-transparent"
-              onClick={() => login("demo@fittracker.com", "demo")}
+              onClick={async () => {
+                try {
+                  setIsLoading(true);
+                  await login("demo@example.com", "demopassword123");
+                } catch (error) {
+                  console.error("Demo login error:", error);
+                  alert("Failed to log in with demo account. Please try again later.");
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              disabled={isLoading}
             >
-              Try Demo Account
+              {isLoading ? "Logging in..." : "Try Demo Account"}
             </Button>
           </div>
         </CardContent>
