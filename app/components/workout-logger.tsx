@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { supabase } from "@/lib/supabase"
+import { saveWorkout, updateWorkout } from '@/lib/db'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -122,31 +124,43 @@ export function WorkoutLogger({ userId, workoutInProgress, onWorkoutStart, onWor
     }))
   }
 
-  const startWorkout = () => {
+  const startWorkout = async () => {
     const startTime = new Date()
     setWorkoutStartTime(startTime)
+    
     const workout: WorkoutLog = {
       ...(currentWorkout as WorkoutLog),
-      startTime: startTime.toISOString(),
-      inProgress: true,
+      start_time: startTime.toISOString(),
+      in_progress: true,
     }
-    onWorkoutStart?.(workout)
+
+    try {
+      await saveWorkout(workout)
+      onWorkoutStart?.(workout)
+    } catch (error) {
+      console.error('Error starting workout:', error)
+    }
   }
 
-  const finishWorkout = () => {
+  const finishWorkout = async () => {
     if (workoutStartTime && workoutInProgress) {
       const endTime = new Date()
       const duration = Math.round((endTime.getTime() - workoutStartTime.getTime()) / 60000)
 
       const workout = {
         ...workoutInProgress,
-        endTime: endTime.toISOString(),
+        end_time: endTime.toISOString(),
         duration,
-        inProgress: false,
+        in_progress: false,
       }
 
-      setCompletedWorkout(workout)
-      setShowCompletionModal(true)
+      try {
+        await updateWorkout(workout.id, workout)
+        setCompletedWorkout(workout)
+        setShowCompletionModal(true)
+      } catch (error) {
+        console.error('Error finishing workout:', error)
+      }
     }
   }
 
@@ -335,6 +349,27 @@ export function WorkoutLogger({ userId, workoutInProgress, onWorkoutStart, onWor
                   <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <p className="font-medium">{exercise.name}</p>
                     <p className="text-sm text-gray-600">{exercise.sets.length} sets</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex space-x-2">
+                <Button onClick={confirmWorkout} className="flex-1">
+                  <Check className="h-4 w-4 mr-2" />
+                  Confirm & Save
+                </Button>
+                <Button onClick={() => setShowCompletionModal(false)} variant="outline" className="flex-1">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Workout
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  )
+}
                   </div>
                 ))}
               </div>

@@ -1,92 +1,134 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import type { User } from "../types/fitness"
+import { createContext, useContext, useEffect, useState } from "react"
+import { User } from "@supabase/supabase-js"
+import { supabase } from "@/lib/supabase"
+import type { User as FitnessUser } from "@/types/fitness"
 
 interface AuthContextType {
-  user: User | null
-  login: (email: string, password: string) => Promise<boolean>
-  logout: () => void
-  register: (userData: Partial<User>) => Promise<boolean>
-  updateUser: (userData: Partial<User>) => void
+  user: FitnessUser | null
+  login: (email: string, password: string) => Promise<void>
+  register: (userData: Partial<FitnessUser>) => Promise<void>
+  logout: () => Promise<void>
+  updateUser: (userData: FitnessUser) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<FitnessUser | null>(null)
 
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem("fitness-user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
+    // Check active sessions and sets the user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserProfile(session.user)
+      }
+    })
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        fetchUserProfile(session.user)
+      } else {
+        setUser(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Mock authentication - in real app, this would call an API
-    const mockUser: User = {
-      id: `user-${Date.now()}`,
-      name: email.split("@")[0],
-      email,
-      primaryGoal: "hypertrophy",
-      createdAt: new Date().toISOString(),
-      preferences: {
-        theme: "light",
-        units: "imperial",
-        todayWidgets: ["metrics", "quick-actions", "mood", "water"],
+  const register = async (userData: Partial<FitnessUser>) => {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: userData.email!,
+      password: userData.password!, // Make sure password is included in userData
+      options: {
+        data: {
+          name: userData.name,
+        },
       },
-    }
+    })
 
-    setUser(mockUser)
-    localStorage.setItem("fitness-user", JSON.stringify(mockUser))
-    return true
+    if (authError) throw authError
+
+    if (authData.user) {
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          name: userData.name,
+          email: userData.email,
+          primary_goal: userData.primary_goal || 'strength',
+          created_at: new Date().toISOString(),
+          preferences: {
+            theme: 'light',
+            units: 'metric',
+            todayWidgets: [],
+          },
+        })
+
+      if (profileError) throw profileError
+    }
   }
 
-  const register = async (userData: Partial<User>): Promise<boolean> => {
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name: userData.name || "",
-      email: userData.email || "",
-      primaryGoal: userData.primaryGoal || "hypertrophy",
-      createdAt: new Date().toISOString(),
-      preferences: {
-        theme: "light",
-        units: "imperial",
-        todayWidgets: ["metrics", "quick-actions", "mood", "water"],
-      },
+  async function fetchUserProfile(authUser: User) {
+    const { data, error } = await supabase
+      .from('users')
+      .select(`
+        id,
+        name,
+        email,
+        avatar,
+        primary_goal,
+        created_at,
+        preferences
+      `)
+      .eq('id', authUser.id)
+      .single()
+
+    if (error) {
+      console.error("Error fetching user profile:", error)
+      return
     }
 
-    // Initialize empty data structures for new user
-    localStorage.setItem(`activity-data-${newUser.id}`, JSON.stringify([]));
-    localStorage.setItem(`nutrition-log-${newUser.id}`, JSON.stringify([]));
-    localStorage.setItem(`workout-log-${newUser.id}`, JSON.stringify([]));
-    localStorage.setItem(`body-metrics-${newUser.id}`, JSON.stringify([]));
-    localStorage.setItem(`mood-log-${newUser.id}`, JSON.stringify([]));
-
-    setUser(newUser)
-    localStorage.setItem("fitness-user", JSON.stringify(newUser))
-    return true
+    if (data) {
+      setUser({
+        ...data,
+        primaryGoal: data.primary_goal,
+        createdAt: data.created_at,
+      } as FitnessUser)
+    }
   }
 
-  const logout = () => {
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+  }
+
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
     setUser(null)
-    localStorage.removeItem("fitness-user")
   }
 
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData }
-      setUser(updatedUser)
-      localStorage.setItem("fitness-user", JSON.stringify(updatedUser))
-    }
+  const updateUser = async (userData: FitnessUser) => {
+    const { error } = await supabase
+      .from("users")
+      .update(userData)
+      .eq("id", userData.id)
+
+    if (error) throw error
+    setUser(userData)
   }
 
-  return <AuthContext.Provider value={{ user, login, logout, register, updateUser }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, login, register, logout, updateUser }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext)
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")

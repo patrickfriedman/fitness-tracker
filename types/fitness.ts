@@ -154,34 +154,40 @@ export interface FoodItem {
   serving: string
 }
 
-export const initializeUserData = (userId: string) => {
-  const dataKeys = [
-    'activity-data',
-    'nutrition-log',
-    'workout-log',
-    'body-metrics',
-    'mood-log',
-    'water-tracker',
-    'custom-templates'
-  ];
+export const initializeUserData = async (userId: string) => {
+  // No longer needed as Supabase handles data initialization
+  // You may want to create default records in relevant tables
+  const { error } = await supabase
+    .from('user_preferences')
+    .insert([
+      {
+        user_id: userId,
+        theme: 'light',
+        units: 'metric',
+        today_widgets: []
+      }
+    ])
 
-  dataKeys.forEach(key => {
-    localStorage.setItem(`${key}-${userId}`, JSON.stringify([]));
-  });
+  if (error) console.error('Error initializing user data:', error)
 }
 
-export const clearUserData = (userId: string) => {
-  const dataKeys = [
-    'activity-data',
-    'nutrition-log',
-    'workout-log',
-    'body-metrics',
-    'mood-log',
-    'water-tracker',
-    'custom-templates'
-  ];
+export const clearUserData = async (userId: string) => {
+  // Instead of clearing localStorage, you might want to archive or soft-delete data
+  const tables = [
+    'workout_logs',
+    'nutrition_logs',
+    'body_metrics',
+    'mood_logs',
+    'water_tracker',
+    'workout_templates'
+  ]
 
-  dataKeys.forEach(key => {
-    localStorage.removeItem(`${key}-${userId}`);
-  });
+  for (const table of tables) {
+    const { error } = await supabase
+      .from(table)
+      .delete()
+      .eq('user_id', userId)
+
+    if (error) console.error(`Error clearing ${table}:`, error)
+  }
 }
