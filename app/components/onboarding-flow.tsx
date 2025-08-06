@@ -5,11 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/contexts/auth-context"
-import { Target, Activity, Utensils, TrendingUp } from 'lucide-react'
+import { ArrowRight, ArrowLeft } from 'lucide-react'
 
 interface OnboardingFlowProps {
   onComplete: () => void
@@ -20,27 +19,24 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     primaryGoal: "",
-    activityLevel: "",
-    preferences: {
-      units: "imperial",
-      todayWidgets: [] as string[],
-    },
+    fitnessLevel: "",
+    workoutDays: [] as string[],
+    units: "imperial" as "imperial" | "metric",
+    todayWidgets: ["metrics", "quick-actions", "mood", "water"] as string[]
   })
 
-  const totalSteps = 3
-  const progress = (step / totalSteps) * 100
-
   const handleNext = () => {
-    if (step < totalSteps) {
+    if (step < 3) {
       setStep(step + 1)
     } else {
       // Complete onboarding
       updateUser({
-        primaryGoal: formData.primaryGoal as any,
+        primaryGoal: formData.primaryGoal,
         preferences: {
-          ...user?.preferences,
-          ...formData.preferences,
-        },
+          theme: "light",
+          units: formData.units,
+          todayWidgets: formData.todayWidgets
+        }
       })
       onComplete()
     }
@@ -52,157 +48,23 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   }
 
-  const handleWidgetToggle = (widget: string, checked: boolean) => {
+  const handleWorkoutDayToggle = (day: string) => {
     setFormData(prev => ({
       ...prev,
-      preferences: {
-        ...prev.preferences,
-        todayWidgets: checked
-          ? [...prev.preferences.todayWidgets, widget]
-          : prev.preferences.todayWidgets.filter(w => w !== widget)
-      }
+      workoutDays: prev.workoutDays.includes(day)
+        ? prev.workoutDays.filter(d => d !== day)
+        : [...prev.workoutDays, day]
     }))
   }
 
-  const renderStep = () => {
+  const isStepValid = () => {
     switch (step) {
       case 1:
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <Target className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-2">What's your primary fitness goal?</h2>
-              <p className="text-gray-600">This helps us personalize your experience</p>
-            </div>
-            
-            <RadioGroup
-              value={formData.primaryGoal}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, primaryGoal: value }))}
-              className="space-y-3"
-            >
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                <RadioGroupItem value="weight_loss" id="weight_loss" />
-                <Label htmlFor="weight_loss" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Weight Loss</div>
-                  <div className="text-sm text-gray-500">Burn calories and lose weight</div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                <RadioGroupItem value="muscle_gain" id="muscle_gain" />
-                <Label htmlFor="muscle_gain" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Muscle Gain</div>
-                  <div className="text-sm text-gray-500">Build strength and muscle mass</div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                <RadioGroupItem value="maintenance" id="maintenance" />
-                <Label htmlFor="maintenance" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Maintenance</div>
-                  <div className="text-sm text-gray-500">Stay healthy and maintain current fitness</div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                <RadioGroupItem value="endurance" id="endurance" />
-                <Label htmlFor="endurance" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Endurance</div>
-                  <div className="text-sm text-gray-500">Improve cardiovascular fitness</div>
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-        )
-
+        return formData.primaryGoal && formData.fitnessLevel
       case 2:
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <Activity className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-2">How active are you?</h2>
-              <p className="text-gray-600">This helps us set realistic targets</p>
-            </div>
-            
-            <RadioGroup
-              value={formData.activityLevel}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, activityLevel: value }))}
-              className="space-y-3"
-            >
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                <RadioGroupItem value="sedentary" id="sedentary" />
-                <Label htmlFor="sedentary" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Sedentary</div>
-                  <div className="text-sm text-gray-500">Little to no exercise</div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                <RadioGroupItem value="lightly_active" id="lightly_active" />
-                <Label htmlFor="lightly_active" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Lightly Active</div>
-                  <div className="text-sm text-gray-500">Light exercise 1-3 days/week</div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                <RadioGroupItem value="moderately_active" id="moderately_active" />
-                <Label htmlFor="moderately_active" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Moderately Active</div>
-                  <div className="text-sm text-gray-500">Moderate exercise 3-5 days/week</div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
-                <RadioGroupItem value="very_active" id="very_active" />
-                <Label htmlFor="very_active" className="flex-1 cursor-pointer">
-                  <div className="font-medium">Very Active</div>
-                  <div className="text-sm text-gray-500">Hard exercise 6-7 days/week</div>
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-        )
-
+        return formData.workoutDays.length > 0
       case 3:
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <TrendingUp className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Customize your dashboard</h2>
-              <p className="text-gray-600">Choose which widgets to show on your Today tab</p>
-            </div>
-            
-            <div className="space-y-3">
-              {[
-                { id: "metrics", label: "Body Metrics", description: "Track weight, body fat, etc." },
-                { id: "mood", label: "Mood Tracker", description: "Log your daily mood and energy" },
-                { id: "water", label: "Water Intake", description: "Track daily hydration" },
-                { id: "quick-actions", label: "Quick Actions", description: "Fast access to common tasks" },
-              ].map((widget) => (
-                <div key={widget.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-                  <Checkbox
-                    id={widget.id}
-                    checked={formData.preferences.todayWidgets.includes(widget.id)}
-                    onCheckedChange={(checked) => handleWidgetToggle(widget.id, checked as boolean)}
-                  />
-                  <Label htmlFor={widget.id} className="flex-1 cursor-pointer">
-                    <div className="font-medium">{widget.label}</div>
-                    <div className="text-sm text-gray-500">{widget.description}</div>
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-
-      default:
-        return null
-    }
-  }
-
-  const canProceed = () => {
-    switch (step) {
-      case 1:
-        return formData.primaryGoal !== ""
-      case 2:
-        return formData.activityLevel !== ""
-      case 3:
-        return formData.preferences.todayWidgets.length > 0
+        return true
       default:
         return false
     }
@@ -210,32 +72,106 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-md">
         <CardHeader>
-          <div className="space-y-2">
-            <CardTitle className="text-center">Welcome to FitTracker Pro!</CardTitle>
-            <Progress value={progress} className="w-full" />
-            <p className="text-center text-sm text-gray-500">
-              Step {step} of {totalSteps}
-            </p>
-          </div>
+          <CardTitle className="text-center">
+            Welcome to FitTracker Pro
+          </CardTitle>
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+            Step {step} of 3
+          </p>
         </CardHeader>
-        <CardContent>
-          {renderStep()}
-          
-          <div className="flex justify-between mt-8">
+        <CardContent className="space-y-6">
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="goal">What's your primary fitness goal?</Label>
+                <Select value={formData.primaryGoal} onValueChange={(value) => setFormData(prev => ({ ...prev, primaryGoal: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your goal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weight_loss">Weight Loss</SelectItem>
+                    <SelectItem value="muscle_gain">Muscle Gain</SelectItem>
+                    <SelectItem value="hypertrophy">Hypertrophy</SelectItem>
+                    <SelectItem value="endurance">Endurance</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="fitness-level">What's your fitness level?</Label>
+                <Select value={formData.fitnessLevel} onValueChange={(value) => setFormData(prev => ({ ...prev, fitnessLevel: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              <Label>Which days do you prefer to work out?</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                  <div key={day} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={day}
+                      checked={formData.workoutDays.includes(day)}
+                      onCheckedChange={() => handleWorkoutDayToggle(day)}
+                    />
+                    <Label htmlFor={day} className="text-sm">{day}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4">
+              <div>
+                <Label>Preferred units</Label>
+                <Select value={formData.units} onValueChange={(value: "imperial" | "metric") => setFormData(prev => ({ ...prev, units: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="imperial">Imperial (lbs, ft)</SelectItem>
+                    <SelectItem value="metric">Metric (kg, cm)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  You're all set! Let's start your fitness journey.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between">
             <Button
               variant="outline"
               onClick={handleBack}
               disabled={step === 1}
             >
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
             <Button
               onClick={handleNext}
-              disabled={!canProceed()}
+              disabled={!isStepValid()}
             >
-              {step === totalSteps ? "Complete Setup" : "Next"}
+              {step === 3 ? "Complete" : "Next"}
+              {step < 3 && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </div>
         </CardContent>

@@ -1,69 +1,57 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Dumbbell, Clock, Calendar } from 'lucide-react'
-import type { Workout } from "@/types/fitness"
+import { Plus, Dumbbell, Clock, Save } from 'lucide-react'
 
 export function WorkoutLogger() {
-  const [workouts, setWorkouts] = useState<Workout[]>([])
   const [isOpen, setIsOpen] = useState(false)
-  const [newWorkout, setNewWorkout] = useState({
+  const [workoutData, setWorkoutData] = useState({
     name: "",
     duration: "",
     exercises: "",
+    notes: ""
   })
-
-  useEffect(() => {
-    const stored = localStorage.getItem("fitness-workouts")
-    if (stored) {
-      setWorkouts(JSON.parse(stored))
-    }
-  }, [])
+  const [recentWorkouts, setRecentWorkouts] = useState([
+    { id: 1, name: "Push Day", date: "2024-01-15", duration: 45 },
+    { id: 2, name: "Pull Day", date: "2024-01-13", duration: 50 },
+    { id: 3, name: "Leg Day", date: "2024-01-11", duration: 60 }
+  ])
 
   const handleSave = () => {
-    const workout: Workout = {
-      id: Date.now().toString(),
-      name: newWorkout.name,
-      date: new Date().toISOString(),
-      duration: parseInt(newWorkout.duration),
-      exercises: newWorkout.exercises.split(',').map((exercise, index) => ({
-        id: `${Date.now()}-${index}`,
-        exerciseName: exercise.trim(),
-        sets: [],
-        restTime: 60,
-        notes: ""
-      })),
-      notes: ""
+    if (workoutData.name && workoutData.duration) {
+      const newWorkout = {
+        id: Date.now(),
+        name: workoutData.name,
+        date: new Date().toISOString().split('T')[0],
+        duration: parseInt(workoutData.duration)
+      }
+      setRecentWorkouts(prev => [newWorkout, ...prev.slice(0, 4)])
+      setWorkoutData({ name: "", duration: "", exercises: "", notes: "" })
+      setIsOpen(false)
     }
-
-    const updatedWorkouts = [workout, ...workouts]
-    setWorkouts(updatedWorkouts)
-    localStorage.setItem("fitness-workouts", JSON.stringify(updatedWorkouts))
-    
-    setNewWorkout({ name: "", duration: "", exercises: "" })
-    setIsOpen(false)
   }
-
-  const recentWorkouts = workouts.slice(0, 3)
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg font-medium">Recent Workouts</CardTitle>
+        <CardTitle className="text-lg font-semibold flex items-center">
+          <Dumbbell className="mr-2 h-5 w-5" />
+          Workout Logger
+        </CardTitle>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-1" />
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
               Log Workout
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Log New Workout</DialogTitle>
             </DialogHeader>
@@ -72,9 +60,9 @@ export function WorkoutLogger() {
                 <Label htmlFor="workout-name">Workout Name</Label>
                 <Input
                   id="workout-name"
-                  value={newWorkout.name}
-                  onChange={(e) => setNewWorkout(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Push Day, Leg Day"
+                  placeholder="e.g., Push Day, Cardio Session"
+                  value={workoutData.name}
+                  onChange={(e) => setWorkoutData(prev => ({ ...prev, name: e.target.value }))}
                 />
               </div>
               <div>
@@ -82,25 +70,31 @@ export function WorkoutLogger() {
                 <Input
                   id="duration"
                   type="number"
-                  value={newWorkout.duration}
-                  onChange={(e) => setNewWorkout(prev => ({ ...prev, duration: e.target.value }))}
-                  placeholder="60"
+                  placeholder="45"
+                  value={workoutData.duration}
+                  onChange={(e) => setWorkoutData(prev => ({ ...prev, duration: e.target.value }))}
                 />
               </div>
               <div>
-                <Label htmlFor="exercises">Exercises (comma separated)</Label>
-                <Input
+                <Label htmlFor="exercises">Exercises</Label>
+                <Textarea
                   id="exercises"
-                  value={newWorkout.exercises}
-                  onChange={(e) => setNewWorkout(prev => ({ ...prev, exercises: e.target.value }))}
-                  placeholder="Bench Press, Squats, Deadlifts"
+                  placeholder="List your exercises..."
+                  value={workoutData.exercises}
+                  onChange={(e) => setWorkoutData(prev => ({ ...prev, exercises: e.target.value }))}
                 />
               </div>
-              <Button 
-                onClick={handleSave} 
-                className="w-full"
-                disabled={!newWorkout.name || !newWorkout.duration}
-              >
+              <div>
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="How did it go?"
+                  value={workoutData.notes}
+                  onChange={(e) => setWorkoutData(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+              <Button onClick={handleSave} className="w-full">
+                <Save className="mr-2 h-4 w-4" />
                 Save Workout
               </Button>
             </div>
@@ -108,36 +102,21 @@ export function WorkoutLogger() {
         </Dialog>
       </CardHeader>
       <CardContent>
-        {recentWorkouts.length > 0 ? (
-          <div className="space-y-3">
-            {recentWorkouts.map((workout) => (
-              <div key={workout.id} className="p-3 border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium">{workout.name}</h3>
-                  <Badge variant="outline">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {workout.duration}m
-                  </Badge>
-                </div>
-                <div className="flex items-center text-sm text-gray-500 mb-2">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  {new Date(workout.date).toLocaleDateString()}
-                </div>
-                <div className="text-sm text-gray-600">
-                  {workout.exercises.length} exercises
-                </div>
+        <div className="space-y-3">
+          <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">Recent Workouts</h3>
+          {recentWorkouts.map((workout) => (
+            <div key={workout.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div>
+                <p className="font-medium text-sm">{workout.name}</p>
+                <p className="text-xs text-gray-500">{new Date(workout.date).toLocaleDateString()}</p>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-6">
-            <Dumbbell className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-500 mb-3">No workouts logged yet</p>
-            <Button size="sm" onClick={() => setIsOpen(true)}>
-              Log First Workout
-            </Button>
-          </div>
-        )}
+              <div className="flex items-center text-sm text-gray-600">
+                <Clock className="mr-1 h-3 w-3" />
+                {workout.duration}m
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )
