@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { Scale, Target, TrendingUp, TrendingDown } from "lucide-react"
+import { Scale, Target, TrendingUp, TrendingDown } from 'lucide-react'
 import type { BodyMetrics } from "../../types/fitness"
 
 interface BodyMetricsCardProps {

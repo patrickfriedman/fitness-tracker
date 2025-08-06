@@ -1,207 +1,151 @@
-"use client"
+'use client'
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/contexts/auth-context"
-import { ChevronRight, ChevronLeft } from 'lucide-react'
+import { useToast } from "@/components/ui/use-toast"
 
-interface OnboardingFlowProps {
-  onComplete: () => void
-}
-
-export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+export default function OnboardingFlow() {
   const { user, updateUser } = useAuth()
-  const [currentStep, setCurrentStep] = useState(0)
-  const [formData, setFormData] = useState({
-    primaryGoal: user?.primaryGoal || "hypertrophy",
-    fitnessLevel: "intermediate",
-    workoutDays: 4,
-    preferredTime: "morning",
-    equipment: [] as string[],
-    todayWidgets: ["metrics", "quick-actions", "mood", "water"] as string[]
-  })
+  const { toast } = useToast()
+  const [step, setStep] = useState(1)
+  const [name, setName] = useState(user?.name || "")
+  const [primaryGoal, setPrimaryGoal] = useState(user?.primaryGoal || "general_fitness")
+  const [units, setUnits] = useState(user?.preferences.units || "imperial")
+  const [loading, setLoading] = useState(false)
 
-  const steps = [
-    {
-      title: "What's your primary fitness goal?",
-      content: (
-        <div className="space-y-4">
-          <Select
-            value={formData.primaryGoal}
-            onValueChange={(value) => setFormData(prev => ({ ...prev, primaryGoal: value }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select your primary goal" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="strength">Build Strength</SelectItem>
-              <SelectItem value="hypertrophy">Build Muscle</SelectItem>
-              <SelectItem value="fat_loss">Lose Fat</SelectItem>
-              <SelectItem value="endurance">Improve Endurance</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )
-    },
-    {
-      title: "What's your current fitness level?",
-      content: (
-        <div className="space-y-4">
-          <Select
-            value={formData.fitnessLevel}
-            onValueChange={(value) => setFormData(prev => ({ ...prev, fitnessLevel: value }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select your fitness level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="beginner">Beginner (0-6 months)</SelectItem>
-              <SelectItem value="intermediate">Intermediate (6 months - 2 years)</SelectItem>
-              <SelectItem value="advanced">Advanced (2+ years)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )
-    },
-    {
-      title: "How many days per week do you want to work out?",
-      content: (
-        <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-2">
-            {[3, 4, 5, 6].map((days) => (
-              <Button
-                key={days}
-                variant={formData.workoutDays === days ? "default" : "outline"}
-                onClick={() => setFormData(prev => ({ ...prev, workoutDays: days }))}
-                className="h-12"
-              >
-                {days} days
-              </Button>
-            ))}
-          </div>
-        </div>
-      )
-    },
-    {
-      title: "What equipment do you have access to?",
-      content: (
-        <div className="space-y-4">
-          {["Dumbbells", "Barbell", "Resistance Bands", "Pull-up Bar", "Gym Membership", "Bodyweight Only"].map((equipment) => (
-            <div key={equipment} className="flex items-center space-x-2">
-              <Checkbox
-                id={equipment}
-                checked={formData.equipment.includes(equipment)}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setFormData(prev => ({ ...prev, equipment: [...prev.equipment, equipment] }))
-                  } else {
-                    setFormData(prev => ({ ...prev, equipment: prev.equipment.filter(e => e !== equipment) }))
-                  }
-                }}
-              />
-              <Label htmlFor={equipment}>{equipment}</Label>
-            </div>
-          ))}
-        </div>
-      )
-    },
-    {
-      title: "Customize your dashboard",
-      content: (
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600">Choose which widgets to show on your Today tab:</p>
-          {[
-            { id: "metrics", label: "Body Metrics" },
-            { id: "quick-actions", label: "Quick Actions" },
-            { id: "mood", label: "Mood Tracker" },
-            { id: "water", label: "Water Tracker" },
-            { id: "quote", label: "Motivational Quote" }
-          ].map((widget) => (
-            <div key={widget.id} className="flex items-center space-x-2">
-              <Checkbox
-                id={widget.id}
-                checked={formData.todayWidgets.includes(widget.id)}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setFormData(prev => ({ ...prev, todayWidgets: [...prev.todayWidgets, widget.id] }))
-                  } else {
-                    setFormData(prev => ({ ...prev, todayWidgets: prev.todayWidgets.filter(w => w !== widget.id) }))
-                  }
-                }}
-              />
-              <Label htmlFor={widget.id}>{widget.label}</Label>
-            </div>
-          ))}
-        </div>
-      )
-    }
-  ]
-
-  const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1)
-    } else {
-      handleComplete()
+  const handleNext = async () => {
+    if (step === 1) {
+      if (!name) {
+        toast({
+          title: "Missing Information",
+          description: "Please enter your name.",
+          variant: "destructive",
+        })
+        return
+      }
+      setStep(2)
+    } else if (step === 2) {
+      if (!primaryGoal) {
+        toast({
+          title: "Missing Information",
+          description: "Please select your primary fitness goal.",
+          variant: "destructive",
+        })
+        return
+      }
+      setStep(3)
+    } else if (step === 3) {
+      setLoading(true)
+      const success = await updateUser({
+        name,
+        primaryGoal: primaryGoal as 'strength' | 'hypertrophy' | 'endurance' | 'weight_loss' | 'general_fitness',
+        preferences: { ...user?.preferences, units }
+      })
+      setLoading(false)
+      if (success) {
+        toast({
+          title: "Onboarding Complete!",
+          description: "You're all set to start your fitness journey.",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save preferences. Please try again.",
+          variant: "destructive",
+        })
+      }
     }
   }
 
   const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1)
-    }
+    setStep((prev) => Math.max(1, prev - 1))
   }
-
-  const handleComplete = () => {
-    updateUser({
-      primaryGoal: formData.primaryGoal as "strength" | "hypertrophy" | "fat_loss" | "endurance",
-      preferences: {
-        theme: "light",
-        units: "imperial",
-        todayWidgets: formData.todayWidgets,
-        fitnessLevel: formData.fitnessLevel,
-        workoutDays: formData.workoutDays,
-        preferredTime: formData.preferredTime,
-        equipment: formData.equipment
-      }
-    })
-    onComplete()
-  }
-
-  const progress = ((currentStep + 1) / steps.length) * 100
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+    <div className="flex min-h-[calc(100vh-100px)] items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <div className="space-y-2">
-            <Progress value={progress} className="w-full" />
-            <p className="text-sm text-gray-600 text-center">
-              Step {currentStep + 1} of {steps.length}
-            </p>
-          </div>
-          <CardTitle className="text-center">{steps[currentStep].title}</CardTitle>
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">Welcome to FitTracker!</CardTitle>
+          <CardDescription>Let's get you set up for success.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {steps[currentStep].content}
-          
-          <div className="flex justify-between">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStep === 0}
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <Button onClick={handleNext}>
-              {currentStep === steps.length - 1 ? "Complete" : "Next"}
-              {currentStep < steps.length - 1 && <ChevronRight className="h-4 w-4 ml-2" />}
+          {step === 1 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Step 1: What's your name?</h3>
+              <div className="space-y-2">
+                <Label htmlFor="name">Your Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Enter your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Step 2: What's your primary fitness goal?</h3>
+              <div className="space-y-2">
+                <Label htmlFor="goal">Primary Goal</Label>
+                <Select value={primaryGoal} onValueChange={(value) => setPrimaryGoal(value as any)} disabled={loading}>
+                  <SelectTrigger id="goal">
+                    <SelectValue placeholder="Select a goal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="strength">Strength</SelectItem>
+                    <SelectItem value="hypertrophy">Hypertrophy (Muscle Growth)</SelectItem>
+                    <SelectItem value="endurance">Endurance</SelectItem>
+                    <SelectItem value="weight_loss">Weight Loss</SelectItem>
+                    <SelectItem value="general_fitness">General Fitness</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Step 3: Choose your preferred units.</h3>
+              <div className="space-y-2">
+                <Label htmlFor="units">Units</Label>
+                <Select value={units} onValueChange={(value) => setUnits(value as 'imperial' | 'metric')} disabled={loading}>
+                  <SelectTrigger id="units">
+                    <SelectValue placeholder="Select units" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="imperial">Imperial (lbs, inches)</SelectItem>
+                    <SelectItem value="metric">Metric (kg, cm)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between pt-4">
+            {step > 1 && (
+              <Button variant="outline" onClick={handleBack} disabled={loading}>
+                Back
+              </Button>
+            )}
+            <Button onClick={handleNext} disabled={loading} className="ml-auto">
+              {loading ? (
+                <span className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Saving...
+                </span>
+              ) : (
+                step < 3 ? "Next" : "Finish"
+              )}
             </Button>
           </div>
         </CardContent>

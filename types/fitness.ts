@@ -1,101 +1,88 @@
 export interface User {
-  id: string
-  name: string
-  username?: string
-  email?: string
-  primaryGoal: "strength" | "hypertrophy" | "fat_loss" | "endurance"
-  createdAt: string
-  preferences?: {
-    theme: "light" | "dark"
-    units: "metric" | "imperial"
-    todayWidgets: string[]
-    fitnessLevel?: string
-    workoutDays?: number
-    preferredTime?: string
-    equipment?: string[]
-  }
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+  primaryGoal: 'strength' | 'hypertrophy' | 'endurance' | 'weight_loss' | 'general_fitness';
+  createdAt: string;
+  preferences: {
+    theme: 'light' | 'dark';
+    units: 'imperial' | 'metric';
+    todayWidgets: string[]; // e.g., ['metrics', 'quick-actions', 'mood', 'water']
+  };
 }
 
 export interface WorkoutLog {
-  id: string
-  userId: string
-  date: string
-  startTime: string
-  endTime?: string
-  duration?: number
-  label: string
-  exercises: Exercise[]
-  workingWeights?: Record<string, number>
-  notes?: string
-  createdAt: string
+  id: string;
+  user_id: string;
+  date: string; // ISO date string
+  name: string;
+  duration_minutes: number;
+  exercises: Exercise[];
+  notes?: string;
+  calories_burned?: number;
 }
 
 export interface Exercise {
-  id: string
-  name: string
-  sets: Set[]
-  restTime?: number
-  notes?: string
+  id: string;
+  name: string;
+  sets: Set[];
+  notes?: string;
 }
 
 export interface Set {
-  reps: number
-  weight: number
-  rpe?: number
-  completed?: boolean
+  id: string;
+  reps: number;
+  weight: number; // in kg or lbs based on user preferences
+  unit: 'kg' | 'lbs';
+  rpe?: number; // Rate of Perceived Exertion
 }
 
 export interface NutritionLog {
-  id: string
-  userId: string
-  date: string
-  meals?: Meal[]
-  caloriesConsumed: number
-  protein: number
-  carbs: number
-  fat: number
-  createdAt: string
-}
-
-export interface Meal {
-  id: string
-  name: string
-  foods: FoodItem[]
-  calories: number
-  macros: {
-    protein: number
-    carbs: number
-    fat: number
-  }
+  id: string;
+  user_id: string;
+  date: string; // ISO date string
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  food_items: FoodItem[];
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
 }
 
 export interface FoodItem {
-  id: string
-  name: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-  quantity?: number
-  unit?: string
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  quantity: number;
+  unit: string;
 }
 
-export interface BodyMetrics {
-  id: string
-  userId: string
-  date: string
-  weight?: number
-  bodyFatPercentage?: number
-  measurements?: Record<string, number>
-  createdAt: string
+export interface BodyMetric {
+  id: string;
+  user_id: string;
+  date: string; // ISO date string
+  weight?: number; // in kg or lbs
+  height?: number; // in cm or inches
+  body_fat_percentage?: number;
+  muscle_mass_percentage?: number;
+  waist_circumference?: number; // in cm or inches
+  notes?: string;
 }
 
-export interface WorkoutTemplate {
-  id: string
-  name: string
-  exercises: Exercise[]
-  estimatedDuration: number
-  difficulty: "beginner" | "intermediate" | "advanced"
-  equipment: string[]
-  muscleGroups: string[]
+export interface MoodEntry {
+  id: string;
+  user_id: string;
+  date: string; // ISO date string
+  mood_score: number; // e.g., 1-5
+  notes?: string;
+}
+
+export interface WaterEntry {
+  id: string;
+  user_id: string;
+  date: string; // ISO date string
+  amount_ml: number;
 }

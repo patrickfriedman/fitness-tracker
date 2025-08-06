@@ -1,82 +1,130 @@
-"use client"
+'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
-import { TrendingUp, Target, Clock, Flame } from 'lucide-react'
+import { BarChart } from 'lucide-react'
+import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/components/ui/use-toast"
 
-export function WeeklySummary() {
-  const weeklyStats = {
-    workoutsCompleted: 4,
-    workoutsPlanned: 5,
-    totalDuration: 240, // minutes
-    caloriesBurned: 1200,
-    averageIntensity: 7.5,
-    streak: 3
-  }
+// Dummy data for chart, replace with actual data fetching and processing
+const dummyChartData = [
+  { name: "Mon", workouts: 2, calories: 1800 },
+  { name: "Tue", workouts: 1, calories: 2200 },
+  { name: "Wed", workouts: 3, calories: 2500 },
+  { name: "Thu", workouts: 0, calories: 1500 },
+  { name: "Fri", workouts: 2, calories: 2000 },
+  { name: "Sat", workouts: 1, calories: 2300 },
+  { name: "Sun", workouts: 0, calories: 1700 },
+]
 
-  const workoutProgress = (weeklyStats.workoutsCompleted / weeklyStats.workoutsPlanned) * 100
+export default function WeeklySummary() {
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const [summaryData, setSummaryData] = useState(dummyChartData)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchWeeklySummary = async () => {
+      if (!user) return
+      setLoading(true)
+      try {
+        const today = new Date()
+        const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay())) // Sunday
+        const endOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 6)) // Saturday
+
+        const { data: workouts, error: workoutError } = await supabase
+          .from('workout_logs')
+          .select('date, duration_minutes')
+          .eq('user_id', user.id)
+          .gte('date', startOfWeek.toISOString().split('T')[0])
+          .lte('date', endOfWeek.toISOString().split('T')[0])
+
+        if (workoutError) throw workoutError
+
+        const { data: nutrition, error: nutritionError } = await supabase
+          .from('nutrition_logs')
+          .select('date, total_calories')
+          .eq('user_id', user.id)
+          .gte('date', startOfWeek.toISOString().split('T')[0])
+          .lte('date', endOfWeek.toISOString().split('T')[0])
+
+        if (nutritionError) throw nutritionError
+
+        const dailySummary: Record<string, { workouts: number, calories: number }> = {}
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(startOfWeek)
+          date.setDate(startOfWeek.getDate() + i)
+          const dateString = date.toISOString().split('T')[0]
+          dailySummary[dateString] = { workouts: 0, calories: 0 }
+        }
+
+        workouts.forEach(w => {
+          const dateString = w.date.split('T')[0]
+          if (dailySummary[dateString]) {
+            dailySummary[dateString].workouts += 1
+          }
+        })
+
+        nutrition.forEach(n => {
+          const dateString = n.date.split('T')[0]
+          if (dailySummary[dateString]) {
+            dailySummary[dateString].calories += n.total_calories
+          }
+        })
+
+        const newSummaryData = Object.keys(dailySummary).map(dateString => {
+          const date = new Date(dateString)
+          const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
+          return {
+            name: dayName,
+            workouts: dailySummary[dateString].workouts,
+            calories: dailySummary[dateString].calories,
+          }
+        })
+        setSummaryData(newSummaryData)
+
+      } catch (error: any) {
+        console.error("Error fetching weekly summary:", error)
+        toast({
+          title: "Error",
+          description: `Failed to load weekly summary: ${error.message}`,
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchWeeklySummary()
+  }, [user, toast])
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <TrendingUp className="h-5 w-5" />
-          <span>Weekly Summary</span>
-        </CardTitle>
+    <Card className="col-span-1 md:col-span-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Weekly Summary</CardTitle>
+        <BarChart className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Workout Progress */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Workouts This Week</span>
-            <span className="text-sm text-gray-600">
-              {weeklyStats.workoutsCompleted}/{weeklyStats.workoutsPlanned}
-            </span>
+      <CardContent>
+        {loading ? (
+          <div className="text-center text-sm text-muted-foreground">Loading weekly summary...</div>
+        ) : (
+          <div className="grid grid-cols-7 gap-2 text-center text-sm">
+            {summaryData.map((day, index) => (
+              <div key={index} className="flex flex-col items-center">
+                <span className="font-medium">{day.name}</span>
+                <span className="text-xs text-muted-foreground">{day.workouts} workouts</span>
+                <span className="text-xs text-muted-foreground">{day.calories} kcal</span>
+                <div className="w-full h-16 bg-gray-200 dark:bg-gray-700 rounded-sm mt-1 flex flex-col-reverse">
+                  <div
+                    className="bg-blue-500 dark:bg-blue-600 rounded-sm"
+                    style={{ height: `${(day.workouts / Math.max(...summaryData.map(d => d.workouts || 1))) * 100}%` }}
+                    title={`${day.workouts} workouts`}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
-          <Progress value={workoutProgress} className="h-2" />
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <Clock className="h-5 w-5 text-blue-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-blue-600">{weeklyStats.totalDuration}</p>
-            <p className="text-xs text-gray-600">Minutes</p>
-          </div>
-          
-          <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-            <Flame className="h-5 w-5 text-orange-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-orange-600">{weeklyStats.caloriesBurned}</p>
-            <p className="text-xs text-gray-600">Calories</p>
-          </div>
-        </div>
-
-        {/* Additional Stats */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm">Average Intensity</span>
-            <Badge variant="outline">{weeklyStats.averageIntensity}/10</Badge>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="text-sm">Current Streak</span>
-            <Badge variant="default">{weeklyStats.streak} days</Badge>
-          </div>
-        </div>
-
-        {/* Weekly Goal */}
-        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-          <div className="flex items-center space-x-2 mb-2">
-            <Target className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium text-green-700 dark:text-green-300">
-              Weekly Goal
-            </span>
-          </div>
-          <p className="text-sm text-green-600 dark:text-green-400">
-            Complete 5 workouts this week - you're 80% there! 💪
-          </p>
-        </div>
+        )}
       </CardContent>
     </Card>
   )

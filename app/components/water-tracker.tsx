@@ -1,68 +1,117 @@
-"use client"
+'use client'
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Droplets, Plus, Minus } from 'lucide-react'
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/components/ui/use-toast"
+import { Droplet, Plus, Minus } from 'lucide-react'
+import { supabase } from "@/lib/supabase"
+import type { WaterEntry } from "@/types/fitness"
 
-export function WaterTracker() {
-  const [waterIntake, setWaterIntake] = useState(32) // oz
-  const dailyGoal = 64 // oz
-  const progress = Math.min((waterIntake / dailyGoal) * 100, 100)
+const WATER_GOAL_ML = 2500 // Example daily goal in ml
 
-  const addWater = (amount: number) => {
-    setWaterIntake(prev => Math.max(0, prev + amount))
+export default function WaterTracker() {
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const [currentWater, setCurrentWater] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useState(() => {
+    const fetchWaterIntake = async () => {
+      if (!user) return
+      setLoading(true)
+      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+      const { data, error } = await supabase
+        .from('water_logs')
+        .select('amount_ml')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .single()
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
+        console.error("Error fetching water intake:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load water intake.",
+          variant: "destructive",
+        })
+      } else if (data) {
+        setCurrentWater(data.amount_ml)
+      }
+      setLoading(false)
+    }
+    fetchWaterIntake()
+  }, [user])
+
+  const updateWaterIntake = async (newAmount: number) => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to track water intake.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    try {
+      const { error } = await supabase
+        .from('water_logs')
+        .upsert({ user_id: user.id, date: today, amount_ml: newAmount }, { onConflict: 'user_id,date' })
+
+      if (error) {
+        throw error
+      }
+      setCurrentWater(newAmount)
+      toast({
+        title: "Water Updated!",
+        description: `You've logged ${newAmount}ml of water today.`,
+      })
+    } catch (error: any) {
+      console.error("Error updating water intake:", error)
+      toast({
+        title: "Error",
+        description: `Failed to update water intake: ${error.message}`,
+        variant: "destructive",
+      })
+    }
   }
 
+  const handleAddWater = (amount: number) => {
+    updateWaterIntake(currentWater + amount)
+  }
+
+  const handleRemoveWater = (amount: number) => {
+    updateWaterIntake(Math.max(0, currentWater - amount))
+  }
+
+  const progress = (currentWater / WATER_GOAL_ML) * 100
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center space-x-2">
-          <Droplets className="h-5 w-5 text-blue-500" />
-          <span>Water Intake</span>
-        </CardTitle>
+    <Card className="col-span-1">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Water Intake</CardTitle>
+        <Droplet className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-center">
-          <p className="text-3xl font-bold text-blue-600">{waterIntake}</p>
-          <p className="text-sm text-gray-600">oz of {dailyGoal} oz goal</p>
-        </div>
-        
-        <Progress value={progress} className="w-full" />
-        
-        <div className="flex justify-center space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => addWater(-8)}
-            disabled={waterIntake === 0}
-          >
-            <Minus className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => addWater(8)}
-          >
-            <Plus className="h-4 w-4" />
-            8 oz
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => addWater(16)}
-          >
-            <Plus className="h-4 w-4" />
-            16 oz
-          </Button>
-        </div>
-        
-        {progress >= 100 && (
-          <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-              🎉 Daily goal achieved!
-            </p>
-          </div>
+      <CardContent>
+        {loading ? (
+          <div className="text-center text-sm text-muted-foreground">Loading water intake...</div>
+        ) : (
+          <>
+            <div className="text-2xl font-bold">{currentWater} ml</div>
+            <p className="text-xs text-muted-foreground">of {WATER_GOAL_ML} ml goal</p>
+            <Progress value={progress} className="mt-4" />
+            <div className="flex justify-between mt-4 space-x-2">
+              <Button variant="outline" onClick={() => handleRemoveWater(250)} size="sm">
+                <Minus className="h-4 w-4 mr-1" /> 250ml
+              </Button>
+              <Button onClick={() => handleAddWater(250)} size="sm">
+                <Plus className="h-4 w-4 mr-1" /> 250ml
+              </Button>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

@@ -1,84 +1,116 @@
-"use client"
+'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from 'lucide-react'
+import { CalendarDays } from 'lucide-react'
+import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/components/ui/use-toast"
 
-export function ActivityHeatmap() {
-  // Generate sample data for the last 12 weeks
-  const generateHeatmapData = () => {
-    const data = []
-    const today = new Date()
-    
-    for (let i = 83; i >= 0; i--) {
-      const date = new Date(today)
-      date.setDate(date.getDate() - i)
-      
-      // Random activity level (0-4)
-      const activity = Math.floor(Math.random() * 5)
-      
-      data.push({
-        date: date.toISOString().split('T')[0],
-        activity,
-        day: date.getDay()
-      })
+// Helper to get dates for the last year
+const getDatesForLastYear = () => {
+  const dates = []
+  const today = new Date()
+  for (let i = 0; i < 365; i++) {
+    const date = new Date(today)
+    date.setDate(today.getDate() - i)
+    dates.unshift(date.toISOString().split('T')[0]) // YYYY-MM-DD
+  }
+  return dates
+}
+
+const getIntensity = (count: number) => {
+  if (count === 0) return 'bg-gray-200 dark:bg-gray-700';
+  if (count === 1) return 'bg-green-200 dark:bg-green-800';
+  if (count === 2) return 'bg-green-400 dark:bg-green-700';
+  if (count >= 3) return 'bg-green-600 dark:bg-green-600';
+  return 'bg-gray-200 dark:bg-gray-700';
+}
+
+export default function ActivityHeatmap() {
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const [activityData, setActivityData] = useState<Record<string, number>>({})
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchActivity = async () => {
+      if (!user) return
+      setLoading(true)
+      try {
+        // Fetch workout logs
+        const { data: workoutData, error: workoutError } = await supabase
+          .from('workout_logs')
+          .select('date')
+          .eq('user_id', user.id)
+
+        if (workoutError) throw workoutError
+
+        // Fetch nutrition logs
+        const { data: nutritionData, error: nutritionError } = await supabase
+          .from('nutrition_logs')
+          .select('date')
+          .eq('user_id', user.id)
+
+        if (nutritionError) throw nutritionError
+
+        // Combine and count activities per day
+        const combinedData = [...workoutData, ...nutritionData]
+        const counts: Record<string, number> = {}
+        combinedData.forEach(item => {
+          const date = item.date.split('T')[0] // Ensure YYYY-MM-DD format
+          counts[date] = (counts[date] || 0) + 1
+        })
+        setActivityData(counts)
+      } catch (error: any) {
+        console.error("Error fetching activity data:", error)
+        toast({
+          title: "Error",
+          description: `Failed to load activity data: ${error.message}`,
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
     }
-    return data
-  }
+    fetchActivity()
+  }, [user, toast])
 
-  const heatmapData = generateHeatmapData()
-  
-  const getActivityColor = (level: number) => {
-    const colors = [
-      "bg-gray-100 dark:bg-gray-800", // No activity
-      "bg-green-100 dark:bg-green-900", // Low
-      "bg-green-300 dark:bg-green-700", // Medium
-      "bg-green-500 dark:bg-green-500", // High
-      "bg-green-700 dark:bg-green-300"  // Very high
-    ]
-    return colors[level] || colors[0]
-  }
-
-  const weeks = []
-  for (let i = 0; i < heatmapData.length; i += 7) {
-    weeks.push(heatmapData.slice(i, i + 7))
-  }
+  const dates = getDatesForLastYear()
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Calendar className="h-5 w-5" />
-          <span>Activity Heatmap</span>
-        </CardTitle>
+    <Card className="col-span-1 md:col-span-3">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Activity Heatmap</CardTitle>
+        <CalendarDays className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="grid grid-cols-12 gap-1">
-            {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="space-y-1">
-                {week.map((day, dayIndex) => (
-                  <div
-                    key={`${weekIndex}-${dayIndex}`}
-                    className={`w-3 h-3 rounded-sm ${getActivityColor(day.activity)}`}
-                    title={`${day.date}: ${day.activity} workouts`}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-          
-          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-            <span>Less</span>
-            <div className="flex space-x-1">
-              {[0, 1, 2, 3, 4].map((level) => (
+        {loading ? (
+          <div className="text-center text-sm text-muted-foreground">Loading activity data...</div>
+        ) : (
+          <div className="grid grid-flow-col grid-rows-7 gap-1 overflow-x-auto pb-2">
+            {/* Day labels (optional, can be added with more complex grid) */}
+            {dates.map((dateString) => {
+              const count = activityData[dateString] || 0
+              return (
                 <div
-                  key={level}
-                  className={`w-3 h-3 rounded-sm ${getActivityColor(level)}`}
+                  key={dateString}
+                  className={`h-4 w-4 rounded-sm ${getIntensity(count)}`}
+                  title={`${dateString}: ${count} activities`}
                 />
-              ))}
-            </div>
-            <span>More</span>
+              )
+            })}
           </div>
+        )}
+        <div className="flex justify-between text-xs text-muted-foreground mt-2">
+          <span>Less</span>
+          <div className="flex gap-1">
+            <div className="h-3 w-3 rounded-sm bg-gray-200 dark:bg-gray-700" />
+            <div className="h-3 w-3 rounded-sm bg-green-200 dark:bg-green-800" />
+            <div className="h-3 w-3 rounded-sm bg-green-400 dark:bg-green-700" />
+            <div className="h-3 w-3 rounded-sm bg-green-600 dark:bg-green-600" />
+          </div>
+          <span>More</span>
         </div>
       </CardContent>
     </Card>

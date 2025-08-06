@@ -3,13 +3,14 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
 import type { User } from "@/types/fitness"
+import { serverSignIn, serverSignUp, serverDeleteAccount, serverUpdateUserProfile } from "@/app/actions/auth-actions"
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
-  register: (userData: Partial<User> & { email: string; password: string }) => Promise<boolean>
-  updateUser: (userData: Partial<User>) => void
+  register: (userData: Partial<User> & { email: string; password: string }) => Promise<{ success: boolean; error?: string }>
+  updateUser: (userData: Partial<User>) => Promise<boolean>
   deleteAccount: () => Promise<boolean>
   loading: boolean
 }
@@ -21,16 +22,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchUserProfile(session.user.id)
-      } else {
+    const getSessionAndProfile = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError) throw sessionError
+
+        if (session?.user) {
+          await fetchUserProfile(session.user.id)
+        } else {
+          setUser(null)
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error("Error getting initial session:", error)
+        setUser(null)
         setLoading(false)
       }
-    })
+    }
 
-    // Listen for auth changes
+    getSessionAndProfile()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         await fetchUserProfile(session.user.id)
@@ -53,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('Error fetching user profile:', error)
+        setUser(null) // Clear user if profile not found or error
         setLoading(false)
         return
       }
@@ -61,9 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userProfile: User = {
           id: data.id,
           name: data.name,
-          username: data.email.split('@')[0],
+          username: data.email.split('@')[0], // Derive username from email for now
           email: data.email,
-          primaryGoal: data.primary_goal,
+          primaryGoal: data.primary_goal || 'general_fitness',
           createdAt: data.created_at,
           preferences: data.preferences || {
             theme: "light",
@@ -75,12 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error)
+      setUser(null)
     } finally {
       setLoading(false)
     }
   }
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       setLoading(true)
       
@@ -101,82 +114,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setUser(demoUser)
         setLoading(false)
-        return true
+        return { success: true }
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) {
-        console.error('Login error:', error)
+      const result = await serverSignIn(email, password)
+      if (result.success && result.user) {
+        await fetchUserProfile(result.user.id)
+        return { success: true }
+      } else {
         setLoading(false)
-        return false
+        return { success: false, error: result.error || "Login failed" }
       }
-
-      if (data.user) {
-        await fetchUserProfile(data.user.id)
-        return true
-      }
-
-      setLoading(false)
-      return false
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error)
       setLoading(false)
-      return false
+      return { success: false, error: error.message || "An unexpected error occurred" }
     }
   }
 
-  const register = async (userData: Partial<User> & { email: string; password: string }): Promise<boolean> => {
+  const register = async (userData: Partial<User> & { email: string; password: string }): Promise<{ success: boolean; error?: string }> => {
     try {
       setLoading(true)
-
-      // Sign up with Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-      })
-
-      if (error) {
-        console.error('Registration error:', error)
+      const result = await serverSignUp(userData)
+      if (result.success && result.user) {
+        await fetchUserProfile(result.user.id)
+        return { success: true }
+      } else {
         setLoading(false)
-        return false
+        return { success: false, error: result.error || "Registration failed" }
       }
-
-      if (data.user) {
-        // Create user profile in users table
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: data.user.id,
-            name: userData.name || '',
-            email: userData.email,
-            primary_goal: userData.primaryGoal || 'hypertrophy',
-            preferences: {
-              theme: "light",
-              units: "imperial",
-              todayWidgets: ["metrics", "quick-actions", "mood", "water"],
-            }
-          })
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError)
-          setLoading(false)
-          return false
-        }
-
-        await fetchUserProfile(data.user.id)
-        return true
-      }
-
-      setLoading(false)
-      return false
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error)
       setLoading(false)
-      return false
+      return { success: false, error: error.message || "An unexpected error occurred" }
     }
   }
 
@@ -187,44 +157,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const deleteAccount = async (): Promise<boolean> => {
     try {
-      if (!user) return false
-
-      // Delete user data from custom tables
-      await supabase.from('workout_logs').delete().eq('user_id', user.id)
-      await supabase.from('nutrition_logs').delete().eq('user_id', user.id)
-      await supabase.from('body_metrics').delete().eq('user_id', user.id)
-      await supabase.from('users').delete().eq('id', user.id)
-
-      // Sign out
-      await supabase.auth.signOut()
-      setUser(null)
-      return true
+      if (!user || user.id === "demo-user") { // Prevent deleting demo user
+        console.warn("Cannot delete demo user or no user logged in.")
+        return false
+      }
+      const result = await serverDeleteAccount(user.id)
+      if (result.success) {
+        setUser(null)
+        return true
+      } else {
+        console.error("Failed to delete account:", result.error)
+        return false
+      }
     } catch (error) {
-      console.error('Delete account error:', error)
+      console.error("Delete account error:", error)
       return false
     }
   }
 
-  const updateUser = async (userData: Partial<User>) => {
-    if (!user) return
-
+  const updateUser = async (userData: Partial<User>): Promise<boolean> => {
+    if (!user || user.id === "demo-user") {
+      console.warn("Cannot update demo user or no user logged in.")
+      return false
+    }
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          name: userData.name,
-          primary_goal: userData.primaryGoal,
-          preferences: userData.preferences
-        })
-        .eq('id', user.id)
-
-      if (!error) {
+      const result = await serverUpdateUserProfile(user.id, userData)
+      if (result.success) {
         const updatedUser = { ...user, ...userData }
         setUser(updatedUser)
+        return true
+      } else {
+        console.error("Failed to update user profile:", result.error)
+        return false
       }
     } catch (error) {
       console.error('Update user error:', error)
+      return false
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
