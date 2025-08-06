@@ -3,13 +3,13 @@
 import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { saveWorkout, updateWorkout } from '@/lib/db'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Dumbbell, Play, Square, Edit, Check, Trash2 } from "lucide-react"
+import { Dumbbell, Play, Square, Edit, Check, Trash2 } from 'lucide-react'
 import type { WorkoutLog } from "../../types/fitness"
 
 interface WorkoutLoggerProps {
@@ -17,6 +17,7 @@ interface WorkoutLoggerProps {
   workoutInProgress?: WorkoutLog | null
   onWorkoutStart?: (workout: WorkoutLog) => void
   onWorkoutFinish?: (workout: WorkoutLog) => void
+  onStartWorkout?: (workout: any) => void
 }
 
 interface Exercise {
@@ -40,7 +41,7 @@ const workoutTemplates = [
       { name: "Bench Press", sets: 3, reps: "5", weight: 185, restTime: 180 },
       { name: "Incline Dumbbell Press", sets: 3, reps: "8-10", weight: 60, restTime: 120 },
       { name: "Overhead Press", sets: 3, reps: "6-8", weight: 135, restTime: 150 },
-      { name: "Tricep Dips", sets: 3, reps: "10-12", restTime: 90 },
+      { name: "Tricep Dips", sets: 3, reps: "10-12", weight: 40, restTime: 90 },
     ],
     estimatedDuration: 45,
   },
@@ -50,7 +51,7 @@ const workoutTemplates = [
     category: "strength",
     exercises: [
       { name: "Deadlift", sets: 1, reps: "5", weight: 275, restTime: 300 },
-      { name: "Pull-ups", sets: 4, reps: "6-8", restTime: 120 },
+      { name: "Pull-ups", sets: 4, reps: "6-8", weight: 40, restTime: 120 },
       { name: "Barbell Rows", sets: 4, reps: "8-10", weight: 155, restTime: 120 },
       { name: "Face Pulls", sets: 3, reps: "12-15", weight: 40, restTime: 60 },
     ],
@@ -69,7 +70,13 @@ const workoutTemplates = [
   },
 ]
 
-export function WorkoutLogger({ userId, workoutInProgress, onWorkoutStart, onWorkoutFinish }: WorkoutLoggerProps) {
+const quickWorkouts = [
+  { name: "Push Day", exercises: ["Push-ups", "Bench Press", "Shoulder Press"] },
+  { name: "Pull Day", exercises: ["Pull-ups", "Rows", "Bicep Curls"] },
+  { name: "Leg Day", exercises: ["Squats", "Deadlifts", "Lunges"] },
+]
+
+export function WorkoutLogger({ userId, workoutInProgress, onWorkoutStart, onWorkoutFinish, onStartWorkout }: WorkoutLoggerProps) {
   const [currentWorkout, setCurrentWorkout] = useState<Partial<WorkoutLog>>({
     userId,
     date: new Date().toISOString().split("T")[0],
@@ -175,58 +182,37 @@ export function WorkoutLogger({ userId, workoutInProgress, onWorkoutStart, onWor
 
   return (
     <div className="space-y-6">
-      <div className="relative">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Quick Start Templates</h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const widget = document.getElementById("quick-start-widget")
-              if (widget) {
-                widget.style.display = widget.style.display === "none" ? "block" : "none"
-              }
-            }}
-            className="h-6 w-6 p-0 text-gray-500"
-          >
-            <span className="text-xs">−</span>
-          </Button>
-        </div>
-        <div id="quick-start-widget">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center space-x-2">
-                <Dumbbell className="h-5 w-5 text-blue-600" />
-                <span>Quick Start Templates</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-3">
-                {workoutTemplates.map((template) => (
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Start Workouts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {quickWorkouts.map((workout, index) => (
+              <Card key={index} className="cursor-pointer hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Dumbbell className="h-4 w-4" />
+                    <h3 className="font-medium">{workout.name}</h3>
+                  </div>
+                  <ul className="text-sm text-gray-600 mb-3">
+                    {workout.exercises.map((exercise, i) => (
+                      <li key={i}>• {exercise}</li>
+                    ))}
+                  </ul>
                   <Button
-                    key={template.id}
-                    variant="outline"
-                    className="h-auto p-4 justify-start bg-transparent"
-                    onClick={() => loadTemplate(template)}
+                    size="sm"
+                    className="w-full"
+                    onClick={() => onStartWorkout?.(workout)}
                   >
-                    <div className="flex items-center justify-between w-full">
-                      <div className="text-left">
-                        <p className="font-medium">{template.name}</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {template.exercises.length} exercises • ~{template.estimatedDuration}min
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="capitalize">
-                        {template.category}
-                      </Badge>
-                    </div>
+                    Start Workout
                   </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="relative">
         <div className="flex items-center justify-between mb-2">

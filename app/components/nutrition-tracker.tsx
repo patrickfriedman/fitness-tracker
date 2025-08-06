@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Apple, Plus, Search, Utensils, Target, Check, X } from "lucide-react"
+import { Apple, Plus, Search, Utensils, Target, Check, X } from 'lucide-react'
 import type { NutritionLog, FoodItem } from "../../types/fitness"
 
 interface NutritionTrackerProps {
@@ -72,10 +72,12 @@ export function NutritionTracker({ userId }: NutritionTrackerProps) {
     }
   }
 
-  const calorieProgress = (todayLog.caloriesConsumed / todayLog.calorieLimit) * 100
-  const proteinProgress = (todayLog.protein / 150) * 100 // Assuming 150g protein goal
-  const carbProgress = (todayLog.carbs / 250) * 100 // Assuming 250g carb goal
-  const fatProgress = (todayLog.fat / 80) * 100 // Assuming 80g fat goal
+  const nutrition = {
+    calories: { consumed: todayLog.caloriesConsumed, goal: todayLog.calorieLimit },
+    protein: { consumed: todayLog.protein, goal: 150 },
+    carbs: { consumed: todayLog.carbs, goal: 250 },
+    fat: { consumed: todayLog.fat, goal: 80 },
+  }
 
   return (
     <div className="space-y-6">
@@ -143,43 +145,22 @@ export function NutritionTracker({ userId }: NutritionTrackerProps) {
                 </div>
               )}
 
-              {/* Calorie Progress */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Calories</span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-2xl font-bold text-green-600">{todayLog.caloriesConsumed}</span>
-                    <span className="text-sm text-gray-600">/ {todayLog.calorieLimit}</span>
-                    <Badge variant={calorieProgress > 100 ? "destructive" : "outline"} className="text-xs">
-                      {calorieProgress.toFixed(0)}%
-                    </Badge>
+              {/* Nutrition Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {Object.entries(nutrition).map(([key, value]) => (
+                  <div key={key} className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium capitalize">{key}</span>
+                      <span className="text-sm text-gray-600">
+                        {value.consumed}/{value.goal}
+                      </span>
+                    </div>
+                    <Progress value={(value.consumed / value.goal) * 100} className="h-2" />
+                    <p className="text-xs text-gray-500">
+                      {Math.round((value.consumed / value.goal) * 100)}% of goal
+                    </p>
                   </div>
-                </div>
-                <Progress value={Math.min(100, calorieProgress)} className="h-3" />
-                <p className="text-xs text-center text-gray-600">
-                  {todayLog.calorieLimit - todayLog.caloriesConsumed > 0
-                    ? `${todayLog.calorieLimit - todayLog.caloriesConsumed} calories remaining`
-                    : `${todayLog.caloriesConsumed - todayLog.calorieLimit} calories over limit`}
-                </p>
-              </div>
-
-              {/* Macronutrients */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <p className="text-lg font-bold text-blue-600">{todayLog.protein}g</p>
-                  <p className="text-xs text-gray-600">Protein</p>
-                  <Progress value={Math.min(100, proteinProgress)} className="h-1 mt-1" />
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-orange-600">{todayLog.carbs}g</p>
-                  <p className="text-xs text-gray-600">Carbs</p>
-                  <Progress value={Math.min(100, carbProgress)} className="h-1 mt-1" />
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold text-purple-600">{todayLog.fat}g</p>
-                  <p className="text-xs text-gray-600">Fat</p>
-                  <Progress value={Math.min(100, fatProgress)} className="h-1 mt-1" />
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>

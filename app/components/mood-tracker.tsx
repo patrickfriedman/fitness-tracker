@@ -3,128 +3,68 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Heart, Smile, Meh, Frown, Angry } from "lucide-react"
-import type { MoodLog } from "../../types/fitness"
+import { Smile, Meh, Frown } from 'lucide-react'
 
-interface MoodTrackerProps {
-  userId: string
-  onMoodUpdate?: (mood: MoodLog) => void
-}
+export function MoodTracker() {
+  const [mood, setMood] = useState<number | null>(null)
+  const [energy, setEnergy] = useState<number | null>(null)
 
-const moodOptions = [
-  { value: 5, icon: Heart, label: "Excellent", color: "text-green-600" },
-  { value: 4, icon: Smile, label: "Good", color: "text-blue-600" },
-  { value: 3, icon: Meh, label: "Okay", color: "text-yellow-600" },
-  { value: 2, icon: Frown, label: "Poor", color: "text-orange-600" },
-  { value: 1, icon: Angry, label: "Terrible", color: "text-red-600" },
-]
-
-export function MoodTrackerWidget({ userId, onMoodUpdate }: MoodTrackerProps) {
-  const [selectedMood, setSelectedMood] = useState<number | null>(null)
-  const [notes, setNotes] = useState("")
-  const [isExpanded, setIsExpanded] = useState(false)
-
-  const handleMoodSelect = (moodValue: number) => {
-    setSelectedMood(moodValue)
-    setIsExpanded(true)
-  }
-
-  const handleSave = () => {
-    if (selectedMood) {
-      const moodLog: MoodLog = {
-        userId,
-        date: new Date().toISOString().split("T")[0],
-        mood: selectedMood,
-        notes,
-        timestamp: new Date().toISOString(),
-      }
-
-      onMoodUpdate?.(moodLog)
-      setIsExpanded(false)
-      setNotes("")
-    }
-  }
-
-  const selectedMoodOption = moodOptions.find((option) => option.value === selectedMood)
+  const moodOptions = [
+    { value: 1, icon: Frown, label: "Poor", color: "text-red-500" },
+    { value: 2, icon: Frown, label: "Fair", color: "text-orange-500" },
+    { value: 3, icon: Meh, label: "Good", color: "text-yellow-500" },
+    { value: 4, icon: Smile, label: "Great", color: "text-green-500" },
+    { value: 5, icon: Smile, label: "Excellent", color: "text-blue-500" },
+  ]
 
   return (
-    <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center space-x-2 text-purple-700 dark:text-purple-400">
-          <Heart className="h-5 w-5" />
-          <span>Mood Tracker</span>
-        </CardTitle>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">How are you feeling?</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!isExpanded ? (
-          <div className="space-y-3">
-            <p className="text-sm text-center text-gray-600 dark:text-gray-400">How are you feeling today?</p>
-            <div className="grid grid-cols-5 gap-2">
-              {moodOptions.map((mood) => {
-                const IconComponent = mood.icon
-                return (
-                  <Button
-                    key={mood.value}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleMoodSelect(mood.value)}
-                    className={`h-12 flex-col space-y-1 bg-transparent ${
-                      selectedMood === mood.value ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30" : ""
-                    }`}
-                  >
-                    <IconComponent className={`h-4 w-4 ${mood.color}`} />
-                    <span className="text-xs">{mood.label}</span>
-                  </Button>
-                )
-              })}
-            </div>
+        <div>
+          <p className="text-sm font-medium mb-2">Mood</p>
+          <div className="flex space-x-2">
+            {moodOptions.map((option) => {
+              const Icon = option.icon
+              return (
+                <Button
+                  key={option.value}
+                  variant={mood === option.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setMood(option.value)}
+                  className="flex-1"
+                >
+                  <Icon className={`h-4 w-4 ${mood === option.value ? "text-white" : option.color}`} />
+                </Button>
+              )
+            })}
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="text-center">
-              {selectedMoodOption && (
-                <div className="flex items-center justify-center space-x-2">
-                  <selectedMoodOption.icon className={`h-6 w-6 ${selectedMoodOption.color}`} />
-                  <span className="font-medium">{selectedMoodOption.label}</span>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Textarea
-                placeholder="Add a note about your mood (optional)..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="min-h-[80px] resize-none"
-              />
-            </div>
-
-            <div className="flex space-x-2">
-              <Button onClick={handleSave} className="flex-1">
-                Save Mood
-              </Button>
+        </div>
+        
+        <div>
+          <p className="text-sm font-medium mb-2">Energy Level</p>
+          <div className="flex space-x-2">
+            {[1, 2, 3, 4, 5].map((level) => (
               <Button
-                onClick={() => {
-                  setIsExpanded(false)
-                  setSelectedMood(null)
-                  setNotes("")
-                }}
-                variant="outline"
+                key={level}
+                variant={energy === level ? "default" : "outline"}
+                size="sm"
+                onClick={() => setEnergy(level)}
                 className="flex-1"
               >
-                Cancel
+                {level}
               </Button>
-            </div>
+            ))}
           </div>
-        )}
+        </div>
 
-        {selectedMood && !isExpanded && (
-          <div className="text-center p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-            <p className="text-sm font-medium text-purple-700 dark:text-purple-400">
-              Today's mood: {selectedMoodOption?.label}
+        {mood && energy && (
+          <div className="text-center p-2 bg-green-50 rounded-lg">
+            <p className="text-sm text-green-700">
+              Mood: {moodOptions.find(o => o.value === mood)?.label} | Energy: {energy}/5
             </p>
-            {notes && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">"{notes}"</p>}
           </div>
         )}
       </CardContent>

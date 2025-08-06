@@ -39,6 +39,8 @@ export default function FitnessApp() {
   const [completedWorkout, setCompletedWorkout] = useState<Workout | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
+  console.log("FitnessApp render - user:", user)
+
   useEffect(() => {
     if (user && !user.primaryGoal) {
       setShowOnboarding(true)
@@ -87,7 +89,9 @@ export default function FitnessApp() {
     }
   }
 
+  // Show login screen if no user
   if (!user) {
+    console.log("No user found, showing LoginScreen")
     return <LoginScreen />
   }
 

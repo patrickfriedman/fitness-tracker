@@ -16,52 +16,73 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Check for stored user session
-    const storedUser = localStorage.getItem("fitness-user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
+    try {
+      const storedUser = localStorage.getItem("fitness-user")
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser)
+        console.log("Found stored user:", parsedUser)
+        setUser(parsedUser)
+      }
+    } catch (error) {
+      console.error("Error loading stored user:", error)
+      localStorage.removeItem("fitness-user")
+    } finally {
+      setIsLoading(false)
     }
   }, [])
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    // Mock authentication - in real app, this would call an API
-    const mockUser: User = {
-      id: `user-${Date.now()}`,
-      name: username === "demo" ? "Demo User" : username,
-      username,
-      primaryGoal: "hypertrophy",
-      createdAt: new Date().toISOString(),
-      preferences: {
-        theme: "light",
-        units: "imperial",
-        todayWidgets: ["metrics", "quick-actions", "mood", "water"],
-      },
-    }
+    try {
+      // Mock authentication - in real app, this would call an API
+      const mockUser: User = {
+        id: `user-${Date.now()}`,
+        name: username === "demo" ? "Demo User" : username,
+        username,
+        primaryGoal: "hypertrophy",
+        createdAt: new Date().toISOString(),
+        preferences: {
+          theme: "light",
+          units: "imperial",
+          todayWidgets: ["metrics", "quick-actions", "mood", "water"],
+        },
+      }
 
-    setUser(mockUser)
-    localStorage.setItem("fitness-user", JSON.stringify(mockUser))
-    return true
+      setUser(mockUser)
+      localStorage.setItem("fitness-user", JSON.stringify(mockUser))
+      console.log("User logged in successfully:", mockUser)
+      return true
+    } catch (error) {
+      console.error("Login error:", error)
+      throw error
+    }
   }
 
   const register = async (userData: Partial<User>): Promise<boolean> => {
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name: userData.name || "",
-      username: userData.username || "",
-      primaryGoal: userData.primaryGoal || "hypertrophy",
-      createdAt: new Date().toISOString(),
-      preferences: {
-        theme: "light",
-        units: "imperial",
-        todayWidgets: ["metrics", "quick-actions", "mood", "water"],
-      },
-    }
+    try {
+      const newUser: User = {
+        id: `user-${Date.now()}`,
+        name: userData.name || "",
+        username: userData.username || "",
+        primaryGoal: userData.primaryGoal || "hypertrophy",
+        createdAt: new Date().toISOString(),
+        preferences: {
+          theme: "light",
+          units: "imperial",
+          todayWidgets: ["metrics", "quick-actions", "mood", "water"],
+        },
+      }
 
-    setUser(newUser)
-    localStorage.setItem("fitness-user", JSON.stringify(newUser))
-    return true
+      setUser(newUser)
+      localStorage.setItem("fitness-user", JSON.stringify(newUser))
+      return true
+    } catch (error) {
+      console.error("Registration error:", error)
+      throw error
+    }
   }
 
   const logout = () => {
@@ -70,13 +91,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const deleteAccount = async (): Promise<boolean> => {
-    // In a real app, this would call an API to delete the account
-    setUser(null)
-    localStorage.removeItem("fitness-user")
-    localStorage.removeItem("fitness-workouts")
-    localStorage.removeItem("fitness-nutrition")
-    localStorage.removeItem("fitness-metrics")
-    return true
+    try {
+      // In a real app, this would call an API to delete the account
+      setUser(null)
+      localStorage.removeItem("fitness-user")
+      localStorage.removeItem("fitness-workouts")
+      localStorage.removeItem("fitness-nutrition")
+      localStorage.removeItem("fitness-metrics")
+      return true
+    } catch (error) {
+      console.error("Delete account error:", error)
+      throw error
+    }
   }
 
   const updateUser = (userData: Partial<User>) => {
@@ -85,6 +111,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(updatedUser)
       localStorage.setItem("fitness-user", JSON.stringify(updatedUser))
     }
+  }
+
+  // Don't render children until we've checked for stored user
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

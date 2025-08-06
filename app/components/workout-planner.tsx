@@ -1,782 +1,281 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileText, Wand2, Download, Play, Plus, Minus, Trash2 } from "lucide-react"
-import type { WorkoutPlan } from "../../types/fitness"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Plus, Dumbbell, Play, Trash2 } from 'lucide-react'
+import type { Workout, WorkoutExercise } from "@/types/fitness"
 
 interface WorkoutPlannerProps {
-  userId: string
+  onStartWorkout: (workout: Workout) => void
 }
 
-interface ExerciseSet {
-  reps?: number
-  weight?: number
-  distance?: number
-  time?: number
-  unit: string
-}
-
-interface Exercise {
-  name: string
-  sets: ExerciseSet[]
-}
-
-interface Workout {
-  label: string
-  exercises?: Exercise[]
-}
-
-interface CustomTemplate {
-  id: string
-  name: string
-  category: string
-  exercises: Exercise[]
-}
-
-export function WorkoutPlanner({ userId }: WorkoutPlannerProps) {
-  const [textInput, setTextInput] = useState(`Day 1 – Push:
-Bench Press 3×5
-Incline DB Press 4×10
-Overhead Press 3×8
-Tricep Dips 3×12
-
-Day 2 – Pull:
-Deadlift 1×5
-Pull-ups 4×8
-Barbell Rows 4×10
-Face Pulls 3×15
-
-Day 3 – Legs:
-Squat 3×5
-Romanian Deadlift 3×8
-Leg Press 4×12
-Calf Raises 4×15`)
-
-  const [parsedPlan, setParsedPlan] = useState<WorkoutPlan | null>(null)
-  const [savedPlans, setSavedPlans] = useState<WorkoutPlan[]>([
+export function WorkoutPlanner({ onStartWorkout }: WorkoutPlannerProps) {
+  const [workouts, setWorkouts] = useState<Workout[]>([
     {
-      name: "Push/Pull/Legs Split",
-      days: [
+      id: "1",
+      name: "Push Day",
+      exercises: [
         {
-          name: "Push Day",
-          exercises: [
-            {
-              name: "Bench Press",
-              sets: [
-                { reps: 5, weight: 0, unit: "lb" },
-                { reps: 5, weight: 0, unit: "lb" },
-                { reps: 5, weight: 0, unit: "lb" },
-              ],
-            },
-            {
-              name: "Incline DB Press",
-              sets: [
-                { reps: 10, weight: 0, unit: "lb" },
-                { reps: 10, weight: 0, unit: "lb" },
-                { reps: 10, weight: 0, unit: "lb" },
-                { reps: 10, weight: 0, unit: "lb" },
-              ],
-            },
-          ],
+          exerciseName: "Bench Press",
+          sets: [
+            { reps: 10, weight: 135 },
+            { reps: 8, weight: 155 },
+            { reps: 6, weight: 175 }
+          ]
         },
-      ],
+        {
+          exerciseName: "Shoulder Press",
+          sets: [
+            { reps: 12, weight: 65 },
+            { reps: 10, weight: 75 },
+            { reps: 8, weight: 85 }
+          ]
+        }
+      ]
     },
+    {
+      id: "2",
+      name: "Pull Day",
+      exercises: [
+        {
+          exerciseName: "Pull-ups",
+          sets: [
+            { reps: 8 },
+            { reps: 6 },
+            { reps: 5 }
+          ]
+        },
+        {
+          exerciseName: "Barbell Rows",
+          sets: [
+            { reps: 10, weight: 135 },
+            { reps: 8, weight: 155 }
+          ]
+        }
+      ]
+    }
   ])
 
-  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([])
-  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false)
-  const [newTemplateName, setNewTemplateName] = useState("")
-
-  const [currentWorkout, setCurrentWorkout] = useState<Workout>({
-    label: "strength",
-    exercises: [],
+  const [isCreating, setIsCreating] = useState(false)
+  const [newWorkout, setNewWorkout] = useState<Partial<Workout>>({
+    name: "",
+    exercises: []
   })
 
-  const [workoutInProgress, setWorkoutInProgress] = useState<boolean | null>(null)
-
-  // Quick add workouts (similar to nutrition)
-  const quickWorkouts = [
-    { name: "Push Day", exercises: ["Bench Press", "Overhead Press", "Tricep Dips"], frequency: 15 },
-    { name: "Pull Day", exercises: ["Deadlift", "Pull-ups", "Barbell Rows"], frequency: 12 },
-    { name: "Leg Day", exercises: ["Squat", "Romanian Deadlift", "Leg Press"], frequency: 10 },
-    { name: "Upper Body", exercises: ["Bench Press", "Barbell Rows", "Overhead Press"], frequency: 8 },
-    { name: "Full Body", exercises: ["Squat", "Bench Press", "Barbell Rows"], frequency: 6 },
-    { name: "Cardio HIIT", exercises: ["Treadmill Intervals", "Burpees", "Mountain Climbers"], frequency: 20 },
-  ]
-
-  const addExercise = () => {
-    const newExercise: Exercise = {
-      name: "Bench Press",
-      sets: [{ reps: 0, weight: 0, unit: "lb" }],
-    }
-
-    setCurrentWorkout((prev) => ({
-      ...prev,
-      exercises: [...(prev.exercises || []), newExercise],
-    }))
-  }
-
-  const addQuickWorkout = (quickWorkout: any) => {
-    const exercises: Exercise[] = quickWorkout.exercises.map((exerciseName: string) => ({
-      name: exerciseName,
-      sets:
-        currentWorkout.label === "cardio"
-          ? [{ distance: 0, time: 0, unit: "min" }]
-          : [{ reps: 0, weight: 0, unit: "lb" }],
-    }))
-
-    setCurrentWorkout((prev) => ({
-      ...prev,
-      exercises,
-    }))
-  }
-
-  const saveAsTemplate = () => {
-    if (newTemplateName && currentWorkout.exercises?.length) {
-      const newTemplate: CustomTemplate = {
-        id: `custom-${Date.now()}`,
-        name: newTemplateName,
-        category: currentWorkout.label,
-        exercises: currentWorkout.exercises,
+  const handleCreateWorkout = () => {
+    if (newWorkout.name && newWorkout.exercises) {
+      const workout: Workout = {
+        id: Date.now().toString(),
+        name: newWorkout.name,
+        exercises: newWorkout.exercises
       }
-
-      setCustomTemplates((prev) => [...prev, newTemplate])
-      setIsCreatingTemplate(false)
-      setNewTemplateName("")
+      setWorkouts([...workouts, workout])
+      setNewWorkout({ name: "", exercises: [] })
+      setIsCreating(false)
     }
   }
 
-  const deleteCustomTemplate = (templateId: string) => {
-    setCustomTemplates((prev) => prev.filter((template) => template.id !== templateId))
-  }
-
-  const loadTemplate = (template: CustomTemplate) => {
-    setCurrentWorkout({
-      label: template.category,
-      exercises: template.exercises,
-    })
-  }
-
-  const startWorkout = () => {
-    setWorkoutInProgress(true)
-  }
-
-  const parseWorkoutText = (text: string): WorkoutPlan => {
-    const lines = text.split("\n").filter((line) => line.trim())
-    const plan: WorkoutPlan = { name: "Custom Plan", days: [] }
-
-    let currentDay: any = null
-
-    lines.forEach((line) => {
-      const trimmed = line.trim()
-
-      if (trimmed.toLowerCase().includes("day") && trimmed.includes(":")) {
-        if (currentDay) {
-          plan.days.push(currentDay)
-        }
-        currentDay = {
-          name: trimmed,
-          exercises: [],
-        }
-      } else if (currentDay && trimmed) {
-        const exerciseMatch = trimmed.match(/^(.+?)\s+(\d+)×(\d+(?:-\d+)?|\d+\+?)(.*)$/)
-        if (exerciseMatch) {
-          const [, name, sets, reps, notes] = exerciseMatch
-          currentDay.exercises.push({
-            name: name.trim(),
-            sets: Array.from({ length: Number.parseInt(sets) }, () => ({
-              reps: Number.parseInt(reps),
-              weight: 0,
-              unit: "lb",
-            })),
-          })
-        } else {
-          currentDay.exercises.push({
-            name: trimmed,
-            sets: Array.from({ length: 3 }, () => ({ reps: 10, weight: 0, unit: "lb" })),
-          })
-        }
-      }
-    })
-
-    if (currentDay) {
-      plan.days.push(currentDay)
-    }
-
-    return plan
-  }
-
-  const handleParse = () => {
-    const parsed = parseWorkoutText(textInput)
-    setParsedPlan(parsed)
-  }
-
-  const savePlan = () => {
-    if (parsedPlan) {
-      setSavedPlans((prev) => [...prev, parsedPlan])
-      setParsedPlan(null)
-      setTextInput("")
-    }
-  }
-
-  const generateTemplate = (type: string) => {
-    const templates = {
-      "push-pull-legs": `Day 1 – Push:
-Bench Press 3×5
-Incline DB Press 4×10
-Overhead Press 3×8
-Lateral Raises 3×12
-Tricep Dips 3×12
-Close Grip Bench 3×10
-
-Day 2 – Pull:
-Deadlift 1×5
-Pull-ups 4×8
-Barbell Rows 4×10
-Cable Rows 3×12
-Face Pulls 3×15
-Barbell Curls 3×10
-
-Day 3 – Legs:
-Squat 3×5
-Romanian Deadlift 3×8
-Leg Press 4×12
-Leg Curls 3×12
-Calf Raises 4×15
-Walking Lunges 3×20`,
-
-      "upper-lower": `Day 1 – Upper:
-Bench Press 4×6
-Barbell Rows 4×6
-Overhead Press 3×8
-Pull-ups 3×8
-Dips 3×10
-Barbell Curls 3×10
-
-Day 2 – Lower:
-Squat 4×6
-Romanian Deadlift 3×8
-Leg Press 3×12
-Leg Curls 3×10
-Calf Raises 4×12
-Abs Circuit 3×15`,
-
-      "full-body": `Day 1 – Full Body:
-Squat 3×8
-Bench Press 3×8
-Barbell Rows 3×8
-Overhead Press 3×8
-Romanian Deadlift 3×8
-Pull-ups 3×8
-Plank 3×30s`,
-    }
-
-    setTextInput(templates[type as keyof typeof templates] || "")
-  }
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file && file.type === "text/plain") {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const content = e.target?.result as string
-        setTextInput(content)
-      }
-      reader.readAsText(file)
-    }
+  const handleDeleteWorkout = (workoutId: string) => {
+    setWorkouts(workouts.filter(w => w.id !== workoutId))
   }
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="create" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="create">Create Plan</TabsTrigger>
-          <TabsTrigger value="quick">Quick Add</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="saved">Saved Plans</TabsTrigger>
-        </TabsList>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Workout Planner</h2>
+        <Dialog open={isCreating} onOpenChange={setIsCreating}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Workout
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create New Workout</DialogTitle>
+            </DialogHeader>
+            <WorkoutForm
+              workout={newWorkout}
+              onChange={setNewWorkout}
+              onSave={handleCreateWorkout}
+              onCancel={() => setIsCreating(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
 
-        <TabsContent value="quick" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Play className="h-5 w-5" />
-                <span>Quick Add Workouts</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-2">
-                {quickWorkouts.map((workout, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    className="h-auto p-3 justify-between bg-transparent"
-                    onClick={() => addQuickWorkout(workout)}
-                  >
-                    <div className="text-left">
-                      <p className="font-medium">{workout.name}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">{workout.exercises.join(", ")}</p>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {workout.frequency}x
-                    </Badge>
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="create" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <FileText className="h-5 w-5" />
-                  <span>Create Your Own Workout Plan</span>
-                </div>
-                {currentWorkout.exercises?.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={() => setIsCreatingTemplate(true)}>
-                    Save as Template
-                  </Button>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="workout-type">Workout Type</Label>
-                <Select
-                  value={currentWorkout.label}
-                  onValueChange={(value) => setCurrentWorkout((prev) => ({ ...prev, label: value as any }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a workout type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="strength">Strength Training</SelectItem>
-                    <SelectItem value="cardio">Cardio</SelectItem>
-                    <SelectItem value="hypertrophy">Hypertrophy</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button onClick={addExercise} variant="outline" className="w-full bg-transparent">
-                Add Exercise
-              </Button>
-
-              {currentWorkout.exercises && currentWorkout.exercises.length > 0 && (
-                <div className="space-y-4">
-                  {currentWorkout.exercises.map((exercise, index) => (
-                    <Card key={index} className="border-l-4 border-l-blue-500">
-                      <CardContent className="p-4 space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <Label>Exercise</Label>
-                            <Select
-                              value={exercise.name}
-                              onValueChange={(value) => {
-                                const updatedExercises = [...(currentWorkout.exercises || [])]
-                                updatedExercises[index] = { ...exercise, name: value }
-                                setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-                              }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select exercise" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Bench Press">Bench Press</SelectItem>
-                                <SelectItem value="Squat">Squat</SelectItem>
-                                <SelectItem value="Deadlift">Deadlift</SelectItem>
-                                <SelectItem value="Pull-ups">Pull-ups</SelectItem>
-                                <SelectItem value="Push-ups">Push-ups</SelectItem>
-                                <SelectItem value="Overhead Press">Overhead Press</SelectItem>
-                                <SelectItem value="Barbell Rows">Barbell Rows</SelectItem>
-                                <SelectItem value="Incline Dumbbell Press">Incline Dumbbell Press</SelectItem>
-                                <SelectItem value="Leg Press">Leg Press</SelectItem>
-                                <SelectItem value="Leg Curls">Leg Curls</SelectItem>
-                                <SelectItem value="Calf Raises">Calf Raises</SelectItem>
-                                <SelectItem value="Tricep Dips">Tricep Dips</SelectItem>
-                                <SelectItem value="Bicep Curls">Bicep Curls</SelectItem>
-                                <SelectItem value="Lateral Raises">Lateral Raises</SelectItem>
-                                <SelectItem value="Face Pulls">Face Pulls</SelectItem>
-                                <SelectItem value="Treadmill">Treadmill</SelectItem>
-                                <SelectItem value="Cycling">Cycling</SelectItem>
-                                <SelectItem value="Running">Running</SelectItem>
-                                <SelectItem value="Rowing">Rowing</SelectItem>
-                                <SelectItem value="Custom">Custom Exercise</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            {exercise.name === "Custom" && (
-                              <Input
-                                placeholder="Enter custom exercise name"
-                                className="mt-2"
-                                onChange={(e) => {
-                                  const updatedExercises = [...(currentWorkout.exercises || [])]
-                                  updatedExercises[index] = { ...exercise, name: e.target.value }
-                                  setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-                                }}
-                              />
-                            )}
-                          </div>
-                          <div>
-                            <Label>Sets</Label>
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const updatedExercises = [...(currentWorkout.exercises || [])]
-                                  if (exercise.sets.length > 1) {
-                                    exercise.sets.pop()
-                                    updatedExercises[index] = exercise
-                                    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-                                  }
-                                }}
-                                disabled={exercise.sets.length <= 1}
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="text-sm font-medium w-8 text-center">{exercise.sets.length}</span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const updatedExercises = [...(currentWorkout.exercises || [])]
-                                  const newSet =
-                                    currentWorkout.label === "cardio"
-                                      ? { distance: 0, time: 0, unit: "min" }
-                                      : { reps: 0, weight: 0, unit: "lb" }
-                                  exercise.sets.push(newSet)
-                                  updatedExercises[index] = exercise
-                                  setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-                                }}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div
-                          className={`grid ${currentWorkout.label === "cardio" ? "grid-cols-3" : "grid-cols-3"} gap-2`}
-                        >
-                          <div className="text-xs font-medium text-gray-500">Set</div>
-                          {currentWorkout.label === "cardio" ? (
-                            <>
-                              <div className="text-xs font-medium text-gray-500">Distance (mi)</div>
-                              <div className="text-xs font-medium text-gray-500">Time (min)</div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="text-xs font-medium text-gray-500">Reps</div>
-                              <div className="text-xs font-medium text-gray-500">Weight (lb)</div>
-                            </>
-                          )}
-                        </div>
-
-                        {exercise.sets.map((set, setIndex) => (
-                          <div
-                            key={setIndex}
-                            className={`grid ${currentWorkout.label === "cardio" ? "grid-cols-3" : "grid-cols-3"} gap-2`}
-                          >
-                            <div className="flex items-center justify-center">
-                              <span className="text-sm font-medium">{setIndex + 1}</span>
-                            </div>
-                            {currentWorkout.label === "cardio" ? (
-                              <>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.1"
-                                  value={set.distance || ""}
-                                  onChange={(e) => {
-                                    const updatedExercises = [...(currentWorkout.exercises || [])]
-                                    updatedExercises[index].sets[setIndex] = {
-                                      ...set,
-                                      distance: Number.parseFloat(e.target.value) || 0,
-                                    }
-                                    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-                                  }}
-                                />
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={set.time || ""}
-                                  onChange={(e) => {
-                                    const updatedExercises = [...(currentWorkout.exercises || [])]
-                                    updatedExercises[index].sets[setIndex] = {
-                                      ...set,
-                                      time: Number.parseInt(e.target.value) || 0,
-                                    }
-                                    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-                                  }}
-                                />
-                              </>
-                            ) : (
-                              <>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={set.reps || ""}
-                                  onChange={(e) => {
-                                    const updatedExercises = [...(currentWorkout.exercises || [])]
-                                    updatedExercises[index].sets[setIndex] = {
-                                      ...set,
-                                      reps: Number.parseInt(e.target.value) || 0,
-                                    }
-                                    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-                                  }}
-                                />
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.5"
-                                  value={set.weight || ""}
-                                  onChange={(e) => {
-                                    const updatedExercises = [...(currentWorkout.exercises || [])]
-                                    updatedExercises[index].sets[setIndex] = {
-                                      ...set,
-                                      weight: Number.parseFloat(e.target.value) || 0,
-                                    }
-                                    setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-                                  }}
-                                />
-                              </>
-                            )}
-                          </div>
-                        ))}
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const updatedExercises = currentWorkout.exercises?.filter((_, i) => i !== index) || []
-                            setCurrentWorkout((prev) => ({ ...prev, exercises: updatedExercises }))
-                          }}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          Remove Exercise
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex space-x-2 pt-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {workouts.map((workout) => (
+          <Card key={workout.id} className="hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-lg">{workout.name}</CardTitle>
+              <div className="flex space-x-2">
                 <Button
-                  onClick={startWorkout}
-                  disabled={!currentWorkout.exercises?.length || workoutInProgress !== null}
-                  className="flex-1"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onStartWorkout(workout)}
                 >
-                  <Play className="h-4 w-4 mr-2" />
-                  Start Workout
+                  <Play className="h-3 w-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleDeleteWorkout(workout.id)}
+                >
+                  <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Text Parser Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5" />
-                <span>Text-to-Plan Parser</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="workout-text">Workout Plan Text</Label>
-                <Textarea
-                  id="workout-text"
-                  placeholder="Paste your workout plan here..."
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  className="min-h-[200px] font-mono text-sm"
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  Format: "Exercise Name Sets×Reps" (e.g., "Bench Press 3×5")
-                </p>
-              </div>
-
-              <div className="flex space-x-2">
-                <Button onClick={handleParse} disabled={!textInput.trim()}>
-                  <Wand2 className="mr-2 h-4 w-4" />
-                  Parse Plan
-                </Button>
-                {parsedPlan && (
-                  <Button onClick={savePlan} variant="outline">
-                    Save Plan
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="templates" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Workout Templates</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => generateTemplate("push-pull-legs")}
-                >
-                  <CardContent className="p-4 text-center">
-                    <h3 className="font-semibold mb-2">Push/Pull/Legs</h3>
-                    <p className="text-sm text-gray-600 mb-3">3-day split focusing on movement patterns</p>
-                    <Badge variant="outline">3 Days</Badge>
-                  </CardContent>
-                </Card>
-
-                <Card
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => generateTemplate("upper-lower")}
-                >
-                  <CardContent className="p-4 text-center">
-                    <h3 className="font-semibold mb-2">Upper/Lower</h3>
-                    <p className="text-sm text-gray-600 mb-3">4-day split alternating upper and lower body</p>
-                    <Badge variant="outline">4 Days</Badge>
-                  </CardContent>
-                </Card>
-
-                <Card
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => generateTemplate("full-body")}
-                >
-                  <CardContent className="p-4 text-center">
-                    <h3 className="font-semibold mb-2">Full Body</h3>
-                    <p className="text-sm text-gray-600 mb-3">Complete workout hitting all muscle groups</p>
-                    <Badge variant="outline">3 Days</Badge>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Custom Templates */}
-              {customTemplates.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Your Custom Templates</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {customTemplates.map((template) => (
-                      <Card
-                        key={template.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-purple-500 relative group"
-                        onClick={() => loadTemplate(template)}
-                      >
-                        <CardContent className="p-4 text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              deleteCustomTemplate(template.id)
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          <h3 className="font-semibold mb-2">{template.name}</h3>
-                          <p className="text-sm text-gray-600 mb-3">{template.exercises.length} exercises</p>
-                          <Badge variant="outline" className="capitalize">
-                            {template.category}
-                          </Badge>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="saved" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Saved Workout Plans</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {savedPlans.map((plan, index) => (
-                  <Card key={index} className="border-l-4 border-l-green-500">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold">{plan.name}</h3>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline">{plan.days.length} Days</Badge>
-                          <Button variant="ghost" size="sm">
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {plan.days.map((day, dayIndex) => (
-                          <div key={dayIndex} className="bg-gray-50 rounded p-3">
-                            <h4 className="font-medium text-sm mb-2">{day.name}</h4>
-                            <p className="text-xs text-gray-600">{day.exercises.length} exercises</p>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-
-                {savedPlans.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No saved plans yet</p>
-                    <p className="text-sm">Create your first plan using the parser</p>
-                  </div>
-                )}
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">
+                  {workout.exercises.length} exercises
+                </p>
+                <ul className="text-sm space-y-1">
+                  {workout.exercises.slice(0, 3).map((exercise, index) => (
+                    <li key={index} className="flex items-center space-x-2">
+                      <Dumbbell className="h-3 w-3" />
+                      <span>{exercise.exerciseName}</span>
+                      <span className="text-gray-500">
+                        {exercise.sets.length} sets
+                      </span>
+                    </li>
+                  ))}
+                  {workout.exercises.length > 3 && (
+                    <li className="text-gray-500">
+                      +{workout.exercises.length - 3} more exercises
+                    </li>
+                  )}
+                </ul>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        ))}
+      </div>
+    </div>
+  )
+}
 
-      {/* Save Template Modal */}
-      {isCreatingTemplate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Save as Template</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+function WorkoutForm({ 
+  workout, 
+  onChange, 
+  onSave, 
+  onCancel 
+}: {
+  workout: Partial<Workout>
+  onChange: (workout: Partial<Workout>) => void
+  onSave: () => void
+  onCancel: () => void
+}) {
+  const [newExercise, setNewExercise] = useState<Partial<WorkoutExercise>>({
+    exerciseName: "",
+    sets: [{ reps: 10, weight: 0 }]
+  })
+
+  const addExercise = () => {
+    if (newExercise.exerciseName && newExercise.sets) {
+      const exercises = [...(workout.exercises || []), newExercise as WorkoutExercise]
+      onChange({ ...workout, exercises })
+      setNewExercise({ exerciseName: "", sets: [{ reps: 10, weight: 0 }] })
+    }
+  }
+
+  const removeExercise = (index: number) => {
+    const exercises = workout.exercises?.filter((_, i) => i !== index) || []
+    onChange({ ...workout, exercises })
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Label htmlFor="workoutName">Workout Name</Label>
+        <Input
+          id="workoutName"
+          value={workout.name || ""}
+          onChange={(e) => onChange({ ...workout, name: e.target.value })}
+          placeholder="Enter workout name"
+        />
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium mb-4">Exercises</h3>
+        <div className="space-y-4">
+          {workout.exercises?.map((exercise, index) => (
+            <div key={index} className="border rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-medium">{exercise.exerciseName}</h4>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => removeExercise(index)}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="text-sm text-gray-600">
+                {exercise.sets.length} sets
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 mt-4">
+          <h4 className="font-medium mb-4">Add Exercise</h4>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="exerciseName">Exercise Name</Label>
+              <Input
+                id="exerciseName"
+                value={newExercise.exerciseName || ""}
+                onChange={(e) => setNewExercise({ ...newExercise, exerciseName: e.target.value })}
+                placeholder="e.g., Bench Press"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="template-name">Template Name</Label>
+                <Label htmlFor="reps">Reps</Label>
                 <Input
-                  id="template-name"
-                  value={newTemplateName}
-                  onChange={(e) => setNewTemplateName(e.target.value)}
-                  placeholder="My Custom Workout"
+                  id="reps"
+                  type="number"
+                  value={newExercise.sets?.[0]?.reps || 10}
+                  onChange={(e) => {
+                    const sets = [{ ...newExercise.sets?.[0], reps: Number(e.target.value) }]
+                    setNewExercise({ ...newExercise, sets })
+                  }}
                 />
               </div>
-              <div className="flex space-x-2">
-                <Button onClick={() => setIsCreatingTemplate(false)} variant="outline" className="flex-1">
-                  Cancel
-                </Button>
-                <Button onClick={saveAsTemplate} className="flex-1" disabled={!newTemplateName}>
-                  Save Template
-                </Button>
+              <div>
+                <Label htmlFor="weight">Weight (lbs)</Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  value={newExercise.sets?.[0]?.weight || 0}
+                  onChange={(e) => {
+                    const sets = [{ ...newExercise.sets?.[0], weight: Number(e.target.value) }]
+                    setNewExercise({ ...newExercise, sets })
+                  }}
+                />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <Button onClick={addExercise} className="w-full">
+              Add Exercise
+            </Button>
+          </div>
         </div>
-      )}
+      </div>
+
+      <div className="flex justify-end space-x-2">
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button onClick={onSave} disabled={!workout.name || !workout.exercises?.length}>
+          Create Workout
+        </Button>
+      </div>
     </div>
   )
 }

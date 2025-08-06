@@ -10,105 +10,73 @@ export interface User {
     theme: "light" | "dark"
     units: "metric" | "imperial"
     todayWidgets: string[]
-    workoutWidgets?: string[]
-    nutritionWidgets?: string[]
-    progressWidgets?: string[]
   }
 }
 
-export interface Exercise {
-  id: string
-  name: string
-  category: string
-  muscleGroups: string[]
-  equipment?: string
-  instructions?: string
+export interface BodyMetrics {
+  userId: string
+  date: string
+  weight?: number
+  bodyFatPercentage?: number
+  muscleMass?: number
+  goalWeight?: number
+  goalBodyFat?: number
 }
 
 export interface WorkoutSet {
-  id: string
   reps: number
-  weight: number
+  weight?: number
+  duration?: number
   restTime?: number
-  completed: boolean
 }
 
 export interface WorkoutExercise {
-  id: string
-  exerciseId: string
   exerciseName: string
   sets: WorkoutSet[]
   notes?: string
 }
 
-export interface Workout {
+export interface WorkoutLog {
   id: string
   userId: string
   name: string
-  exercises: WorkoutExercise[]
   date: string
   duration?: number
+  exercises: WorkoutExercise[]
   notes?: string
-  isTemplate?: boolean
 }
 
-export interface NutritionEntry {
+export interface Workout {
   id: string
-  userId: string
-  foodName: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-  servingSize: string
-  meal: "breakfast" | "lunch" | "dinner" | "snack"
-  date: string
+  name: string
+  exercises: WorkoutExercise[]
+  duration?: number
+  date?: string
 }
 
-export interface BodyMetrics {
-  id: string
+export interface NutritionLog {
   userId: string
-  weight?: number
-  bodyFat?: number
-  muscleMass?: number
   date: string
+  caloriesConsumed: number
+  calorieLimit: number
+  protein?: number
+  carbs?: number
+  fat?: number
+  waterIntake?: number
+  waterGoal?: number
+}
+
+export interface MoodLog {
+  userId: string
+  date: string
+  mood: 1 | 2 | 3 | 4 | 5
+  energy: 1 | 2 | 3 | 4 | 5
+  stress: 1 | 2 | 3 | 4 | 5
+  notes?: string
 }
 
 export interface ActivityData {
   date: string
   intensity: number
-}
-
-export interface MoodEntry {
-  id: string
-  userId: string
-  mood: number
-  energy: number
-  stress: number
-  sleep: number
-  notes?: string
-  date: string
-}
-
-export interface CustomFood {
-  id: string
-  name: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-  servingSize: string
-  userId: string
-}
-
-export interface MealPlan {
-  id: string
-  userId: string
-  date: string
-  meals: {
-    breakfast: NutritionEntry[]
-    lunch: NutritionEntry[]
-    dinner: NutritionEntry[]
-    snacks: NutritionEntry[]
-  }
+  workoutCompleted: boolean
 }

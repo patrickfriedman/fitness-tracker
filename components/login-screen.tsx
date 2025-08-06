@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,7 +11,7 @@ import { Dumbbell, User, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from "@/contexts/auth-context"
 
 export function LoginScreen() {
-  const { login, register } = useAuth()
+  const { login, register, user } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [loginData, setLoginData] = useState({ username: "", password: "" })
@@ -23,11 +22,21 @@ export function LoginScreen() {
     confirmPassword: "",
   })
 
+  // Debug logging
+  useEffect(() => {
+    console.log("LoginScreen - Current user:", user)
+    if (user) {
+      console.log("User exists but LoginScreen is still showing:", user)
+    }
+  }, [user])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     try {
-      await login(loginData.username, loginData.password)
+      console.log("Attempting login with:", loginData.username)
+      const result = await login(loginData.username, loginData.password)
+      console.log("Login result:", result)
     } catch (error) {
       console.error("Login error:", error)
       alert(error instanceof Error ? error.message : "Invalid login credentials")
@@ -57,6 +66,11 @@ export function LoginScreen() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // If user exists, don't render the login screen
+  if (user) {
+    return null
   }
 
   return (

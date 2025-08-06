@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
-import { TrendingUp, Calendar, Scale, Heart } from "lucide-react"
+import { TrendingUp, Calendar, Scale, Heart, Dumbbell, Apple, Target } from 'lucide-react'
 import { ActivityHeatmapWidget } from "./activity-heatmap"
 
 interface WeeklySummaryProps {
@@ -46,6 +46,13 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
   const avgCalories = Math.round(weeklyData.reduce((sum, day) => sum + day.calories, 0) / weeklyData.length)
   const weightChange = weeklyData[weeklyData.length - 1].weight - weeklyData[0].weight
   const avgMood = (weeklyData.reduce((sum, day) => sum + day.mood, 0) / weeklyData.length).toFixed(1)
+
+  const weeklyStats = {
+    workouts: { completed: totalWorkouts, goal: 5 },
+    calories: { avg: avgCalories, goal: 2200 },
+    steps: { avg: 8500, goal: 10000 },
+    sleep: { avg: 7.2, goal: 8 },
+  }
 
   return (
     <div className="space-y-6">
@@ -99,40 +106,86 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{totalWorkouts}</p>
-                  <p className="text-sm text-gray-600">Workouts</p>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Dumbbell className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm font-medium">Workouts</span>
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    {weeklyStats.workouts.completed}/{weeklyStats.workouts.goal}
+                  </span>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">{avgCalories}</p>
-                  <p className="text-sm text-gray-600">Avg Calories</p>
+                <Progress value={(weeklyStats.workouts.completed / weeklyStats.workouts.goal) * 100} className="h-2" />
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Apple className="h-4 w-4 text-green-500" />
+                    <span className="text-sm font-medium">Avg Calories</span>
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    {weeklyStats.calories.avg}/{weeklyStats.calories.goal}
+                  </span>
                 </div>
-                <div className="text-center">
-                  <p className={`text-2xl font-bold ${weightChange < 0 ? "text-green-600" : "text-red-600"}`}>
-                    {weightChange > 0 ? "+" : ""}
-                    {weightChange.toFixed(1)}
-                  </p>
-                  <p className="text-sm text-gray-600">Weight Change</p>
+                <Progress value={(weeklyStats.calories.avg / weeklyStats.calories.goal) * 100} className="h-2" />
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Target className="h-4 w-4 text-purple-500" />
+                    <span className="text-sm font-medium">Avg Steps</span>
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    {weeklyStats.steps.avg.toLocaleString()}/{weeklyStats.steps.goal.toLocaleString()}
+                  </span>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-purple-600">{avgMood}</p>
-                  <p className="text-sm text-gray-600">Avg Mood</p>
+                <Progress value={(weeklyStats.steps.avg / weeklyStats.steps.goal) * 100} className="h-2" />
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <TrendingUp className="h-4 w-4 text-indigo-500" />
+                    <span className="text-sm font-medium">Avg Sleep</span>
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    {weeklyStats.sleep.avg}h/{weeklyStats.sleep.goal}h
+                  </span>
                 </div>
-              </div>
+                <Progress value={(weeklyStats.sleep.avg / weeklyStats.sleep.goal) * 100} className="h-2" />
 
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">Daily Workouts</h4>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={weeklyData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="day" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="workouts" fill="#3b82f6" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-blue-600">{totalWorkouts}</p>
+                    <p className="text-sm text-gray-600">Workouts</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">{avgCalories}</p>
+                    <p className="text-sm text-gray-600">Avg Calories</p>
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-2xl font-bold ${weightChange < 0 ? "text-green-600" : "text-red-600"}`}>
+                      {weightChange > 0 ? "+" : ""}
+                      {weightChange.toFixed(1)}
+                    </p>
+                    <p className="text-sm text-gray-600">Weight Change</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-purple-600">{avgMood}</p>
+                    <p className="text-sm text-gray-600">Avg Mood</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Daily Workouts</h4>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={weeklyData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="day" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="workouts" fill="#3b82f6" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
             </CardContent>
