@@ -1,13 +1,9 @@
-import Metadata from 'next'
-import GeistSans from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
-// If 'GeistMono' is not exported, try using 'GeistMonoFont' or check the module for the correct export.
-// For example, if the correct export is 'GeistMonoFont', use:
-// import { GeistMonoFont } from 'geist/font/mono'
+// Remove invalid import of Metadata
+import { GeistSans } from 'geist/font/sans'
 import './globals.css'
 import { AuthProvider } from '@/contexts/auth-context'
 
-export const metadata: Metadata = {
+export const metadata = {
   title: 'v0 App',
   description: 'Created with v0',
   generator: 'v0.dev',
@@ -24,8 +20,6 @@ export default function RootLayout({
         <style>{`
 html {
   font-family: ${GeistSans.style.fontFamily};
-  --font-sans: ${GeistSans.variable};
-  --font-mono: ${GeistMono.variable};
 }
         `}</style>
         <meta name="apple-mobile-web-app-capable" content="yes" />
