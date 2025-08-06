@@ -1,15 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { TrendingUp, Calendar, Scale, Heart, Dumbbell, Apple, Target, Zap, Award } from 'lucide-react'
 import { ActivityHeatmapWidget } from "./activity-heatmap"
 
 interface WeeklySummaryProps {
   userId: string
+}
+
+interface WeeklyStats {
+  workoutsCompleted: number
+  workoutsPlanned: number
+  totalMinutes: number
+  caloriesBurned: number
+  streak: number
 }
 
 const weeklyData = [
@@ -47,21 +55,31 @@ const achievements = [
 
 export function WeeklySummary({ userId }: WeeklySummaryProps) {
   const [selectedPeriod, setSelectedPeriod] = useState("week")
-
-  const totalWorkouts = weeklyData.reduce((sum, day) => sum + day.workouts, 0)
-  const avgCalories = Math.round(weeklyData.reduce((sum, day) => sum + day.calories, 0) / weeklyData.length)
-  const weightChange = weeklyData[weeklyData.length - 1].weight - weeklyData[0].weight
-  const avgMood = (weeklyData.reduce((sum, day) => sum + day.mood, 0) / weeklyData.length).toFixed(1)
-  const totalMinutes = weeklyData.reduce((sum, day) => sum + day.workouts * 60, 0) // Assuming each workout is 60 minutes
-
-  const weeklyStats = {
-    workoutsCompleted: totalWorkouts,
+  const [stats, setStats] = useState<WeeklyStats>({
+    workoutsCompleted: 4,
     workoutsPlanned: 5,
-    totalMinutes: totalMinutes,
-    caloriesBurned: avgCalories,
-    avgMood: parseFloat(avgMood),
-    streak: 7, // Placeholder for streak calculation
-  }
+    totalMinutes: 240,
+    caloriesBurned: 1200,
+    streak: 3
+  })
+
+  useEffect(() => {
+    const totalWorkouts = weeklyData.reduce((sum, day) => sum + day.workouts, 0)
+    const avgCalories = Math.round(weeklyData.reduce((sum, day) => sum + day.calories, 0) / weeklyData.length)
+    const weightChange = weeklyData[weeklyData.length - 1].weight - weeklyData[0].weight
+    const avgMood = (weeklyData.reduce((sum, day) => sum + day.mood, 0) / weeklyData.length).toFixed(1)
+    const totalMinutes = weeklyData.reduce((sum, day) => sum + day.workouts * 60, 0) // Assuming each workout is 60 minutes
+
+    setStats({
+      workoutsCompleted: totalWorkouts,
+      workoutsPlanned: 5,
+      totalMinutes: totalMinutes,
+      caloriesBurned: avgCalories,
+      streak: 7, // Placeholder for streak calculation
+    })
+  }, [])
+
+  const workoutProgress = (stats.workoutsCompleted / stats.workoutsPlanned) * 100
 
   return (
     <div className="space-y-6">
@@ -116,51 +134,66 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Workouts</span>
-                    <span className="text-sm text-gray-500">
-                      {weeklyStats.workoutsCompleted}/{weeklyStats.workoutsPlanned}
+                {/* Workout Progress */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium">Workout Goal</span>
+                    <span className="text-sm text-gray-600">
+                      {stats.workoutsCompleted} / {stats.workoutsPlanned}
                     </span>
                   </div>
-                  <Progress value={(weeklyStats.workoutsCompleted / weeklyStats.workoutsPlanned) * 100} />
+                  <Progress value={workoutProgress} className="h-2" />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {workoutProgress >= 100 ? "Goal achieved! 🎉" : `${stats.workoutsPlanned - stats.workoutsCompleted} workouts remaining`}
+                  </p>
                 </div>
 
+                {/* Stats Grid */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{weeklyStats.totalMinutes}</div>
+                    <div className="flex items-center justify-center mb-1">
+                      <Zap className="h-4 w-4 text-blue-500 mr-1" />
+                    </div>
+                    <div className="text-2xl font-bold text-blue-600">{stats.totalMinutes}</div>
                     <div className="text-xs text-gray-600">Minutes Active</div>
                   </div>
+                  
                   <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{weeklyStats.caloriesBurned}</div>
+                    <div className="flex items-center justify-center mb-1">
+                      <Target className="h-4 w-4 text-green-500 mr-1" />
+                    </div>
+                    <div className="text-2xl font-bold text-green-600">{stats.caloriesBurned}</div>
                     <div className="text-xs text-gray-600">Calories Burned</div>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center">
+                {/* Streak */}
+                <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
                   <div className="flex items-center space-x-2">
-                    <Zap className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm">Avg Mood</span>
-                    <Badge variant="outline">{weeklyStats.avgMood}/5</Badge>
+                    <Award className="h-5 w-5 text-orange-500" />
+                    <span className="font-medium">Current Streak</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Target className="h-4 w-4 text-orange-500" />
-                    <span className="text-sm">{weeklyStats.streak} day streak</span>
-                  </div>
+                  <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                    {stats.streak} days
+                  </Badge>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Daily Workouts</h4>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={weeklyData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="day" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="workouts" fill="#3b82f6" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                {/* Achievements */}
+                <div>
+                  <h4 className="font-medium mb-2">This Week's Achievements</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2 text-sm">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span>Completed 4 strength training sessions</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Maintained 3-day workout streak</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span>Burned over 1000 calories</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -264,7 +297,7 @@ export function WeeklySummary({ userId }: WeeklySummaryProps) {
               </ResponsiveContainer>
               <div className="mt-4 text-center">
                 <p className="text-sm text-gray-600">
-                  Average mood this week: <span className="font-bold text-purple-600">{weeklyStats.avgMood}/5</span>
+                  Average mood this week: <span className="font-bold text-purple-600">{stats.streak}/5</span>
                 </p>
               </div>
             </CardContent>

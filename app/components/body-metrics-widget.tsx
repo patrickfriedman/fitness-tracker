@@ -1,44 +1,64 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Scale, Ruler, Plus, TrendingUp, TrendingDown } from 'lucide-react'
+import { Scale, Ruler, Plus } from 'lucide-react'
+
+interface BodyMetrics {
+  weight: number
+  height: number
+  bodyFat?: number
+  date: string
+}
 
 export function BodyMetricsWidget() {
-  const [metrics, setMetrics] = useState({
-    weight: 175,
-    bodyFat: 15.2,
-    muscle: 145,
-    height: 70,
-  })
-  
+  const [metrics, setMetrics] = useState<BodyMetrics[]>([])
+  const [isOpen, setIsOpen] = useState(false)
   const [newMetrics, setNewMetrics] = useState({
     weight: "",
-    bodyFat: "",
-    muscle: "",
+    height: "",
+    bodyFat: ""
   })
 
-  const handleAddMetrics = () => {
-    if (newMetrics.weight) {
-      setMetrics(prev => ({
-        ...prev,
-        weight: parseFloat(newMetrics.weight),
-        bodyFat: newMetrics.bodyFat ? parseFloat(newMetrics.bodyFat) : prev.bodyFat,
-        muscle: newMetrics.muscle ? parseFloat(newMetrics.muscle) : prev.muscle,
-      }))
-      setNewMetrics({ weight: "", bodyFat: "", muscle: "" })
+  useEffect(() => {
+    const stored = localStorage.getItem("fitness-metrics")
+    if (stored) {
+      setMetrics(JSON.parse(stored))
     }
+  }, [])
+
+  const handleSave = () => {
+    const metricsData: BodyMetrics = {
+      weight: parseFloat(newMetrics.weight),
+      height: parseFloat(newMetrics.height),
+      bodyFat: newMetrics.bodyFat ? parseFloat(newMetrics.bodyFat) : undefined,
+      date: new Date().toISOString()
+    }
+
+    const updated = [metricsData, ...metrics.slice(0, 9)] // Keep last 10 entries
+    setMetrics(updated)
+    localStorage.setItem("fitness-metrics", JSON.stringify(updated))
+    
+    setNewMetrics({ weight: "", height: "", bodyFat: "" })
+    setIsOpen(false)
   }
+
+  const latestMetrics = metrics[0]
+  const previousMetrics = metrics[1]
+
+  const weightChange = latestMetrics && previousMetrics 
+    ? latestMetrics.weight - previousMetrics.weight 
+    : 0
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-lg font-medium">Body Metrics</CardTitle>
-        <Dialog>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline">
               <Plus className="h-4 w-4 mr-1" />
@@ -55,69 +75,86 @@ export function BodyMetricsWidget() {
                 <Input
                   id="weight"
                   type="number"
-                  placeholder="175"
                   value={newMetrics.weight}
                   onChange={(e) => setNewMetrics(prev => ({ ...prev, weight: e.target.value }))}
+                  placeholder="Enter weight"
                 />
               </div>
               <div>
-                <Label htmlFor="bodyFat">Body Fat (%)</Label>
+                <Label htmlFor="height">Height (inches)</Label>
+                <Input
+                  id="height"
+                  type="number"
+                  value={newMetrics.height}
+                  onChange={(e) => setNewMetrics(prev => ({ ...prev, height: e.target.value }))}
+                  placeholder="Enter height"
+                />
+              </div>
+              <div>
+                <Label htmlFor="bodyFat">Body Fat % (optional)</Label>
                 <Input
                   id="bodyFat"
                   type="number"
-                  placeholder="15.2"
                   value={newMetrics.bodyFat}
                   onChange={(e) => setNewMetrics(prev => ({ ...prev, bodyFat: e.target.value }))}
+                  placeholder="Enter body fat percentage"
                 />
               </div>
-              <div>
-                <Label htmlFor="muscle">Muscle Mass (lbs)</Label>
-                <Input
-                  id="muscle"
-                  type="number"
-                  placeholder="145"
-                  value={newMetrics.muscle}
-                  onChange={(e) => setNewMetrics(prev => ({ ...prev, muscle: e.target.value }))}
-                />
-              </div>
-              <Button onClick={handleAddMetrics} className="w-full">
+              <Button onClick={handleSave} className="w-full">
                 Save Metrics
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center space-x-2">
-            <Scale className="h-4 w-4 text-blue-600" />
-            <div>
-              <p className="text-2xl font-bold">{metrics.weight}</p>
-              <p className="text-xs text-gray-500">lbs</p>
+      <CardContent>
+        {latestMetrics ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Scale className="h-4 w-4 text-blue-500" />
+                <span className="text-sm text-gray-600">Weight</span>
+              </div>
+              <div className="text-right">
+                <div className="font-semibold">{latestMetrics.weight} lbs</div>
+                {weightChange !== 0 && (
+                  <div className={`text-xs ${weightChange > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    {weightChange > 0 ? '+' : ''}{weightChange.toFixed(1)} lbs
+                  </div>
+                )}
+              </div>
             </div>
-            <TrendingDown className="h-4 w-4 text-green-600 ml-auto" />
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Ruler className="h-4 w-4 text-purple-600" />
-            <div>
-              <p className="text-2xl font-bold">{metrics.bodyFat}</p>
-              <p className="text-xs text-gray-500">% body fat</p>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Ruler className="h-4 w-4 text-green-500" />
+                <span className="text-sm text-gray-600">Height</span>
+              </div>
+              <div className="font-semibold">{latestMetrics.height}"</div>
             </div>
-            <TrendingDown className="h-4 w-4 text-green-600 ml-auto" />
+
+            {latestMetrics.bodyFat && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Body Fat</span>
+                <div className="font-semibold">{latestMetrics.bodyFat}%</div>
+              </div>
+            )}
+
+            {latestMetrics.weight && latestMetrics.height && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">BMI</span>
+                <div className="font-semibold">
+                  {((latestMetrics.weight / (latestMetrics.height * latestMetrics.height)) * 703).toFixed(1)}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-        
-        <div className="pt-2 border-t">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Muscle Mass</span>
-            <span className="font-medium">{metrics.muscle} lbs</span>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-gray-500 text-sm">No metrics recorded yet</p>
+            <p className="text-gray-400 text-xs">Add your first measurement to get started</p>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Height</span>
-            <span className="font-medium">{Math.floor(metrics.height / 12)}'{metrics.height % 12}"</span>
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   )
