@@ -1,5 +1,22 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '../types/supabase'
+
+// Define the Database type according to your Supabase schema
+export type Database = {
+  // Example tables
+  users: {
+    id: string;
+    name: string;
+    email: string;
+    // add other fields as needed
+  };
+  workouts: {
+    id: string;
+    user_id: string;
+    date: string;
+    // add other fields as needed
+  };
+  // Add other tables and types as needed
+};
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY

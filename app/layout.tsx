@@ -1,6 +1,9 @@
-import type { Metadata } from 'next'
-import { GeistSans } from 'geist/font/sans'
+import Metadata from 'next'
+import GeistSans from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
+// If 'GeistMono' is not exported, try using 'GeistMonoFont' or check the module for the correct export.
+// For example, if the correct export is 'GeistMonoFont', use:
+// import { GeistMonoFont } from 'geist/font/mono'
 import './globals.css'
 import { AuthProvider } from '@/contexts/auth-context'
 

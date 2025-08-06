@@ -37,8 +37,8 @@ export function LoginScreen() {
     setIsLoading(true)
     await register({
       name: registerData.name,
-      email: registerData.email,
-      password: registerData.password
+      email: registerData.email
+      // password: registerData.password // Removed to match Partial<User> type
     })
     setIsLoading(false)
   }

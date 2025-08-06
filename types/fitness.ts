@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase"
+
 export interface User {
   id: string
   name: string

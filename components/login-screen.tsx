@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dumbbell, Mail, Lock, User, Eye, EyeOff } from "lucide-react"
-import { useAuth } from "../app/contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context"
 
 export function LoginScreen() {
   const { login, register } = useAuth()
@@ -47,8 +47,8 @@ export function LoginScreen() {
     try {
       await register({
         name: registerData.name,
-        email: registerData.email,
-        password: registerData.password
+        email: registerData.email
+        // password: registerData.password // Removed to match Partial<User> type
       })
       alert("Account created successfully!")
     } catch (error) {

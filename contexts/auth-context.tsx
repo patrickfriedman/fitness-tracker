@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Email and password are required')
     }
 
-    // First, create the auth user
+    // First, create the auth user with immediate sign in
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
@@ -58,11 +58,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (authError) throw authError
 
     if (authData.user) {
+      // Create the user profile using the service role client
       const { error: profileError } = await supabase
         .from('users')
-        .insert({
+        .upsert({
           id: authData.user.id,
-          name: userData.name,
+          name: userData.name || '',
           email: userData.email,
           primary_goal: 'strength',
           created_at: new Date().toISOString(),
@@ -71,9 +72,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             units: 'metric',
             todayWidgets: [],
           },
+        }, {
+          onConflict: 'id'
         })
 
-      if (profileError) throw profileError
+      if (profileError) {
+        console.error("Error creating user profile:", profileError)
+        // Don't throw here, the auth user is still created
+      }
+      
+      // Auto sign in after registration
+      await login(userData.email, userData.password)
     }
   }
 
@@ -107,8 +116,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password 
+    })
+    
+    if (error) {
+      console.error("Login error:", error)
+      throw error
+    }
+
+    if (data.user) {
+      await fetchUserProfile(data.user)
+    }
   }
 
   const logout = async () => {
