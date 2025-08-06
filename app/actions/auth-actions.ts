@@ -1,123 +1,141 @@
 'use server'
 
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase'
-import type { User } from '@/types/fitness'
+import { getServiceRoleClient } from '@/lib/supabase'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { User } from '@/types/fitness'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+export async function signIn(formData: FormData) {
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+  const supabase = getServiceRoleClient()
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables for server actions')
-}
-
-// Create an admin client for server-side operations only
-const supabaseAdmin = createClient<Database>(
-  supabaseUrl,
-  supabaseServiceKey,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-)
-
-export async function serverSignIn(email: string, password: string) {
-  const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+  const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
-    console.error('Server sign-in error:', error)
+    console.error('Sign-in error:', error.message)
     return { success: false, error: error.message }
   }
-  return { success: true, user: data.user }
+
+  return { success: true, error: null }
 }
 
-export async function serverSignUp(userData: Partial<User> & { email: string; password: string }) {
-  const { data, error } = await supabaseAdmin.auth.signUp({
-    email: userData.email,
-    password: userData.password,
+export async function signUp(formData: FormData) {
+  const name = formData.get('name') as string
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+  const supabase = getServiceRoleClient()
+
+  // First, create the user in auth.users
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        name: name, // Store name in auth.users metadata
+      },
+    },
   })
 
-  if (error) {
-    console.error('Server sign-up error:', error)
-    return { success: false, error: error.message }
+  if (authError) {
+    console.error('Sign-up error:', authError.message)
+    return { success: false, error: authError.message }
   }
 
-  if (data.user) {
-    // Create user profile in users table
-    const { error: profileError } = await supabaseAdmin
+  // If user is created, insert into public.users table
+  if (authData.user) {
+    const { error: profileError } = await supabase
       .from('users')
       .insert({
-        id: data.user.id,
-        name: userData.name || '',
-        email: userData.email,
-        primary_goal: userData.primaryGoal || 'general_fitness',
-        preferences: {
-          theme: "light",
-          units: "imperial",
-          todayWidgets: ["metrics", "quick-actions", "mood", "water"],
-        }
+        id: authData.user.id,
+        name: name,
+        email: email,
       })
 
     if (profileError) {
-      console.error('Server profile creation error:', profileError)
-      // Optionally, delete the auth user if profile creation fails
-      await supabaseAdmin.auth.admin.deleteUser(data.user.id)
-      return { success: false, error: profileError.message }
+      console.error('Profile creation error:', profileError.message)
+      // Optionally, you might want to delete the auth.user if profile creation fails
+      await supabase.auth.admin.deleteUser(authData.user.id)
+      return { success: false, error: 'Failed to create user profile.' }
     }
-    return { success: true, user: data.user }
   }
 
-  return { success: false, error: 'No user data returned after sign up.' }
+  return { success: true, error: null }
 }
 
-export async function serverDeleteAccount(userId: string) {
-  try {
-    // Delete user data from custom tables first
-    await supabaseAdmin.from('workout_logs').delete().eq('user_id', userId)
-    await supabaseAdmin.from('nutrition_logs').delete().eq('user_id', userId)
-    await supabaseAdmin.from('body_metrics').delete().eq('user_id', userId)
-    await supabaseAdmin.from('mood_logs').delete().eq('user_id', userId)
-    await supabaseAdmin.from('water_logs').delete().eq('user_id', userId)
-    await supabaseAdmin.from('planned_workouts').delete().eq('user_id', userId)
-    await supabaseAdmin.from('users').delete().eq('id', userId)
+export async function signOut() {
+  const supabase = getServiceRoleClient()
+  const { error } = await supabase.auth.signOut()
 
-    // Then delete the auth user
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
-
-    if (error) {
-      console.error('Server delete account error:', error)
-      return { success: false, error: error.message }
-    }
-    return { success: true }
-  } catch (error: any) {
-    console.error('Server delete account exception:', error)
+  if (error) {
+    console.error('Sign-out error:', error.message)
     return { success: false, error: error.message }
   }
+
+  // Clear cookies and redirect
+  cookies().delete('sb-access-token')
+  cookies().delete('sb-refresh-token')
+  redirect('/login')
 }
 
-export async function serverUpdateUserProfile(userId: string, userData: Partial<User>) {
-  try {
-    const { error } = await supabaseAdmin
-      .from('users')
-      .update({
-        name: userData.name,
-        primary_goal: userData.primaryGoal,
-        preferences: userData.preferences
-      })
-      .eq('id', userId)
+export async function deleteAccount(userId: string) {
+  const supabase = getServiceRoleClient()
 
-    if (error) {
-      console.error('Server update user profile error:', error)
-      return { success: false, error: error.message }
-    }
-    return { success: true }
-  } catch (error: any) {
-    console.error('Server update user profile exception:', error)
+  // Delete user from auth.users, which should cascade to public.users due to foreign key constraint
+  const { error } = await supabase.auth.admin.deleteUser(userId)
+
+  if (error) {
+    console.error('Delete account error:', error.message)
     return { success: false, error: error.message }
+  }
+
+  // Also sign out the user after deletion
+  await signOut()
+  return { success: true, error: null }
+}
+
+export async function updateUserProfile(userId: string, updates: Partial<User>) {
+  const supabase = getServiceRoleClient()
+
+  const { error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', userId)
+
+  if (error) {
+    console.error('Update profile error:', error.message)
+    return { success: false, error: error.message }
+  }
+
+  return { success: true, error: null }
+}
+
+export async function fetchUserProfile(userId: string): Promise<User | null> {
+  const supabase = getServiceRoleClient()
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .single()
+
+  if (error) {
+    console.error('Error fetching user profile:', error.message)
+    return null
+  }
+
+  if (!data) {
+    return null
+  }
+
+  // Map database columns to User type
+  return {
+    id: data.id,
+    name: data.name || '',
+    email: data.email || '',
+    primaryGoal: data.primary_goal as User['primaryGoal'],
+    preferences: data.preferences as User['preferences'],
   }
 }

@@ -1,223 +1,314 @@
-"use client"
+'use client'
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { supabase } from "@/lib/supabase"
-import type { User } from "@/types/fitness"
-import { serverSignIn, serverSignUp, serverDeleteAccount, serverUpdateUserProfile } from "@/app/actions/auth-actions"
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useReducer,
+  useCallback,
+} from 'react'
+import { getBrowserClient } from '@/lib/supabase'
+import { User } from '@/types/fitness'
+import {
+  signIn as serverSignIn,
+  signUp as serverSignUp,
+  signOut as serverSignOut,
+  deleteAccount as serverDeleteAccount,
+  fetchUserProfile,
+} from '@/app/actions/auth-actions'
+import { toast } from '@/components/ui/use-toast'
 
-interface AuthContextType {
+interface AuthState {
   user: User | null
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  logout: () => void
-  register: (userData: Partial<User> & { email: string; password: string }) => Promise<{ success: boolean; error?: string }>
-  updateUser: (userData: Partial<User>) => Promise<boolean>
-  deleteAccount: () => Promise<boolean>
-  loading: boolean
+  isAuthenticated: boolean
+  isLoading: boolean
+  error: string | null
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+type AuthAction =
+  | { type: 'LOGIN_START' }
+  | { type: 'LOGIN_SUCCESS'; payload: User }
+  | { type: 'LOGIN_FAILURE'; payload: string }
+  | { type: 'REGISTER_START' }
+  | { type: 'REGISTER_SUCCESS'; payload: User }
+  | { type: 'REGISTER_FAILURE'; payload: string }
+  | { type: 'LOGOUT' }
+  | { type: 'SET_USER'; payload: User | null }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
 
-export function AuthProvider({ children }: { ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+const initialState: AuthState = {
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
+  error: null,
+}
+
+const AuthContext = createContext<
+  | (AuthState & {
+      login: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>
+      register: (name: string, email: string, password: string) => Promise<{ success: boolean; error: string | null }>
+      logout: () => Promise<void>
+      deleteUserAccount: () => Promise<{ success: boolean; error: string | null }>
+      demoLogin: () => Promise<void>
+    })
+  | undefined
+>(undefined)
+
+function authReducer(state: AuthState, action: AuthAction): AuthState {
+  switch (action.type) {
+    case 'LOGIN_START':
+    case 'REGISTER_START':
+      return { ...state, isLoading: true, error: null }
+    case 'LOGIN_SUCCESS':
+    case 'REGISTER_SUCCESS':
+      return {
+        ...state,
+        user: action.payload,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      }
+    case 'LOGIN_FAILURE':
+    case 'REGISTER_FAILURE':
+      return {
+        ...state,
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: action.payload,
+      }
+    case 'LOGOUT':
+      return { ...initialState, isLoading: false }
+    case 'SET_USER':
+      return {
+        ...state,
+        user: action.payload,
+        isAuthenticated: !!action.payload,
+        isLoading: false,
+      }
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload }
+    case 'SET_ERROR':
+      return { ...state, error: action.payload }
+    default:
+      return state
+  }
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(authReducer, initialState)
+  const supabase = getBrowserClient()
+
+  const loadUserSession = useCallback(async () => {
+    dispatch({ type: 'SET_LOADING', payload: true })
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (session) {
+        const userProfile = await fetchUserProfile(session.user.id)
+        if (userProfile) {
+          dispatch({ type: 'SET_USER', payload: userProfile })
+        } else {
+          // If no profile, but auth session exists, it means user just signed up
+          // and needs to complete onboarding or profile creation.
+          // For now, we'll set a minimal user.
+          dispatch({
+            type: 'SET_USER',
+            payload: {
+              id: session.user.id,
+              name: session.user.user_metadata?.name || session.user.email || 'User',
+              email: session.user.email || '',
+            },
+          })
+        }
+      } else {
+        dispatch({ type: 'SET_USER', payload: null })
+      }
+    } catch (err: any) {
+      console.error('Error loading user session:', err)
+      dispatch({ type: 'SET_ERROR', payload: err.message || 'Failed to load session' })
+      dispatch({ type: 'SET_USER', payload: null })
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false })
+    }
+  }, [supabase])
 
   useEffect(() => {
-    const getSessionAndProfile = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        if (sessionError) throw sessionError
+    loadUserSession()
 
-        if (session?.user) {
-          await fetchUserProfile(session.user.id)
-        } else {
-          setUser(null)
-          setLoading(false)
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (session) {
+            const userProfile = await fetchUserProfile(session.user.id)
+            if (userProfile) {
+              dispatch({ type: 'SET_USER', payload: userProfile })
+            } else {
+              // Handle case where auth session exists but public.users profile doesn't
+              // This might happen right after signup before profile is created
+              dispatch({
+                type: 'SET_USER',
+                payload: {
+                  id: session.user.id,
+                  name: session.user.user_metadata?.name || session.user.email || 'User',
+                  email: session.user.email || '',
+                },
+              })
+            }
+          }
+        } else if (event === 'SIGNED_OUT') {
+          dispatch({ type: 'LOGOUT' })
+          toast({
+            title: 'Logged out',
+            description: 'You have been successfully logged out.',
+          })
+        } else if (event === 'USER_DELETED') {
+          dispatch({ type: 'LOGOUT' })
+          toast({
+            title: 'Account Deleted',
+            description: 'Your account has been successfully deleted.',
+          })
         }
-      } catch (error) {
-        console.error("Error getting initial session:", error)
-        setUser(null)
-        setLoading(false)
       }
+    )
+
+    return () => {
+      authListener.unsubscribe()
     }
+  }, [supabase, loadUserSession])
 
-    getSessionAndProfile()
+  const login = useCallback(
+    async (email: string, password: string) => {
+      dispatch({ type: 'LOGIN_START' })
+      const result = await serverSignIn(new FormData(
+        Object.entries({ email, password }).reduce((acc, [key, value]) => {
+          acc.append(key, value);
+          return acc;
+        }, new FormData())
+      ));
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        await fetchUserProfile(session.user.id)
+      if (result.success) {
+        // Re-fetch session to update client-side state after server action
+        await loadUserSession();
+        toast({
+          title: 'Login Successful',
+          description: 'Welcome back!',
+        });
+        return { success: true, error: null };
       } else {
-        setUser(null)
-        setLoading(false)
+        dispatch({ type: 'LOGIN_FAILURE', payload: result.error || 'Login failed' });
+        toast({
+          title: 'Login Failed',
+          description: result.error || 'Please check your credentials.',
+          variant: 'destructive',
+        });
+        return { success: false, error: result.error };
       }
-    })
+    },
+    [loadUserSession]
+  )
 
-    return () => subscription.unsubscribe()
+  const register = useCallback(
+    async (name: string, email: string, password: string) => {
+      dispatch({ type: 'REGISTER_START' })
+      const result = await serverSignUp(new FormData(
+        Object.entries({ name, email, password }).reduce((acc, [key, value]) => {
+          acc.append(key, value);
+          return acc;
+        }, new FormData())
+      ));
+
+      if (result.success) {
+        // Re-fetch session to update client-side state after server action
+        await loadUserSession();
+        toast({
+          title: 'Registration Successful',
+          description: 'Welcome to the fitness tracker!',
+        });
+        return { success: true, error: null };
+      } else {
+        dispatch({ type: 'REGISTER_FAILURE', payload: result.error || 'Registration failed' });
+        toast({
+          title: 'Registration Failed',
+          description: result.error || 'Please try again.',
+          variant: 'destructive',
+        });
+        return { success: false, error: result.error };
+      }
+    },
+    [loadUserSession]
+  )
+
+  const logout = useCallback(async () => {
+    await serverSignOut()
+    dispatch({ type: 'LOGOUT' })
   }, [])
 
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (error) {
-        console.error('Error fetching user profile:', error)
-        setUser(null) // Clear user if profile not found or error
-        setLoading(false)
-        return
-      }
-
-      if (data) {
-        const userProfile: User = {
-          id: data.id,
-          name: data.name,
-          username: data.email.split('@')[0], // Derive username from email for now
-          email: data.email,
-          primaryGoal: data.primary_goal || 'general_fitness',
-          createdAt: data.created_at,
-          preferences: data.preferences || {
-            theme: "light",
-            units: "imperial",
-            todayWidgets: ["metrics", "quick-actions", "mood", "water"],
-          },
-        }
-        setUser(userProfile)
-      }
-    } catch (error) {
-      console.error('Error in fetchUserProfile:', error)
-      setUser(null)
-    } finally {
-      setLoading(false)
+  const deleteUserAccount = useCallback(async () => {
+    if (!state.user?.id) {
+      toast({
+        title: 'Error',
+        description: 'No user logged in to delete.',
+        variant: 'destructive',
+      });
+      return { success: false, error: 'No user logged in' };
     }
-  }
-
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    try {
-      setLoading(true)
-      
-      // Handle demo login
-      if (email === "demo@fittracker.com" || email === "demo") {
-        const demoUser: User = {
-          id: "demo-user",
-          name: "Demo User",
-          username: "demo",
-          email: "demo@fittracker.com",
-          primaryGoal: "hypertrophy",
-          createdAt: new Date().toISOString(),
-          preferences: {
-            theme: "light",
-            units: "imperial",
-            todayWidgets: ["metrics", "quick-actions", "mood", "water"],
-          },
-        }
-        setUser(demoUser)
-        setLoading(false)
-        return { success: true }
-      }
-
-      const result = await serverSignIn(email, password)
-      if (result.success && result.user) {
-        await fetchUserProfile(result.user.id)
-        return { success: true }
-      } else {
-        setLoading(false)
-        return { success: false, error: result.error || "Login failed" }
-      }
-    } catch (error: any) {
-      console.error('Login error:', error)
-      setLoading(false)
-      return { success: false, error: error.message || "An unexpected error occurred" }
+    const result = await serverDeleteAccount(state.user.id);
+    if (result.success) {
+      dispatch({ type: 'LOGOUT' });
+      toast({
+        title: 'Account Deleted',
+        description: 'Your account has been successfully deleted.',
+      });
+      return { success: true, error: null };
+    } else {
+      toast({
+        title: 'Deletion Failed',
+        description: result.error || 'Could not delete account.',
+        variant: 'destructive',
+      });
+      return { success: false, error: result.error };
     }
-  }
+  }, [state.user?.id]);
 
-  const register = async (userData: Partial<User> & { email: string; password: string }): Promise<{ success: boolean; error?: string }> => {
-    try {
-      setLoading(true)
-      const result = await serverSignUp(userData)
-      if (result.success && result.user) {
-        await fetchUserProfile(result.user.id)
-        return { success: true }
-      } else {
-        setLoading(false)
-        return { success: false, error: result.error || "Registration failed" }
-      }
-    } catch (error: any) {
-      console.error('Registration error:', error)
-      setLoading(false)
-      return { success: false, error: error.message || "An unexpected error occurred" }
-    }
-  }
+  const demoLogin = useCallback(async () => {
+    dispatch({ type: 'LOGIN_START' });
+    // Simulate a demo user login without actual Supabase auth
+    const demoUser: User = {
+      id: 'demo-user-123',
+      name: 'Demo User',
+      email: 'demo@example.com',
+      primaryGoal: 'general_fitness',
+    };
+    dispatch({ type: 'LOGIN_SUCCESS', payload: demoUser });
+    toast({
+      title: 'Demo Login Successful',
+      description: 'Welcome to the demo!',
+    });
+  }, []);
 
-  const logout = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-  }
-
-  const deleteAccount = async (): Promise<boolean> => {
-    try {
-      if (!user || user.id === "demo-user") { // Prevent deleting demo user
-        console.warn("Cannot delete demo user or no user logged in.")
-        return false
-      }
-      const result = await serverDeleteAccount(user.id)
-      if (result.success) {
-        setUser(null)
-        return true
-      } else {
-        console.error("Failed to delete account:", result.error)
-        return false
-      }
-    } catch (error) {
-      console.error("Delete account error:", error)
-      return false
-    }
-  }
-
-  const updateUser = async (userData: Partial<User>): Promise<boolean> => {
-    if (!user || user.id === "demo-user") {
-      console.warn("Cannot update demo user or no user logged in.")
-      return false
-    }
-    try {
-      const result = await serverUpdateUserProfile(user.id, userData)
-      if (result.success) {
-        const updatedUser = { ...user, ...userData }
-        setUser(updatedUser)
-        return true
-      } else {
-        console.error("Failed to update user profile:", result.error)
-        return false
-      }
-    } catch (error) {
-      console.error('Update user error:', error)
-      return false
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <AuthContext.Provider value={{ user, login, logout, register, updateUser, deleteAccount, loading }}>
-      {children}
-    </AuthContext.Provider>
+  const value = React.useMemo(
+    () => ({
+      ...state,
+      login,
+      register,
+      logout,
+      deleteUserAccount,
+      demoLogin,
+    }),
+    [state, login, register, logout, deleteUserAccount, demoLogin]
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
 }

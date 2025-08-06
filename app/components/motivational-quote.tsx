@@ -1,13 +1,16 @@
-"use client"
+'use client'
 
-import { Card, CardContent } from "@/components/ui/card"
-import { useEffect, useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Quote } from 'lucide-react'
 
 const quotes = [
   {
     text: "The only bad workout is the one that didn't happen.",
     author: "Unknown",
+  },
+  {
+    text: "Believe you can and you're halfway there.",
+    author: "Theodore Roosevelt",
   },
   {
     text: "Strength does not come from physical capacity. It comes from an indomitable will.",
@@ -26,43 +29,28 @@ const quotes = [
     author: "Unknown",
   },
   {
-    text: "Believe you can and you're halfway there.",
-    author: "Theodore Roosevelt",
-  },
-  {
-    text: "The last three or four reps is what makes the muscle grow. This area of pain divides a champion from someone else who is not a champion.",
-    author: "Arnold Schwarzenegger",
-  },
-  {
     text: "Your health is an investment, not an expense.",
     author: "Unknown",
-  },
-  {
-    text: "It's not about being better than someone else, it's about being better than you used to be.",
-    author: "Unknown",
-  },
-  {
-    text: "The difference between the impossible and the possible lies in a person's determination.",
-    author: "Tommy Lasorda",
   },
 ]
 
 export function MotivationalQuote() {
-  const [currentQuote, setCurrentQuote] = useState({ text: "", author: "" })
-
-  useEffect(() => {
-    const randomIndex = Math.floor(Math.random() * quotes.length)
-    setCurrentQuote(quotes[randomIndex])
-  }, [])
+  const randomIndex = Math.floor(Math.random() * quotes.length)
+  const quote = quotes[randomIndex]
 
   return (
-    <Card className="col-span-1 lg:col-span-3 flex flex-col justify-center items-center text-center p-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg">
-      <CardContent className="space-y-4">
-        <Quote className="h-8 w-8 mx-auto" />
-        <p className="text-xl md:text-2xl font-semibold italic">
-          "{currentQuote.text}"
+    <Card className="col-span-1 md:col-span-2 lg:col-span-3">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Daily Motivation</CardTitle>
+        <Quote className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <blockquote className="text-lg font-semibold leading-snug">
+          &ldquo;{quote.text}&rdquo;
+        </blockquote>
+        <p className="text-sm text-muted-foreground mt-2 text-right">
+          - {quote.author}
         </p>
-        <p className="text-sm md:text-base font-light">- {currentQuote.author}</p>
       </CardContent>
     </Card>
   )

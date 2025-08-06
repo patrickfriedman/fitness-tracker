@@ -1,141 +1,118 @@
-"use client"
+'use client'
 
-import { useAuth } from "@/contexts/auth-context"
-import LoginScreen from "@/components/login-screen"
-import { OnboardingFlow } from "@/app/components/onboarding-flow"
-import { BodyMetricsWidget } from "@/app/components/body-metrics-widget"
-import { WaterTracker } from "@/app/components/water-tracker"
-import { MoodTracker } from "@/app/components/mood-tracker"
-import { MotivationalQuote } from "@/app/components/motivational-quote"
-import { WorkoutLogger } from "@/app/components/workout-logger"
-import { NutritionTracker } from "@/app/components/nutrition-tracker"
-import { ActivityHeatmap } from "@/app/components/activity-heatmap"
-import { WeeklySummary } from "@/app/components/weekly-summary"
-import { WorkoutPlanner } from "@/app/components/workout-planner"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Dumbbell, UserIcon, LogOut, Settings, Trash2 } from 'lucide-react'
-import { useState } from "react"
+import { useAuth } from '@/contexts/auth-context'
+import { LoginScreen } from '@/components/login-screen'
+import { OnboardingFlow } from '@/app/components/onboarding-flow'
+import { BodyMetricsWidget } from '@/app/components/body-metrics-widget'
+import { WaterTracker } from '@/app/components/water-tracker'
+import { MoodTracker } from '@/app/components/mood-tracker'
+import { MotivationalQuote } from '@/app/components/motivational-quote'
+import { WorkoutLogger } from '@/app/components/workout-logger'
+import { NutritionTracker } from '@/app/components/nutrition-tracker'
+import { ActivityHeatmap } from '@/app/components/activity-heatmap'
+import { WeeklySummary } from '@/app/components/weekly-summary'
+import { WorkoutPlanner } from '@/app/components/workout-planner'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Loader2, LogOut, Trash2, UserIcon } from 'lucide-react'
+import { useState } from 'react'
 
 export default function Home() {
-  const { user, loading, logout, deleteAccount } = useAuth()
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const { user, isAuthenticated, isLoading, logout, deleteUserAccount } = useAuth()
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Loading application...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return <LoginScreen />
   }
 
-  // If user exists but hasn't completed onboarding (e.g., primaryGoal is default)
-  // This is a simplified check; a real app might have a dedicated onboarding status
-  if (user.primaryGoal === 'general_fitness' && user.id !== "demo-user") {
-    return <OnboardingFlow />
+  // If user is authenticated but has no primary goal, show onboarding
+  if (isAuthenticated && user && !user.primaryGoal && !showOnboarding) {
+    return <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <header className="sticky top-0 z-40 w-full border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
-        <div className="container flex h-16 items-center justify-between py-4">
-          <div className="flex items-center space-x-4">
-            <Dumbbell className="h-6 w-6 text-blue-600" />
-            <span className="text-xl font-bold">FitTracker Pro</span>
-          </div>
-          <nav className="hidden md:flex space-x-4">
-            <Button variant="ghost">Dashboard</Button>
-            <Button variant="ghost">Workouts</Button>
-            <Button variant="ghost">Nutrition</Button>
-            <Button variant="ghost">Progress</Button>
-          </nav>
-          <div className="flex items-center space-x-4">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder-user.jpg" alt="@shadcn" />
-                    <AvatarFallback>{user.name ? user.name.charAt(0) : user.username.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">@{user.username}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <UserIcon className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 sm:p-6 lg:p-8">
+      <header className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">
+          Welcome, {user?.name || user?.email || 'User'}!
+        </h1>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src="/placeholder-user.jpg" alt="User Avatar" />
+                <AvatarFallback>
+                  <UserIcon className="h-5 w-5" />
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{user?.name || 'User'}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => console.log('Profile settings clicked')}>
+              <UserIcon className="mr-2 h-4 w-4" />
+              <span>Profile Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 dark:text-red-400">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  <span>Delete Account</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      <span>Delete Account</span>
-                    </DropdownMenuItem>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your account and remove your data from our servers.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={async () => {
-                          setIsDeletingAccount(true)
-                          await deleteAccount()
-                          setIsDeletingAccount(false)
-                        }}
-                        disabled={isDeletingAccount}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        {isDeletingAccount ? "Deleting..." : "Delete Account"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete your account
+                    and remove your data from our servers.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={deleteUserAccount} className="bg-red-600 hover:bg-red-700 text-white">
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
-      <main className="container py-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <MotivationalQuote />
         <BodyMetricsWidget />
-        <WorkoutLogger />
-        <NutritionTracker />
         <WaterTracker />
         <MoodTracker />
+        <WorkoutLogger />
+        <NutritionTracker />
         <ActivityHeatmap />
         <WeeklySummary />
         <WorkoutPlanner />
-        <MotivationalQuote />
       </main>
     </div>
   )

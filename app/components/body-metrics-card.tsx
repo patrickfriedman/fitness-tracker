@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { Scale, Target, TrendingUp, TrendingDown, Ruler, Weight } from 'lucide-react'
+import { Scale, Target, TrendingUp, TrendingDown, Ruler, Weight, Percent } from 'lucide-react'
 import type { BodyMetrics } from "../../types/fitness"
 
 interface BodyMetricsCardProps {
@@ -69,61 +69,60 @@ export function BodyMetricsCard({ userId, currentMetrics, onUpdate }: BodyMetric
         { title: "Goal Weight", value: currentMetrics?.goalWeight || "--", unit: "lb", icon: Weight },
         { title: "Goal Body Fat", value: currentMetrics?.goalBodyFat || "--", unit: "%", icon: Target },
       ].map((metric, index) => (
-        <Card key={index}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-            <metric.icon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isEditing && index < 2 ? (
-              <div className="space-y-4">
-                <Label htmlFor={metric.title.toLowerCase()}>{metric.title} ({metric.unit})</Label>
-                <Input
-                  id={metric.title.toLowerCase()}
-                  type="number"
-                  step="0.1"
-                  value={formData[metric.title.toLowerCase()]}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, [metric.title.toLowerCase()]: e.target.value }))}
-                  placeholder={metric.value.toString()}
-                />
-              </div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{metric.value} {metric.unit}</div>
-                {index < 2 && (
-                  <p className="text-xs text-muted-foreground">
-                    Last updated: Today
-                  </p>
-                )}
-                {index < 2 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-600">{metric.title}</span>
-                    <div className="flex items-center space-x-1">
-                      {(metric.title === "Weight" ? weightTrend : bodyFatTrend) !== 0 && (
-                        <>
-                          {(metric.title === "Weight" ? weightTrend : bodyFatTrend) > 0 ? (
-                            <TrendingUp className="h-3 w-3 text-red-500" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3 text-green-500" />
-                          )}
-                          <span className={`text-xs ${(metric.title === "Weight" ? weightTrend : bodyFatTrend) > 0 ? "text-red-500" : "text-green-500"}`}>
-                            {Math.abs(metric.title === "Weight" ? weightTrend : bodyFatTrend).toFixed(1)} {metric.unit}
-                          </span>
-                        </>
-                      )}
-                    </div>
+        <div key={index}>
+          <BodyMetricsCard
+            title={metric.title}
+            value={metric.value}
+            unit={metric.unit}
+            icon={metric.icon}
+          />
+          {isEditing && index < 2 ? (
+            <div className="space-y-4 mt-4">
+              <Label htmlFor={metric.title.toLowerCase()}>{metric.title} ({metric.unit})</Label>
+              <Input
+                id={metric.title.toLowerCase()}
+                type="number"
+                step="0.1"
+                value={formData[metric.title.toLowerCase()]}
+                onChange={(e) => setFormData((prev) => ({ ...prev, [metric.title.toLowerCase()]: e.target.value }))}
+                placeholder={metric.value.toString()}
+              />
+            </div>
+          ) : (
+            <>
+              {index < 2 && (
+                <p className="text-xs text-muted-foreground mt-4">
+                  Last updated: Today
+                </p>
+              )}
+              {index < 2 && (
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-sm font-medium text-gray-600">{metric.title}</span>
+                  <div className="flex items-center space-x-1">
+                    {(metric.title === "Weight" ? weightTrend : bodyFatTrend) !== 0 && (
+                      <>
+                        {(metric.title === "Weight" ? weightTrend : bodyFatTrend) > 0 ? (
+                          <TrendingUp className="h-3 w-3 text-red-500" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3 text-green-500" />
+                        )}
+                        <span className={`text-xs ${(metric.title === "Weight" ? weightTrend : bodyFatTrend) > 0 ? "text-red-500" : "text-green-500"}`}>
+                          {Math.abs(metric.title === "Weight" ? weightTrend : bodyFatTrend).toFixed(1)} {metric.unit}
+                        </span>
+                      </>
+                    )}
                   </div>
-                )}
-                {index >= 2 && (
-                  <div className="flex items-center space-x-2">
-                    <Target className="h-3 w-3 text-gray-400" />
-                    <span className="text-xs text-gray-600">Goal: {metric.value} {metric.unit}</span>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+              )}
+              {index >= 2 && (
+                <div className="flex items-center space-x-2 mt-4">
+                  <Target className="h-3 w-3 text-gray-400" />
+                  <span className="text-xs text-gray-600">Goal: {metric.value} {metric.unit}</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       ))}
       {isEditing && (
         <Button onClick={handleSave} className="w-full mt-4">

@@ -16,7 +16,6 @@ export type Database = {
           date: string
           height: number | null
           id: string
-          mood_score: number | null
           muscle_mass_percentage: number | null
           notes: string | null
           user_id: string
@@ -29,7 +28,6 @@ export type Database = {
           date: string
           height?: number | null
           id?: string
-          mood_score?: number | null
           muscle_mass_percentage?: number | null
           notes?: string | null
           user_id: string
@@ -42,7 +40,6 @@ export type Database = {
           date?: string
           height?: number | null
           id?: string
-          mood_score?: number | null
           muscle_mass_percentage?: number | null
           notes?: string | null
           user_id?: string
@@ -96,13 +93,11 @@ export type Database = {
       }
       nutrition_logs: {
         Row: {
-          calories_burned: number | null
           created_at: string
           date: string
           food_items: Json[] | null
           id: string
           meal_type: string
-          notes: string | null
           total_calories: number | null
           total_carbs: number | null
           total_fat: number | null
@@ -110,13 +105,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          calories_burned?: number | null
           created_at?: string
           date: string
           food_items?: Json[] | null
           id?: string
           meal_type: string
-          notes?: string | null
           total_calories?: number | null
           total_carbs?: number | null
           total_fat?: number | null
@@ -124,13 +117,11 @@ export type Database = {
           user_id: string
         }
         Update: {
-          calories_burned?: number | null
           created_at?: string
           date?: string
           food_items?: Json[] | null
           id?: string
           meal_type?: string
-          notes?: string | null
           total_calories?: number | null
           total_carbs?: number | null
           total_fat?: number | null
@@ -185,7 +176,7 @@ export type Database = {
       users: {
         Row: {
           created_at: string
-          email: string
+          email: string | null
           id: string
           name: string | null
           preferences: Json | null
@@ -193,7 +184,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          email: string
+          email?: string | null
           id: string
           name?: string | null
           preferences?: Json | null
@@ -201,7 +192,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          email?: string
+          email?: string | null
           id?: string
           name?: string | null
           preferences?: Json | null
