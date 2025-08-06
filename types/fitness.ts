@@ -1,195 +1,114 @@
-import { supabase } from "@/lib/supabase"
-
 export interface User {
   id: string
   name: string
-  email: string
+  username: string
+  email?: string
   avatar?: string
-  primaryGoal: "strength" | "hypertrophy" | "fat_loss" | "endurance"
+  primaryGoal: "strength" | "hypertrophy" | "endurance" | "weight_loss" | "general_fitness"
   createdAt: string
   preferences: {
     theme: "light" | "dark"
     units: "metric" | "imperial"
     todayWidgets: string[]
+    workoutWidgets?: string[]
+    nutritionWidgets?: string[]
+    progressWidgets?: string[]
   }
-}
-
-export interface BodyMetrics {
-  userId: string
-  date: string
-  weight?: number
-  bodyFatPercentage?: number
-  goalWeight?: number
-  goalBodyFat?: number
 }
 
 export interface Exercise {
-  name: string
-  sets: {
-    reps?: number
-    weight?: number
-    unit: "lb" | "kg"
-    time?: number
-    distance?: number
-    intensity?: "low" | "medium" | "high"
-  }[]
-}
-
-export interface WorkoutPlan {
-  name: string
-  days: {
-    name: string
-    exercises: {
-      name: string
-      sets: number
-      reps: string
-      notes?: string
-    }[]
-  }[]
-}
-
-export interface WorkoutLog {
-  userId: string
-  date: string
-  startTime?: string
-  endTime?: string
-  duration?: number // in minutes
-  label: "strength" | "hypertrophy" | "deload" | "cardio" | "custom"
-  exercises: Exercise[]
-  workingWeights: Record<string, number>
-  notes?: string
-  planId?: string
-  inProgress?: boolean
-}
-
-export interface NutritionLog {
-  userId: string
-  date: string
-  caloriesConsumed: number
-  calorieLimit: number
-  waterIntake: number // in oz
-  waterGoal: number
-  meals?: {
-    name: string
-    calories: number
-    photo?: string
-    frequency?: number // how often user eats this
-  }[]
-  notes?: string
-  protein?: number
-  carbs?: number
-  fat?: number
-  fiber?: number
-  sugar?: number
-  sodium?: number
-}
-
-export interface MoodLog {
-  userId: string
-  date: string
-  mood: 1 | 2 | 3 | 4 | 5 // 1 = very bad, 5 = excellent
-  energy?: 1 | 2 | 3 | 4 | 5
-  motivation?: 1 | 2 | 3 | 4 | 5
-  notes?: string
-  timestamp?: string
-}
-
-export interface WorkoutTemplate {
   id: string
   name: string
-  category: "strength" | "cardio" | "hypertrophy" | "custom"
-  exercises: {
-    name: string
-    sets: number
-    reps: string
-    weight?: number
-    restTime?: number
-  }[]
-  estimatedDuration: number
+  category: string
+  muscleGroups: string[]
+  equipment?: string
+  instructions?: string
 }
 
-export interface ActivityHeatmap {
-  date: string
-  count: number
-  type: "workout" | "nutrition" | "metrics"
+export interface WorkoutSet {
+  id: string
+  reps: number
+  weight: number
+  restTime?: number
+  completed: boolean
 }
 
-export interface UserComparison {
+export interface WorkoutExercise {
+  id: string
+  exerciseId: string
+  exerciseName: string
+  sets: WorkoutSet[]
+  notes?: string
+}
+
+export interface Workout {
+  id: string
   userId: string
   name: string
-  avatar?: string
-  metrics: {
-    totalWorkouts: number
-    avgWeight?: number
-    totalCalories: number
-    streak: number
-  }
+  exercises: WorkoutExercise[]
+  date: string
+  duration?: number
+  notes?: string
+  isTemplate?: boolean
 }
 
-export interface MotivationalQuote {
-  id: number
-  text: string
-  author: string
-}
-
-export interface WeeklySummary {
+export interface NutritionEntry {
+  id: string
   userId: string
-  range: string
-  averageWeight: number
-  averageBodyFat: number
-  totalWorkouts: number
-  caloriesTotal: number
-  prChanges: Record<string, string>
-  goalProgress: {
-    weightRemaining: number
-    bodyFatRemaining: number
-  }
-  notes: string
+  foodName: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  servingSize: string
+  meal: "breakfast" | "lunch" | "dinner" | "snack"
+  date: string
 }
 
-export interface FoodItem {
+export interface BodyMetrics {
+  id: string
+  userId: string
+  weight?: number
+  bodyFat?: number
+  muscleMass?: number
+  date: string
+}
+
+export interface ActivityData {
+  date: string
+  intensity: number
+}
+
+export interface MoodEntry {
+  id: string
+  userId: string
+  mood: number
+  energy: number
+  stress: number
+  sleep: number
+  notes?: string
+  date: string
+}
+
+export interface CustomFood {
+  id: string
   name: string
   calories: number
   protein: number
   carbs: number
   fat: number
-  serving: string
+  servingSize: string
+  userId: string
 }
 
-export const initializeUserData = async (userId: string) => {
-  // No longer needed as Supabase handles data initialization
-  // You may want to create default records in relevant tables
-  const { error } = await supabase
-    .from('user_preferences')
-    .insert([
-      {
-        user_id: userId,
-        theme: 'light',
-        units: 'metric',
-        today_widgets: []
-      }
-    ])
-
-  if (error) console.error('Error initializing user data:', error)
-}
-
-export const clearUserData = async (userId: string) => {
-  // Instead of clearing localStorage, you might want to archive or soft-delete data
-  const tables = [
-    'workout_logs',
-    'nutrition_logs',
-    'body_metrics',
-    'mood_logs',
-    'water_tracker',
-    'workout_templates'
-  ]
-
-  for (const table of tables) {
-    const { error } = await supabase
-      .from(table)
-      .delete()
-      .eq('user_id', userId)
-
-    if (error) console.error(`Error clearing ${table}:`, error)
+export interface MealPlan {
+  id: string
+  userId: string
+  date: string
+  meals: {
+    breakfast: NutritionEntry[]
+    lunch: NutritionEntry[]
+    dinner: NutritionEntry[]
+    snacks: NutritionEntry[]
   }
 }

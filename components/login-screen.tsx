@@ -8,17 +8,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dumbbell, Mail, Lock, User, Eye, EyeOff } from "lucide-react"
+import { Dumbbell, User, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from "@/contexts/auth-context"
 
 export function LoginScreen() {
   const { login, register } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [loginData, setLoginData] = useState({ email: "", password: "" })
+  const [loginData, setLoginData] = useState({ username: "", password: "" })
   const [registerData, setRegisterData] = useState({
     name: "",
-    email: "",
+    username: "",
     password: "",
     confirmPassword: "",
   })
@@ -27,7 +27,7 @@ export function LoginScreen() {
     e.preventDefault()
     setIsLoading(true)
     try {
-      await login(loginData.email, loginData.password)
+      await login(loginData.username, loginData.password)
     } catch (error) {
       console.error("Login error:", error)
       alert(error instanceof Error ? error.message : "Invalid login credentials")
@@ -47,7 +47,7 @@ export function LoginScreen() {
     try {
       await register({
         name: registerData.name,
-        email: registerData.email,
+        username: registerData.username,
         password: registerData.password
       })
       alert("Account created successfully!")
@@ -84,16 +84,16 @@ export function LoginScreen() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="username">Username</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email"
+                      id="username"
+                      type="text"
+                      placeholder="Enter your username"
                       className="pl-10"
-                      value={loginData.email}
-                      onChange={(e) => setLoginData((prev) => ({ ...prev, email: e.target.value }))}
+                      value={loginData.username}
+                      onChange={(e) => setLoginData((prev) => ({ ...prev, username: e.target.value }))}
                       required
                     />
                   </div>
@@ -152,16 +152,16 @@ export function LoginScreen() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
+                  <Label htmlFor="register-username">Username</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      id="register-email"
-                      type="email"
-                      placeholder="Enter your email"
+                      id="register-username"
+                      type="text"
+                      placeholder="Choose a username"
                       className="pl-10"
-                      value={registerData.email}
-                      onChange={(e) => setRegisterData((prev) => ({ ...prev, email: e.target.value }))}
+                      value={registerData.username}
+                      onChange={(e) => setRegisterData((prev) => ({ ...prev, username: e.target.value }))}
                       required
                     />
                   </div>
@@ -217,7 +217,7 @@ export function LoginScreen() {
               onClick={async () => {
                 try {
                   setIsLoading(true)
-                  await login("demo@fittracker.com", "demo123")
+                  await login("demo", "demo")
                 } catch (error) {
                   console.error("Demo login error:", error)
                   alert("Failed to log in with demo account. Please try again later.")

@@ -1,182 +1,100 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
-import { User } from "@supabase/supabase-js"
-import { supabase } from "@/lib/supabase"
-import type { User as FitnessUser } from "@/types/fitness"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import type { User } from "../types/fitness"
 
 interface AuthContextType {
-  user: FitnessUser | null
-  login: (email: string, password: string) => Promise<void>
-  register: (userData: Partial<FitnessUser> & { password: string }) => Promise<void>
-  logout: () => Promise<void>
-  updateUser: (userData: FitnessUser) => Promise<void>
+  user: User | null
+  login: (username: string, password: string) => Promise<boolean>
+  logout: () => void
+  register: (userData: Partial<User>) => Promise<boolean>
+  updateUser: (userData: Partial<User>) => void
+  deleteAccount: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<FitnessUser | null>(null)
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchUserProfile(session.user)
-      }
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        fetchUserProfile(session.user)
-      } else {
-        setUser(null)
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    // Check for stored user session
+    const storedUser = localStorage.getItem("fitness-user")
+    if (storedUser) {
+      setUser(JSON.parse(storedUser))
+    }
   }, [])
 
-  const register = async (userData: Partial<FitnessUser> & { password?: string }) => {
-    if (!userData.email || !userData.password) {
-      throw new Error('Email and password are required')
-    }
-
-    // First, create the auth user with immediate sign in
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: userData.email,
-      password: userData.password,
-      options: {
-        data: {
-          name: userData.name,
-        },
-        emailRedirectTo: `${window.location.origin}/auth/callback`
+  const login = async (username: string, password: string): Promise<boolean> => {
+    // Mock authentication - in real app, this would call an API
+    const mockUser: User = {
+      id: `user-${Date.now()}`,
+      name: username === "demo" ? "Demo User" : username,
+      username,
+      primaryGoal: "hypertrophy",
+      createdAt: new Date().toISOString(),
+      preferences: {
+        theme: "light",
+        units: "imperial",
+        todayWidgets: ["metrics", "quick-actions", "mood", "water"],
       },
-    })
-
-    if (authError) throw authError
-
-    if (authData.user) {
-      // Create the user profile using the service role client
-      const { error: profileError } = await supabase
-        .from('users')
-        .upsert({
-          id: authData.user.id,
-          name: userData.name || '',
-          email: userData.email,
-          primary_goal: 'strength',
-          created_at: new Date().toISOString(),
-          preferences: {
-            theme: 'light',
-            units: 'metric',
-            todayWidgets: [],
-          },
-        }, {
-          onConflict: 'id'
-        })
-
-      if (profileError) {
-        console.error("Error creating user profile:", profileError)
-        // Don't throw here, the auth user is still created
-      }
-      
-      // Auto sign in after registration
-      await login(userData.email, userData.password)
     }
+
+    setUser(mockUser)
+    localStorage.setItem("fitness-user", JSON.stringify(mockUser))
+    return true
   }
 
-  async function fetchUserProfile(authUser: User) {
-    const { data, error } = await supabase
-      .from('users')
-      .select(`
-        id,
-        name,
-        email,
-        avatar,
-        primary_goal,
-        created_at,
-        preferences
-      `)
-      .eq('id', authUser.id)
-      .single()
-
-    if (error) {
-      console.error("Error fetching user profile:", error)
-      // Create user profile if it doesn't exist
-      const { error: createError } = await supabase
-        .from('users')
-        .insert({
-          id: authUser.id,
-          name: authUser.user_metadata?.name || '',
-          email: authUser.email,
-          primary_goal: 'strength',
-          created_at: new Date().toISOString(),
-          preferences: {
-            theme: 'light',
-            units: 'metric',
-            todayWidgets: [],
-          },
-        })
-      
-      if (createError) {
-        console.error("Error creating user profile:", createError)
-        return
-      }
-      
-      // Fetch the newly created profile
-      return await fetchUserProfile(authUser)
+  const register = async (userData: Partial<User>): Promise<boolean> => {
+    const newUser: User = {
+      id: `user-${Date.now()}`,
+      name: userData.name || "",
+      username: userData.username || "",
+      primaryGoal: userData.primaryGoal || "hypertrophy",
+      createdAt: new Date().toISOString(),
+      preferences: {
+        theme: "light",
+        units: "imperial",
+        todayWidgets: ["metrics", "quick-actions", "mood", "water"],
+      },
     }
 
-    if (data) {
-      setUser({
-        ...data,
-        primaryGoal: data.primary_goal,
-        createdAt: data.created_at,
-      } as FitnessUser)
-    }
+    setUser(newUser)
+    localStorage.setItem("fitness-user", JSON.stringify(newUser))
+    return true
   }
 
-  const login = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ 
-      email, 
-      password 
-    })
-    
-    if (error) {
-      console.error("Login error:", error)
-      throw error
-    }
-
-    if (data.user) {
-      await fetchUserProfile(data.user)
-    }
-  }
-
-  const logout = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+  const logout = () => {
     setUser(null)
+    localStorage.removeItem("fitness-user")
   }
 
-  const updateUser = async (userData: FitnessUser) => {
-    const { error } = await supabase
-      .from("users")
-      .update(userData)
-      .eq("id", userData.id)
+  const deleteAccount = async (): Promise<boolean> => {
+    // In a real app, this would call an API to delete the account
+    setUser(null)
+    localStorage.removeItem("fitness-user")
+    localStorage.removeItem("fitness-workouts")
+    localStorage.removeItem("fitness-nutrition")
+    localStorage.removeItem("fitness-metrics")
+    return true
+  }
 
-    if (error) throw error
-    setUser(userData)
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData }
+      setUser(updatedUser)
+      localStorage.setItem("fitness-user", JSON.stringify(updatedUser))
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, login, logout, register, updateUser, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")

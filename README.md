@@ -46,29 +46,29 @@ FitTracker is a comprehensive fitness tracking application built with Next.js an
 ### Installation
 
 1. Clone the repository:
-```bash
+\`\`\`bash
 git clone https://github.com/patrickfriedman/fitness-tracker.git
 cd fitness-tracker
-```
+\`\`\`
 
 2. Install dependencies:
-```bash
+\`\`\`bash
 pnpm install
-```
+\`\`\`
 
 3. Run the development server:
-```bash
+\`\`\`bash
 pnpm dev
-```
+\`\`\`
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ### Building for Production
 
-```bash
+\`\`\`bash
 pnpm build
 pnpm start
-```
+\`\`\`
 
 ## 🛠 Tech Stack
 
