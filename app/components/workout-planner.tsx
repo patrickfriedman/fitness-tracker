@@ -1,170 +1,177 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { format } from 'date-fns'
-import { CalendarIcon, PlusIcon, TrashIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Label } from '@/components/ui/label'
+import { Plus, CalendarDays, Trash2 } from 'lucide-react'
 import { PlannedWorkout } from '@/types/fitness'
+import { getBrowserClient } from '@/lib/supabase-browser'
+import { useAuth } from '@/contexts/auth-context'
+import { useToast } from '@/hooks/use-toast'
 
-export default function WorkoutPlanner() {
-  const [plannedWorkouts, setPlannedWorkouts] = useState<PlannedWorkout[]>([])
-  const [newWorkout, setNewWorkout] = useState<Omit<PlannedWorkout, 'id'>>({
-    date: new Date(),
-    title: '',
-    description: '',
-    exercises: [],
-  })
-  const [newExercise, setNewExercise] = useState({ name: '', sets: '', reps: '', weight: '' })
+interface WorkoutPlannerProps {
+  initialPlannedWorkouts: PlannedWorkout[]
+}
 
-  const handleAddWorkout = () => {
-    if (newWorkout.title && newWorkout.date) {
-      setPlannedWorkouts([...plannedWorkouts, { ...newWorkout, id: Date.now().toString() }])
-      setNewWorkout({ date: new Date(), title: '', description: '', exercises: [] })
-      setNewExercise({ name: '', sets: '', reps: '', weight: '' })
+export default function WorkoutPlanner({ initialPlannedWorkouts }: WorkoutPlannerProps) {
+  const { session } = useAuth()
+  const [plannedWorkouts, setPlannedWorkouts] = useState<PlannedWorkout[]>(initialPlannedWorkouts)
+  const [newWorkoutDate, setNewWorkoutDate] = useState('')
+  const [newWorkoutName, setNewWorkoutName] = useState('')
+  const [newWorkoutExercises, setNewWorkoutExercises] = useState<{ name: string; sets: number; reps: number }[]>([])
+  const supabase = getBrowserClient()
+  const { toast } = useToast()
+
+  const addExerciseToNewWorkout = () => {
+    setNewWorkoutExercises([...newWorkoutExercises, { name: '', sets: 0, reps: 0 }])
+  }
+
+  const updateNewWorkoutExercise = (index: number, field: string, value: string | number) => {
+    const updatedExercises = [...newWorkoutExercises]
+    updatedExercises[index] = { ...updatedExercises[index], [field]: value }
+    setNewWorkoutExercises(updatedExercises)
+  }
+
+  const removeNewWorkoutExercise = (index: number) => {
+    const updatedExercises = newWorkoutExercises.filter((_, i) => i !== index)
+    setNewWorkoutExercises(updatedExercises)
+  }
+
+  const handleAddPlannedWorkout = async () => {
+    if (!session?.user || !newWorkoutDate || !newWorkoutName || newWorkoutExercises.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all fields and add at least one exercise, and ensure you are logged in.',
+        variant: 'destructive',
+      })
+      return
     }
-  }
 
-  const handleRemoveWorkout = (id: string) => {
-    setPlannedWorkouts(plannedWorkouts.filter((workout) => workout.id !== id))
-  }
+    try {
+      const { data, error } = await supabase
+        .from('planned_workouts')
+        .insert({
+          user_id: session.user.id,
+          date: newWorkoutDate,
+          name: newWorkoutName,
+          exercises: newWorkoutExercises,
+        })
+        .select()
+        .single()
 
-  const handleAddExercise = () => {
-    if (newExercise.name) {
-      setNewWorkout((prev) => ({
-        ...prev,
-        exercises: [...prev.exercises, { ...newExercise, id: Date.now().toString() }],
-      }))
-      setNewExercise({ name: '', sets: '', reps: '', weight: '' })
+      if (error) throw error
+
+      if (data) {
+        setPlannedWorkouts((prevWorkouts) => [...prevWorkouts, data])
+        toast({
+          title: 'Workout Planned',
+          description: 'Your workout has been successfully added to the planner!',
+        })
+        // Reset form
+        setNewWorkoutDate('')
+        setNewWorkoutName('')
+        setNewWorkoutExercises([])
+      }
+    } catch (error: any) {
+      console.error('Error adding planned workout:', error)
+      toast({
+        title: 'Error',
+        description: `Failed to add planned workout: ${error.message || 'Unknown error'}`,
+        variant: 'destructive',
+      })
     }
-  }
-
-  const handleRemoveExercise = (exerciseId: string) => {
-    setNewWorkout((prev) => ({
-      ...prev,
-      exercises: prev.exercises.filter((exercise) => exercise.id !== exerciseId),
-    }))
   }
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader>
-        <CardTitle>Workout Planner</CardTitle>
+    <Card className="col-span-full">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Workout Planner</CardTitle>
+        <CalendarDays className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Plan a New Workout</h3>
-          <Input
-            placeholder="Workout Title"
-            value={newWorkout.title}
-            onChange={(e) => setNewWorkout({ ...newWorkout, title: e.target.value })}
-          />
-          <Textarea
-            placeholder="Workout Description (optional)"
-            value={newWorkout.description}
-            onChange={(e) => setNewWorkout({ ...newWorkout, description: e.target.value })}
-          />
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={'outline'}
-                className={cn(
-                  'w-full justify-start text-left font-normal',
-                  !newWorkout.date && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {newWorkout.date ? format(newWorkout.date, 'PPP') : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={newWorkout.date}
-                onSelect={(date) => date && setNewWorkout({ ...newWorkout, date })}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-
+      <CardContent className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <h4 className="text-md font-medium">Exercises</h4>
-            {newWorkout.exercises.map((exercise) => (
-              <div key={exercise.id} className="flex items-center gap-2">
-                <span className="flex-1">{exercise.name} ({exercise.sets}x{exercise.reps} @ {exercise.weight})</span>
-                <Button variant="ghost" size="icon" onClick={() => handleRemoveExercise(exercise.id)}>
-                  <TrashIcon className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <div className="flex gap-2">
-              <Input
-                placeholder="Exercise Name"
-                value={newExercise.name}
-                onChange={(e) => setNewExercise({ ...newExercise, name: e.target.value })}
-                className="flex-1"
-              />
-              <Input
-                placeholder="Sets"
-                value={newExercise.sets}
-                onChange={(e) => setNewExercise({ ...newExercise, sets: e.target.value })}
-                className="w-20"
-              />
-              <Input
-                placeholder="Reps"
-                value={newExercise.reps}
-                onChange={(e) => setNewExercise({ ...newExercise, reps: e.target.value })}
-                className="w-20"
-              />
-              <Input
-                placeholder="Weight"
-                value={newExercise.weight}
-                onChange={(e) => setNewExercise({ ...newExercise, weight: e.target.value })}
-                className="w-24"
-              />
-              <Button onClick={handleAddExercise} size="icon">
-                <PlusIcon className="h-4 w-4" />
-              </Button>
-            </div>
+            <Label htmlFor="workout-date">Date</Label>
+            <Input id="workout-date" type="date" value={newWorkoutDate} onChange={(e) => setNewWorkoutDate(e.target.value)} />
           </div>
-          <Button onClick={handleAddWorkout} className="w-full">
-            Add Planned Workout
-          </Button>
+          <div className="space-y-2">
+            <Label htmlFor="workout-name">Workout Name</Label>
+            <Input id="workout-name" value={newWorkoutName} onChange={(e) => setNewWorkoutName(e.target.value)} placeholder="e.g., Leg Day" />
+          </div>
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Your Planned Workouts</h3>
+          <h3 className="text-md font-semibold">Exercises for this Workout</h3>
+          {newWorkoutExercises.map((exercise, index) => (
+            <div key={index} className="grid grid-cols-4 gap-2 items-end">
+              <div className="col-span-2">
+                <Label htmlFor={`new-exercise-name-${index}`}>Name</Label>
+                <Input
+                  id={`new-exercise-name-${index}`}
+                  value={exercise.name}
+                  onChange={(e) => updateNewWorkoutExercise(index, 'name', e.target.value)}
+                  placeholder="e.g., Deadlifts"
+                />
+              </div>
+              <div>
+                <Label htmlFor={`new-exercise-sets-${index}`}>Sets</Label>
+                <Input
+                  id={`new-exercise-sets-${index}`}
+                  type="number"
+                  value={exercise.sets}
+                  onChange={(e) => updateNewWorkoutExercise(index, 'sets', parseInt(e.target.value) || 0)}
+                  placeholder="e.g., 4"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-grow">
+                  <Label htmlFor={`new-exercise-reps-${index}`}>Reps</Label>
+                  <Input
+                    id={`new-exercise-reps-${index}`}
+                    type="number"
+                    value={exercise.reps}
+                    onChange={(e) => updateNewWorkoutExercise(index, 'reps', parseInt(e.target.value) || 0)}
+                    placeholder="e.g., 6"
+                  />
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => removeNewWorkoutExercise(index)} className="mt-6">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+          <Button variant="outline" onClick={addExerciseToNewWorkout} className="w-full">
+            <Plus className="h-4 w-4 mr-2" /> Add Exercise
+          </Button>
+        </div>
+
+        <Button onClick={handleAddPlannedWorkout} className="w-full mt-4">
+          Add Planned Workout
+        </Button>
+
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-2">Upcoming Workouts</h3>
           {plannedWorkouts.length === 0 ? (
             <p className="text-muted-foreground">No workouts planned yet.</p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {plannedWorkouts.map((workout) => (
-                <Card key={workout.id} className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold">{workout.title}</h4>
-                      <p className="text-sm text-muted-foreground">{format(workout.date, 'PPP')}</p>
-                      {workout.description && <p className="text-sm mt-1">{workout.description}</p>}
-                      {workout.exercises.length > 0 && (
-                        <div className="mt-2 text-sm">
-                          <p className="font-medium">Exercises:</p>
-                          <ul className="list-disc list-inside">
-                            {workout.exercises.map((exercise) => (
-                              <li key={exercise.id}>{exercise.name} ({exercise.sets}x{exercise.reps} @ {exercise.weight})</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                <Card key={workout.id} className="p-3">
+                  <p className="text-sm font-medium">{workout.name} on {new Date(workout.date).toLocaleDateString()}</p>
+                  {workout.exercises && workout.exercises.length > 0 && (
+                    <div className="mt-2 text-xs">
+                      <p className="font-semibold">Exercises:</p>
+                      <ul className="list-disc list-inside">
+                        {workout.exercises.map((ex, idx) => (
+                          <li key={idx}>
+                            {ex.name} ({ex.sets} sets of {ex.reps} reps)
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveWorkout(workout.id)}>
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  )}
                 </Card>
               ))}
             </div>

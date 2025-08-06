@@ -1,89 +1,51 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { User } from '@supabase/supabase-js'
-import { getBrowserClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
-import { toast } from '@/components/ui/use-toast'
+import { Session } from '@supabase/supabase-js'
+import { getBrowserClient } from '@/lib/supabase-browser'
 
 interface AuthContextType {
-  user: User | null
-  loading: boolean
-  loginDemoUser: () => void
+  session: Session | null
+  isLoading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+export const AuthProvider = ({ children, initialSession }: { children: ReactNode; initialSession: Session | null }) => {
+  const [session, setSession] = useState<Session | null>(initialSession)
+  const [isLoading, setIsLoading] = useState(true)
   const supabase = getBrowserClient()
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user || null)
-        setLoading(false)
-        if (event === 'SIGNED_OUT') {
-          router.push('/login')
-        } else if (event === 'SIGNED_IN' && session?.user) {
-          router.push('/dashboard')
-        }
-      }
-    )
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null)
-      setLoading(false)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession)
+      setIsLoading(false)
     })
 
-    return () => {
-      authListener.unsubscribe()
+    // Initial check if session is already available (e.g., from SSR)
+    if (initialSession) {
+      setIsLoading(false)
+    } else {
+      // If no initial session, try to get it client-side
+      supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+        setSession(currentSession)
+        setIsLoading(false)
+      })
     }
-  }, [router, supabase])
 
-  const loginDemoUser = async () => {
-    setLoading(true)
-    try {
-      // Simulate a demo user login without actual Supabase auth for simplicity
-      // In a real app, you might have a dedicated demo user in Supabase
-      const demoUser: User = {
-        id: 'demo-user-id',
-        email: 'demo@example.com',
-        app_metadata: { provider: 'email' },
-        user_metadata: { username: 'DemoUser' },
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-        role: 'authenticated',
-        updated_at: new Date().toISOString(),
-      }
-      setUser(demoUser)
-      toast({
-        title: 'Demo Login Successful',
-        description: 'You are now logged in as a demo user.',
-      })
-      router.push('/dashboard')
-    } catch (error) {
-      console.error('Demo login failed:', error)
-      toast({
-        title: 'Demo Login Failed',
-        description: 'Could not log in as demo user.',
-        variant: 'destructive',
-      })
-    } finally {
-      setLoading(false)
+    return () => {
+      subscription.unsubscribe()
     }
-  }
+  }, [supabase, initialSession])
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginDemoUser }}>
+    <AuthContext.Provider value={{ session, isLoading }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext)
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')

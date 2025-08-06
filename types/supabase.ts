@@ -12,27 +12,30 @@ export type Database = {
       body_metrics: {
         Row: {
           body_fat: number | null
-          created_at: string
+          created_at: string | null
+          height: number | null
           id: string
           muscle_mass: number | null
           user_id: string
-          weight: number
+          weight: number | null
         }
         Insert: {
           body_fat?: number | null
-          created_at?: string
+          created_at?: string | null
+          height?: number | null
           id?: string
           muscle_mass?: number | null
           user_id: string
-          weight: number
+          weight?: number | null
         }
         Update: {
           body_fat?: number | null
-          created_at?: string
+          created_at?: string | null
+          height?: number | null
           id?: string
           muscle_mass?: number | null
           user_id?: string
-          weight?: number
+          weight?: number | null
         }
         Relationships: [
           {
@@ -45,21 +48,24 @@ export type Database = {
       }
       mood_logs: {
         Row: {
-          created_at: string
+          created_at: string | null
+          date: string
           id: string
           mood: string
           notes: string | null
           user_id: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
+          date: string
           id?: string
           mood: string
           notes?: string | null
           user_id: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
+          date?: string
           id?: string
           mood?: string
           notes?: string | null
@@ -78,33 +84,33 @@ export type Database = {
         Row: {
           calories: number
           carbs: number | null
-          created_at: string
+          created_at: string | null
           fat: number | null
-          food_items: string
           id: string
           meal_type: string
+          notes: string | null
           protein: number | null
           user_id: string
         }
         Insert: {
           calories: number
           carbs?: number | null
-          created_at?: string
+          created_at?: string | null
           fat?: number | null
-          food_items: string
           id?: string
           meal_type: string
+          notes?: string | null
           protein?: number | null
           user_id: string
         }
         Update: {
           calories?: number
           carbs?: number | null
-          created_at?: string
+          created_at?: string | null
           fat?: number | null
-          food_items?: string
           id?: string
           meal_type?: string
+          notes?: string | null
           protein?: number | null
           user_id?: string
         }
@@ -119,27 +125,27 @@ export type Database = {
       }
       planned_workouts: {
         Row: {
-          created_at: string
-          description: string | null
+          created_at: string | null
+          date: string
           exercises: Json | null
           id: string
-          title: string
+          name: string
           user_id: string
         }
         Insert: {
-          created_at?: string
-          description?: string | null
+          created_at?: string | null
+          date: string
           exercises?: Json | null
           id?: string
-          title: string
+          name: string
           user_id: string
         }
         Update: {
-          created_at?: string
-          description?: string | null
+          created_at?: string | null
+          date?: string
           exercises?: Json | null
           id?: string
-          title?: string
+          name?: string
           user_id?: string
         }
         Relationships: [
@@ -153,22 +159,22 @@ export type Database = {
       }
       users: {
         Row: {
-          created_at: string
-          email: string
+          created_at: string | null
+          email: string | null
           id: string
-          username: string
+          username: string | null
         }
         Insert: {
-          created_at?: string
-          email: string
+          created_at?: string | null
+          email?: string | null
           id: string
-          username: string
+          username?: string | null
         }
         Update: {
-          created_at?: string
-          email?: string
+          created_at?: string | null
+          email?: string | null
           id?: string
-          username?: string
+          username?: string | null
         }
         Relationships: [
           {
@@ -182,19 +188,22 @@ export type Database = {
       water_logs: {
         Row: {
           amount: number
-          created_at: string
+          created_at: string | null
+          date: string
           id: string
           user_id: string
         }
         Insert: {
           amount: number
-          created_at?: string
+          created_at?: string | null
+          date: string
           id?: string
           user_id: string
         }
         Update: {
           amount?: number
-          created_at?: string
+          created_at?: string | null
+          date?: string
           id?: string
           user_id?: string
         }
@@ -210,7 +219,7 @@ export type Database = {
       workout_logs: {
         Row: {
           calories_burned: number | null
-          created_at: string
+          created_at: string | null
           duration: number
           exercises: Json | null
           id: string
@@ -220,7 +229,7 @@ export type Database = {
         }
         Insert: {
           calories_burned?: number | null
-          created_at?: string
+          created_at?: string | null
           duration: number
           exercises?: Json | null
           id?: string
@@ -230,7 +239,7 @@ export type Database = {
         }
         Update: {
           calories_burned?: number | null
-          created_at?: string
+          created_at?: string | null
           duration?: number
           exercises?: Json | null
           id?: string
@@ -344,4 +353,3 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
-  : never

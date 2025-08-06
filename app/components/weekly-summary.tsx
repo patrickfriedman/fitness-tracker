@@ -1,41 +1,37 @@
 'use client'
 
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-
-const data = [
-  { name: 'Mon', workouts: 2, calories: 500 },
-  { name: 'Tue', workouts: 1, calories: 300 },
-  { name: 'Wed', workouts: 3, calories: 700 },
-  { name: 'Thu', workouts: 0, calories: 0 },
-  { name: 'Fri', workouts: 2, calories: 600 },
-  { name: 'Sat', workouts: 1, calories: 400 },
-  { name: 'Sun', workouts: 0, calories: 0 },
-]
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BarChart, LineChart } from '@tremor/react'
+import { Activity } from 'lucide-react'
 
 export default function WeeklySummary() {
+  // Dummy data for weekly summary
+  const chartData = [
+    { date: 'Mon', workouts: 2, calories: 800 },
+    { date: 'Tue', workouts: 1, calories: 450 },
+    { date: 'Wed', workouts: 0, calories: 0 },
+    { date: 'Thu', workouts: 1, calories: 600 },
+    { date: 'Fri', workouts: 2, calories: 900 },
+    { date: 'Sat', workouts: 1, calories: 500 },
+    { date: 'Sun', workouts: 0, calories: 0 },
+  ]
+
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Weekly Summary</CardTitle>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Weekly Summary</CardTitle>
+        <Activity className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent>
-        <div className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="workouts" fill="#8884d8" name="Workouts" />
-              <Bar dataKey="calories" fill="#82ca9d" name="Calories Burned" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="mt-4 text-sm text-muted-foreground">
-          <p>Total Workouts: {data.reduce((sum, day) => sum + day.workouts, 0)}</p>
-          <p>Total Calories Burned: {data.reduce((sum, day) => sum + day.calories, 0)} kcal</p>
-        </div>
+      <CardContent className="h-[200px] w-full">
+        <LineChart
+          className="h-full"
+          data={chartData}
+          index="date"
+          categories={['workouts', 'calories']}
+          colors={['blue', 'emerald']}
+          valueFormatter={(number: number) => `${number}`}
+          yAxisWidth={48}
+        />
       </CardContent>
     </Card>
   )

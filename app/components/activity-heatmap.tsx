@@ -1,127 +1,63 @@
 'use client'
 
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
-import { useState, useEffect } from 'react'
-
-// Helper to generate a range of dates
-const getDatesInMonth = (year: number, month: number) => {
-  const date = new Date(year, month, 1)
-  const dates = []
-  while (date.getMonth() === month) {
-    dates.push(new Date(date))
-    date.setDate(date.getDate() + 1)
-  }
-  return dates
-}
-
-// Simulate activity data
-const generateActivityData = (year: number, month: number) => {
-  const dates = getDatesInMonth(year, month)
-  return dates.map((date) => ({
-    date: date.toISOString().split('T')[0], // YYYY-MM-DD
-    count: Math.floor(Math.random() * 5), // 0-4 activities
-  }))
-}
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { CalendarHeatmap } from '@nivo/calendar'
+import { Calendar } from 'lucide-react'
 
 export default function ActivityHeatmap() {
-  const [activityData, setActivityData] = useState<Array<{ date: string; count: number }>>([])
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
+  // Dummy data for the heatmap
+  const now = new Date()
+  const year = now.getFullYear()
+  const startDate = `${year}-01-01`
+  const endDate = `${year}-12-31`
 
-  useEffect(() => {
-    setActivityData(generateActivityData(currentYear, currentMonth))
-  }, [currentYear, currentMonth])
-
-  const getIntensityClass = (count: number) => {
-    if (count === 0) return 'bg-gray-200 dark:bg-gray-700'
-    if (count === 1) return 'bg-green-100 dark:bg-green-900/20'
-    if (count === 2) return 'bg-green-200 dark:bg-green-900/40'
-    if (count === 3) return 'bg-green-300 dark:bg-green-900/60'
-    if (count === 4) return 'bg-green-400 dark:bg-green-900/80'
-    return 'bg-green-500 dark:bg-green-900'
-  }
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
-
-  const handleMonthChange = (direction: 'prev' | 'next') => {
-    let newMonth = currentMonth
-    let newYear = currentYear
-
-    if (direction === 'prev') {
-      newMonth--
-      if (newMonth < 0) {
-        newMonth = 11
-        newYear--
-      }
-    } else {
-      newMonth++
-      if (newMonth > 11) {
-        newMonth = 0
-        newYear++
-      }
+  const generateRandomData = (numDays: number) => {
+    const data = []
+    for (let i = 0; i < numDays; i++) {
+      const date = new Date(year, 0, 1)
+      date.setDate(date.getDate() + i)
+      // Simulate activity: higher values for more activity
+      const value = Math.floor(Math.random() * 50) + (Math.random() > 0.7 ? 50 : 0) // More activity on some days
+      data.push({
+        value: value,
+        day: date.toISOString().split('T')[0],
+      })
     }
-    setCurrentMonth(newMonth)
-    setCurrentYear(newYear)
+    return data
   }
+
+  const data = generateRandomData(365) // Data for the whole year
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Activity Heatmap</CardTitle>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Activity Heatmap</CardTitle>
+        <Calendar className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">
-            {monthNames[currentMonth]} {currentYear}
-          </h3>
-          <div className="space-x-2">
-            <Button variant="outline" size="sm" onClick={() => handleMonthChange('prev')}>
-              Prev
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleMonthChange('next')}>
-              Next
-            </Button>
-          </div>
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="text-center text-xs text-muted-foreground">
-              {day}
-            </div>
-          ))}
-          {activityData.map((day, index) => (
-            <TooltipProvider key={day.date}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    className={cn(
-                      'h-6 w-6 rounded-sm cursor-pointer',
-                      getIntensityClass(day.count)
-                    )}
-                    style={{
-                      gridColumnStart: index === 0 ? new Date(day.date).getDay() + 1 : 'auto',
-                    }}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{day.date}</p>
-                  <p>{day.count} activities</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ))}
-        </div>
-        <div className="flex justify-end text-xs text-muted-foreground mt-4">
-          Less <div className="h-3 w-3 rounded-sm bg-gray-200 dark:bg-gray-700 mx-1" />
-          <div className="h-3 w-3 rounded-sm bg-green-100 dark:bg-green-900/20 mx-1" />
-          <div className="h-3 w-3 rounded-sm bg-green-300 dark:bg-green-900/60 mx-1" />
-          <div className="h-3 w-3 rounded-sm bg-green-500 dark:bg-green-900 mx-1" /> More
-        </div>
+      <CardContent className="h-[200px] w-full">
+        <CalendarHeatmap
+          data={data}
+          from={startDate}
+          to={endDate}
+          emptyColor="#ebedf0"
+          colors={['#9be9a8', '#40c463', '#30a14e', '#216e39']}
+          margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+          yearSpacing={40}
+          dayBorderWidth={2}
+          dayBorderColor="#ffffff"
+          legends={[
+            {
+              anchor: 'bottom-right',
+              direction: 'row',
+              translateY: 36,
+              itemCount: 4,
+              itemWidth: 42,
+              itemHeight: 20,
+              itemsSpacing: 14,
+              itemDirection: 'right-to-left',
+            },
+          ]}
+        />
       </CardContent>
     </Card>
   )

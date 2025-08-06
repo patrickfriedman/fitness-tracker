@@ -1,63 +1,34 @@
 'use server'
 
-import { getBrowserClient, getServiceRoleClient } from '@/lib/supabase'
+import { getServiceRoleClient } from '@/lib/supabase-server'
+import { getBrowserClient } from '@/lib/supabase-browser'
 import { redirect } from 'next/navigation'
-import { z } from 'zod'
 
-const loginSchema = z.object({
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(6, 'Password must be at least 6 characters long'),
-})
-
-const signupSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters long'),
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(6, 'Password must be at least 6 characters long'),
-})
-
-export async function login(prevState: any, formData: FormData) {
+export async function signIn(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
-
-  const validatedFields = loginSchema.safeParse({ email, password })
-
-  if (!validatedFields.success) {
-    return {
-      success: false,
-      message: 'Validation Error',
-      errors: validatedFields.error.flatten().fieldErrors,
-    }
-  }
-
   const supabase = getBrowserClient()
+
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
+    console.error('Sign-in error:', error.message)
     return { success: false, message: error.message }
   }
 
-  redirect('/dashboard')
+  redirect('/')
 }
 
-export async function signup(prevState: any, formData: FormData) {
+export async function signUp(formData: FormData) {
   const username = formData.get('username') as string
   const email = formData.get('email') as string
   const password = formData.get('password') as string
-
-  const validatedFields = signupSchema.safeParse({ username, email, password })
-
-  if (!validatedFields.success) {
-    return {
-      success: false,
-      message: 'Validation Error',
-      errors: validatedFields.error.flatten().fieldErrors,
-    }
-  }
-
   const supabase = getBrowserClient()
+  const serviceRoleSupabase = getServiceRoleClient()
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -69,45 +40,50 @@ export async function signup(prevState: any, formData: FormData) {
   })
 
   if (error) {
+    console.error('Sign-up error:', error.message)
     return { success: false, message: error.message }
   }
 
-  // Optionally, insert user into public.users table if needed for additional profile data
   if (data.user) {
-    const serviceRoleSupabase = getServiceRoleClient();
+    // Optionally, insert username into public.users table if you have one
+    // This is an example, adjust according to your 'users' table schema
     const { error: insertError } = await serviceRoleSupabase
       .from('users')
-      .insert({ id: data.user.id, username, email });
+      .insert({ id: data.user.id, username: username, email: email })
 
     if (insertError) {
-      console.error('Error inserting user into public.users:', insertError.message);
-      // You might want to handle this error more gracefully, e.g., log it and still proceed
-      // or return an error to the user if it's critical.
+      console.error('Error inserting user profile:', insertError.message)
+      // You might want to handle this more gracefully, e.g., delete the auth user
+      return { success: false, message: 'Error creating user profile.' }
     }
   }
 
-  return { success: true, message: 'Sign up successful! Please check your email to confirm your account.' }
+  return { success: true, message: 'Please check your email for verification!' }
 }
 
-export async function logout() {
+export async function signOut() {
   const supabase = getBrowserClient()
   const { error } = await supabase.auth.signOut()
 
   if (error) {
-    console.error('Error logging out:', error.message)
+    console.error('Sign-out error:', error.message)
+    return { success: false, message: error.message }
   }
 
   redirect('/login')
 }
 
-export async function getSession() {
+export async function demoLogin() {
   const supabase = getBrowserClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  return session
-}
+  const { error } = await supabase.auth.signInWithPassword({
+    email: 'demo@example.com',
+    password: 'demopassword',
+  })
 
-export async function getUser() {
-  const supabase = getBrowserClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
+  if (error) {
+    console.error('Demo login error:', error.message)
+    return { success: false, message: error.message }
+  }
+
+  redirect('/')
 }

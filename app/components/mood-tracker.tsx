@@ -1,98 +1,131 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Label } from '@/components/ui/label'
-import { SmileIcon, MehIcon, FrownIcon } from 'lucide-react'
-import { toast } from '@/components/ui/use-toast'
+import { Smile, Frown, Meh, Plus } from 'lucide-react'
 import { MoodLog } from '@/types/fitness'
+import { getBrowserClient } from '@/lib/supabase-browser'
+import { useAuth } from '@/contexts/auth-context'
+import { useToast } from '@/hooks/use-toast'
+import { Textarea } from '@/components/ui/textarea'
 
-export default function MoodTracker() {
-  const [currentMood, setCurrentMood] = useState<MoodLog['mood'] | null>(null)
-  const [moodLogs, setMoodLogs] = useState<MoodLog[]>([])
+interface MoodTrackerProps {
+  logs: MoodLog[]
+}
 
-  const handleMoodSelect = (mood: MoodLog['mood']) => {
-    setCurrentMood(mood)
-  }
+export default function MoodTracker({ logs: initialLogs }: MoodTrackerProps) {
+  const { session } = useAuth()
+  const [logs, setLogs] = useState<MoodLog[]>(initialLogs)
+  const [selectedMood, setSelectedMood] = useState<string | null>(null)
+  const [notes, setNotes] = useState('')
+  const supabase = getBrowserClient()
+  const { toast } = useToast()
 
-  const handleSubmitMood = () => {
-    if (currentMood) {
-      const newMoodLog: MoodLog = {
-        id: Date.now().toString(),
-        date: new Date(),
-        mood: currentMood,
-      }
-      setMoodLogs((prev) => [...prev, newMoodLog])
+  const moodOptions = [
+    { name: 'Happy', icon: Smile, value: 'happy' },
+    { name: 'Neutral', icon: Meh, value: 'neutral' },
+    { name: 'Sad', icon: Frown, value: 'sad' },
+  ]
+
+  const handleLogMood = async () => {
+    if (!session?.user || !selectedMood) {
       toast({
-        title: 'Mood Logged!',
-        description: `You've logged your mood as ${currentMood}.`,
+        title: 'Error',
+        description: 'Please select a mood and log in.',
+        variant: 'destructive',
       })
-      setCurrentMood(null) // Reset for next entry
-    } else {
+      return
+    }
+
+    try {
+      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+
+      const { data, error } = await supabase
+        .from('mood_logs')
+        .upsert(
+          {
+            user_id: session.user.id,
+            date: today,
+            mood: selectedMood,
+            notes: notes || null,
+          },
+          { onConflict: 'user_id,date' }
+        )
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setLogs((prevLogs) => {
+        const existingLogIndex = prevLogs.findIndex(log => log.date === today)
+        if (existingLogIndex > -1) {
+          const updatedLogs = [...prevLogs]
+          updatedLogs[existingLogIndex] = { ...updatedLogs[existingLogIndex], mood: selectedMood, notes: notes || null }
+          return updatedLogs
+        }
+        return [...prevLogs, { date: today, mood: selectedMood, notes: notes || null }]
+      })
+
       toast({
-        title: 'No Mood Selected',
-        description: 'Please select a mood before logging.',
+        title: 'Mood Logged',
+        description: `Your mood for today (${selectedMood}) has been recorded.`,
+      })
+      setSelectedMood(null)
+      setNotes('')
+    } catch (error: any) {
+      console.error('Error logging mood:', error)
+      toast({
+        title: 'Error',
+        description: `Failed to log mood: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       })
     }
   }
 
-  const latestMood = moodLogs.sort((a, b) => b.date.getTime() - a.date.getTime())[0]
+  // Initialize selected mood and notes from logs for today
+  React.useEffect(() => {
+    const today = new Date().toISOString().split('T')[0]
+    const todayLog = logs.find(log => log.date === today)
+    if (todayLog) {
+      setSelectedMood(todayLog.mood)
+      setNotes(todayLog.notes || '')
+    } else {
+      setSelectedMood(null)
+      setNotes('')
+    }
+  }, [logs])
 
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Mood Tracker</CardTitle>
-        {latestMood && (
-          <p className="text-xs text-muted-foreground">
-            Last logged: {latestMood.date.toLocaleDateString()}
-          </p>
-        )}
+        <Smile className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <RadioGroup
-            onValueChange={handleMoodSelect}
-            value={currentMood || ''}
-            className="flex justify-around"
-          >
-            <div className="flex flex-col items-center space-y-1">
-              <RadioGroupItem value="happy" id="happy" className="peer sr-only" />
-              <Label
-                htmlFor="happy"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-              >
-                <SmileIcon className="mb-3 h-6 w-6" />
-                Happy
-              </Label>
-            </div>
-            <div className="flex flex-col items-center space-y-1">
-              <RadioGroupItem value="neutral" id="neutral" className="peer sr-only" />
-              <Label
-                htmlFor="neutral"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-              >
-                <MehIcon className="mb-3 h-6 w-6" />
-                Neutral
-              </Label>
-            </div>
-            <div className="flex flex-col items-center space-y-1">
-              <RadioGroupItem value="sad" id="sad" className="peer sr-only" />
-              <Label
-                htmlFor="sad"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-              >
-                <FrownIcon className="mb-3 h-6 w-6" />
-                Sad
-              </Label>
-            </div>
-          </RadioGroup>
-          <Button onClick={handleSubmitMood} className="w-full" disabled={!currentMood}>
-            Log Mood
-          </Button>
+      <CardContent className="grid gap-4">
+        <div className="flex justify-around">
+          {moodOptions.map((mood) => (
+            <Button
+              key={mood.value}
+              variant={selectedMood === mood.value ? 'default' : 'outline'}
+              size="icon"
+              onClick={() => setSelectedMood(mood.value)}
+              className="flex flex-col h-auto w-auto p-2"
+            >
+              <mood.icon className="h-6 w-6" />
+              <span className="text-xs mt-1">{mood.name}</span>
+            </Button>
+          ))}
         </div>
+        <Textarea
+          placeholder="Any notes about your mood today?"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className="min-h-[60px]"
+        />
+        <Button onClick={handleLogMood} disabled={!selectedMood}>
+          <Plus className="h-4 w-4 mr-2" /> Log Mood
+        </Button>
       </CardContent>
     </Card>
   )
