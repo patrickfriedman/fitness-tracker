@@ -1,258 +1,147 @@
-"use client"
+'use client'
 
-import type React from "react"
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dumbbell, Mail, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react'
-import { useAuth } from "@/contexts/auth-context"
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAuth } from '@/contexts/auth-context'
+import { Loader2 } from 'lucide-react'
+import Image from 'next/image'
 
-export function LoginScreen() {
-  const { login, register } = useAuth()
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string>("")
-  const [loginData, setLoginData] = useState({ email: "", password: "" })
-  const [registerData, setRegisterData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  })
+export default function LoginScreen() {
+  const { login, register, loginDemo } = useAuth()
+  const [isRegistering, setIsRegistering] = useState(false)
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
-    setIsLoading(true)
-    
+    setLoading(true)
+    setError(null)
     try {
-      await login(loginData.email, loginData.password)
-    } catch (error) {
-      console.error("Login error:", error)
-      setError(error instanceof Error ? error.message : "Invalid login credentials")
+      if (isRegistering) {
+        await register(email, password, username)
+      } else {
+        await login(email, password)
+      }
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred.')
     } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    
-    if (registerData.password !== registerData.confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      await register({
-        name: registerData.name,
-        username: registerData.email,
-        email: registerData.email,
-        password: registerData.password
-      })
-    } catch (error) {
-      console.error("Registration error:", error)
-      setError(error instanceof Error ? error.message : "Failed to create account")
-    } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   const handleDemoLogin = async () => {
-    setError("")
-    setIsLoading(true)
-    
+    setLoading(true)
+    setError(null)
     try {
-      await login("demo@fittracker.com", "demo123")
-    } catch (error) {
-      console.error("Demo login error:", error)
-      setError("Demo account not available. Please create an account.")
+      await loginDemo()
+    } catch (err: any) {
+      setError(err.message || 'Failed to log in as demo user.')
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
-        <CardHeader className="text-center pb-2">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
-              <Dumbbell className="h-8 w-8 text-white" />
-            </div>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <Button variant="ghost" onClick={handleDemoLogin} disabled={loading}>
+              <Image src="/placeholder-logo.png" alt="Fitness App Logo" width={64} height={64} />
+            </Button>
           </div>
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            FitTracker Pro
+          <CardTitle className="text-3xl font-bold">
+            {isRegistering ? 'Create Account' : 'Login'}
           </CardTitle>
-          <p className="text-gray-600 dark:text-gray-400">Your fitness journey starts here</p>
+          <CardDescription>
+            {isRegistering ? 'Enter your details to create an account' : 'Enter your credentials to access your fitness journey'}
+          </CardDescription>
         </CardHeader>
-
         <CardContent>
-          {/* Error Display */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isRegistering && (
+              <div>
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="john_doe"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  disabled={loading}
+                />
               </div>
+            )}
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading}
+              />
             </div>
-          )}
-
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Sign In</TabsTrigger>
-              <TabsTrigger value="register">Sign Up</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email"
-                      className="pl-10"
-                      value={loginData.email}
-                      onChange={(e) => setLoginData((prev) => ({ ...prev, email: e.target.value }))}
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      className="pl-10 pr-10"
-                      value={loginData.password}
-                      onChange={(e) => setLoginData((prev) => ({ ...prev, password: e.target.value }))}
-                      required
-                      disabled={isLoading}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={isLoading}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Signing in..." : "Sign In"}
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
+            </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isRegistering ? 'Creating...' : 'Logging in...'}
+                </>
+              ) : (
+                isRegistering ? 'Create Account' : 'Login'
+              )}
+            </Button>
+          </form>
+          <div className="mt-6 text-center text-sm">
+            {isRegistering ? (
+              <>
+                Already have an account?{' '}
+                <Button variant="link" onClick={() => setIsRegistering(false)} disabled={loading}>
+                  Login
                 </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="register">
-              <form onSubmit={handleRegister} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="name"
-                      placeholder="Enter your full name"
-                      className="pl-10"
-                      value={registerData.name}
-                      onChange={(e) => setRegisterData((prev) => ({ ...prev, name: e.target.value }))}
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="register-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      className="pl-10"
-                      value={registerData.email}
-                      onChange={(e) => setRegisterData((prev) => ({ ...prev, email: e.target.value }))}
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="register-password"
-                      type="password"
-                      placeholder="Create a password"
-                      className="pl-10"
-                      value={registerData.password}
-                      onChange={(e) => setRegisterData((prev) => ({ ...prev, password: e.target.value }))}
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      placeholder="Confirm your password"
-                      className="pl-10"
-                      value={registerData.confirmPassword}
-                      onChange={(e) => setRegisterData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                  disabled={isLoading || registerData.password !== registerData.confirmPassword}
-                >
-                  {isLoading ? "Creating account..." : "Create Account"}
+              </>
+            ) : (
+              <>
+                Don&apos;t have an account?{' '}
+                <Button variant="link" onClick={() => setIsRegistering(true)} disabled={loading}>
+                  Sign Up
                 </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-
-          <div className="mt-6 text-center">
-            <Button
-              variant="outline"
-              className="w-full bg-transparent"
-              onClick={handleDemoLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? "Logging in..." : "Try Demo Account"}
+              </>
+            )}
+          </div>
+          <div className="mt-4 text-center">
+            <Button variant="outline" onClick={handleDemoLogin} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Entering Demo...
+                </>
+              ) : (
+                'Continue as Demo User'
+              )}
             </Button>
           </div>
         </CardContent>

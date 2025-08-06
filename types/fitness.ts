@@ -1,71 +1,90 @@
 export interface User {
   id: string;
-  name: string;
-  username?: string; // Optional, as we're using email for auth
+  username?: string | null;
   email: string;
-  primaryGoal?: 'strength' | 'hypertrophy' | 'fat_loss' | 'endurance' | 'general_fitness';
-  createdAt?: string;
-  preferences?: {
-    theme: 'light' | 'dark' | 'system';
-    units: 'imperial' | 'metric';
-    todayWidgets: string[];
-  };
+  primary_goal?: string | null;
+  preferences?: Record<string, any> | null;
+  created_at?: string;
 }
 
 export interface WorkoutLog {
   id: string;
-  userId: string;
+  user_id: string;
   date: string;
   name: string;
-  durationMinutes: number;
-  exercises: { name: string; sets: number; reps: number; weight: number }[];
-  notes?: string;
-  caloriesBurned?: number;
+  duration_minutes?: number | null;
+  exercises?: ExerciseLog[] | null;
+  notes?: string | null;
+  calories_burned?: number | null;
+  created_at?: string;
+}
+
+export interface ExerciseLog {
+  name: string;
+  sets: number;
+  reps: number;
+  weight: number;
+  unit: string; // e.g., 'kg', 'lbs'
 }
 
 export interface NutritionLog {
   id: string;
-  userId: string;
+  user_id: string;
   date: string;
-  mealType: string;
-  foodItems: { name: string; quantity: number; unit: string; calories: number }[];
-  totalCalories: number;
-  totalProtein: number;
-  totalCarbs: number;
-  totalFat: number;
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  food_items?: FoodItem[] | null;
+  total_calories?: number | null;
+  total_protein?: number | null;
+  total_carbs?: number | null;
+  total_fat?: number | null;
+  created_at?: string;
+}
+
+export interface FoodItem {
+  name: string;
+  quantity: number;
+  unit: string; // e.g., 'g', 'ml', 'pcs'
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
 }
 
 export interface BodyMetric {
   id: string;
-  userId: string;
+  user_id: string;
   date: string;
-  weight?: number;
-  height?: number;
-  bodyFatPercentage?: number;
-  muscleMassPercentage?: number;
-  waistCircumference?: number;
-  notes?: string;
+  weight?: number | null;
+  height?: number | null;
+  body_fat_percentage?: number | null;
+  muscle_mass_percentage?: number | null;
+  waist_circumference?: number | null;
+  notes?: string | null;
+  created_at?: string;
 }
 
 export interface MoodLog {
   id: string;
-  userId: string;
+  user_id: string;
   date: string;
-  moodScore: number; // e.g., 1-5
-  notes?: string;
+  mood_score: number; // e.g., 1-5
+  notes?: string | null;
+  created_at?: string;
 }
 
 export interface WaterLog {
   id: string;
-  userId: string;
+  user_id: string;
   date: string;
-  amountMl: number;
+  amount_ml: number;
+  created_at?: string;
 }
 
 export interface PlannedWorkout {
   id: string;
-  userId: string;
+  user_id: string;
   date: string;
   name: string;
-  notes?: string;
+  notes?: string | null;
+  created_at?: string;
 }

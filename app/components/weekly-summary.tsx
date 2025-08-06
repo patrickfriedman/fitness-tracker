@@ -1,162 +1,128 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { BarChart } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAuth } from '@/contexts/auth-context'
+import { useEffect, useState } from 'react'
 import { getBrowserClient } from '@/lib/supabase'
-import { Loader2 } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { WorkoutLog, NutritionLog } from '@/types/fitness'
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns'
+import { Skeleton } from '@/components/ui/skeleton'
 
-// Helper to get dates for the last 7 days
-const getLast7Days = () => {
-  const dates = []
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    dates.push(d.toISOString().split('T')[0]) // YYYY-MM-DD
-  }
-  return dates
+interface WeeklySummaryData {
+  name: string; // Day of the week
+  workouts: number;
+  calories: number;
 }
 
 export default function WeeklySummary() {
-  const { user } = useAuth()
+  const { user, isDemo } = useAuth()
+  const [summaryData, setSummaryData] = useState<WeeklySummaryData[]>([])
+  const [loading, setLoading] = useState(true)
   const supabase = getBrowserClient()
-  const { toast } = useToast()
-
-  const [summaryData, setSummaryData] = useState({
-    workouts: 0,
-    totalDuration: 0,
-    totalCalories: 0,
-    avgMood: 0,
-  })
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const fetchWeeklySummary = async () => {
-      if (!user?.id || user.id === 'demo-user-123') {
-        // Simulate demo data
-        setSummaryData({
-          workouts: Math.floor(Math.random() * 5) + 2,
-          totalDuration: Math.floor(Math.random() * 200) + 100,
-          totalCalories: Math.floor(Math.random() * 1500) + 500,
-          avgMood: parseFloat((Math.random() * 4 + 1).toFixed(1)),
-        })
-        setIsLoading(false)
-        return
-      }
-
-      setIsLoading(true)
-      const last7Days = getLast7Days()
-      const startDate = last7Days[0]
-      const endDate = last7Days[last7Days.length - 1]
-
-      try {
-        // Fetch workout logs
-        const { data: workouts, error: workoutError } = await supabase
-          .from('workout_logs')
-          .select('duration_minutes, calories_burned')
-          .eq('user_id', user.id)
-          .gte('date', startDate)
-          .lte('date', endDate)
-
-        // Fetch nutrition logs
-        const { data: nutrition, error: nutritionError } = await supabase
-          .from('nutrition_logs')
-          .select('total_calories')
-          .eq('user_id', user.id)
-          .gte('date', startDate)
-          .lte('date', endDate)
-
-        // Fetch mood logs
-        const { data: moods, error: moodError } = await supabase
-          .from('mood_logs')
-          .select('mood_score')
-          .eq('user_id', user.id)
-          .gte('date', startDate)
-          .lte('date', endDate)
-
-        if (workoutError || nutritionError || moodError) {
-          console.error('Error fetching weekly summary:', workoutError || nutritionError || moodError)
-          toast({
-            title: 'Error',
-            description: 'Failed to load weekly summary.',
-            variant: 'destructive',
-          })
-          setIsLoading(false)
-          return
-        }
-
-        const totalWorkouts = workouts?.length || 0
-        const totalDuration = workouts?.reduce((sum, w) => sum + (w.duration_minutes || 0), 0) || 0
-        const totalCaloriesConsumed = nutrition?.reduce((sum, n) => sum + (n.total_calories || 0), 0) || 0
-        const avgMood = moods?.length > 0 ? (moods.reduce((sum, m) => sum + (m.mood_score || 0), 0) / moods.length) : 0
-
-        setSummaryData({
-          workouts: totalWorkouts,
-          totalDuration: totalDuration,
-          totalCalories: totalCaloriesConsumed,
-          avgMood: parseFloat(avgMood.toFixed(1)),
-        })
-      } catch (error) {
-        console.error('Unexpected error in weekly summary:', error)
-        toast({
-          title: 'Error',
-          description: 'An unexpected error occurred while loading summary.',
-          variant: 'destructive',
-        })
-      } finally {
-        setIsLoading(false)
-      }
+    if (!user) {
+      setLoading(false);
+      return;
     }
 
-    fetchWeeklySummary()
-  }, [user, supabase, toast])
+    const fetchWeeklyData = async () => {
+      setLoading(true);
+      const today = new Date();
+      const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+      const endOfCurrentWeek = endOfWeek(today, { weekStartsOn: 1 });
 
-  if (isLoading) {
+      const daysOfWeek = eachDayOfInterval({ start: startOfCurrentWeek, end: endOfCurrentWeek });
+
+      if (isDemo) {
+        // Simulate demo data
+        const demoSummary: WeeklySummaryData[] = daysOfWeek.map(day => ({
+          name: format(day, 'EEE'),
+          workouts: Math.floor(Math.random() * 3), // 0-2 workouts
+          calories: Math.floor(Math.random() * 1000) + 1000, // 1000-2000 calories
+        }));
+        setSummaryData(demoSummary);
+        setLoading(false);
+        return;
+      }
+
+      const { data: workouts, error: workoutError } = await supabase
+        .from('workout_logs')
+        .select('date')
+        .eq('user_id', user.id)
+        .gte('date', format(startOfCurrentWeek, 'yyyy-MM-dd'))
+        .lte('date', format(endOfCurrentWeek, 'yyyy-MM-dd'));
+
+      const { data: nutrition, error: nutritionError } = await supabase
+        .from('nutrition_logs')
+        .select('date, total_calories')
+        .eq('user_id', user.id)
+        .gte('date', format(startOfCurrentWeek, 'yyyy-MM-dd'))
+        .lte('date', format(endOfCurrentWeek, 'yyyy-MM-dd'));
+
+      if (workoutError) console.error('Error fetching weekly workouts:', workoutError.message);
+      if (nutritionError) console.error('Error fetching weekly nutrition:', nutritionError.message);
+
+      const aggregatedWorkouts: { [key: string]: number } = {};
+      workouts?.forEach(log => {
+        const dayKey = format(new Date(log.date), 'yyyy-MM-dd');
+        aggregatedWorkouts[dayKey] = (aggregatedWorkouts[dayKey] || 0) + 1;
+      });
+
+      const aggregatedCalories: { [key: string]: number } = {};
+      nutrition?.forEach(log => {
+        const dayKey = format(new Date(log.date), 'yyyy-MM-dd');
+        aggregatedCalories[dayKey] = (aggregatedCalories[dayKey] || 0) + (log.total_calories || 0);
+      });
+
+      const weeklySummary: WeeklySummaryData[] = daysOfWeek.map(day => {
+        const dayKey = format(day, 'yyyy-MM-dd');
+        return {
+          name: format(day, 'EEE'), // Mon, Tue, etc.
+          workouts: aggregatedWorkouts[dayKey] || 0,
+          calories: aggregatedCalories[dayKey] || 0,
+        };
+      });
+
+      setSummaryData(weeklySummary);
+      setLoading(false);
+    };
+
+    fetchWeeklyData();
+  }, [user, isDemo, supabase]);
+
+  if (loading) {
     return (
-      <Card className="col-span-1">
+      <Card className="col-span-full lg:col-span-2">
         <CardHeader>
-          <CardTitle>Weekly Summary</CardTitle>
+          <CardTitle className="text-sm font-medium">Weekly Summary</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-48">
-          <Loader2 className="h-6 w-6 animate-spin" />
+        <CardContent>
+          <Skeleton className="h-64 w-full" />
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
-    <Card className="col-span-1">
+    <Card className="col-span-full lg:col-span-2">
       <CardHeader>
-        <CardTitle>Weekly Summary</CardTitle>
+        <CardTitle className="text-sm font-medium">Weekly Summary</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <BarChart className="h-6 w-6 text-blue-500" />
-          <p className="text-lg">
-            <span className="font-bold">{summaryData.workouts}</span> Workouts Logged
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-blue-500">⏱️</span>
-          <p className="text-lg">
-            <span className="font-bold">{summaryData.totalDuration.toFixed(0)}</span> Minutes Exercised
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-blue-500">🍔</span>
-          <p className="text-lg">
-            <span className="font-bold">{summaryData.totalCalories.toFixed(0)}</span> Calories Consumed
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-blue-500">😊</span>
-          <p className="text-lg">
-            Average Mood: <span className="font-bold">{summaryData.avgMood}</span>/5
-          </p>
-        </div>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={summaryData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+            <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+            <Tooltip />
+            <Bar yAxisId="left" dataKey="workouts" fill="#8884d8" name="Workouts" />
+            <Bar yAxisId="right" dataKey="calories" fill="#82ca9d" name="Calories" />
+          </BarChart>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
-  )
+  );
 }

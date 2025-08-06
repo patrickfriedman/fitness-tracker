@@ -1,6 +1,11 @@
 import { supabase } from './supabase'
 import type { WorkoutLog, NutritionLog, BodyMetrics } from '@/types/fitness'
 
+// This file is currently not used as Supabase client is handled in `lib/supabase.ts`
+// and direct database interactions are via Server Actions.
+// Keeping it for completeness if it was intended for a different ORM or direct DB connection.
+// For now, it remains empty.
+
 export async function getRecentWorkouts(userId: string, limit = 5) {
   const { data, error } = await supabase
     .from('workout_logs')

@@ -1,172 +1,117 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { useState, useEffect } from 'react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { Scale, TrendingUp, TrendingDown } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
+import { useEffect, useState } from 'react'
 import { getBrowserClient } from '@/lib/supabase'
-import { Loader2, Plus, Save } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
-import type { BodyMetric } from '@/types/fitness'
+import { BodyMetric } from '@/types/fitness'
+import { format } from 'date-fns'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function BodyMetricsWidget() {
-  const { user } = useAuth()
+  const { user, isDemo } = useAuth()
+  const [latestMetric, setLatestMetric] = useState<BodyMetric | null>(null)
+  const [loading, setLoading] = useState(true)
   const supabase = getBrowserClient()
-  const { toast } = useToast()
-
-  const [weight, setWeight] = useState<string>('')
-  const [height, setHeight] = useState<string>('')
-  const [bodyFat, setBodyFat] = useState<string>('')
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [lastMetric, setLastMetric] = useState<BodyMetric | null>(null)
 
   useEffect(() => {
-    const fetchLastMetrics = async () => {
-      if (!user?.id || user.id === 'demo-user-123') {
-        setIsLoading(false)
-        return
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchLatestMetric = async () => {
+      setLoading(true);
+      if (isDemo) {
+        // Simulate demo data
+        setLatestMetric({
+          id: 'demo-metric-1',
+          user_id: user.id,
+          date: format(new Date(), 'yyyy-MM-dd'),
+          weight: 75,
+          height: 175,
+          body_fat_percentage: 18,
+          muscle_mass_percentage: 40,
+          waist_circumference: 80,
+          notes: 'Demo data for body metrics.',
+          created_at: new Date().toISOString(),
+        });
+        setLoading(false);
+        return;
       }
-      setIsLoading(true)
+
       const { data, error } = await supabase
         .from('body_metrics')
         .select('*')
         .eq('user_id', user.id)
         .order('date', { ascending: false })
         .limit(1)
-        .single()
+        .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-        console.error('Error fetching body metrics:', error)
-        toast({
-          title: 'Error',
-          description: 'Failed to load body metrics.',
-          variant: 'destructive',
-        })
+        console.error('Error fetching latest body metric:', error.message);
       } else if (data) {
-        setLastMetric(data as BodyMetric)
-        setWeight(data.weight?.toString() || '')
-        setHeight(data.height?.toString() || '')
-        setBodyFat(data.body_fat_percentage?.toString() || '')
+        setLatestMetric(data);
+      } else {
+        setLatestMetric(null);
       }
-      setIsLoading(false)
-    }
+      setLoading(false);
+    };
 
-    fetchLastMetrics()
-  }, [user, supabase, toast])
+    fetchLatestMetric();
+  }, [user, isDemo, supabase]);
 
-  const handleSaveMetrics = async () => {
-    if (!user?.id || user.id === 'demo-user-123') {
-      toast({
-        title: 'Demo Mode',
-        description: 'Body metrics cannot be saved in demo mode.',
-      })
-      return
-    }
-
-    setIsSaving(true)
-    const newMetric = {
-      user_id: user.id,
-      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-      weight: parseFloat(weight) || null,
-      height: parseFloat(height) || null,
-      body_fat_percentage: parseFloat(bodyFat) || null,
-    }
-
-    const { error } = await supabase.from('body_metrics').insert(newMetric)
-
-    if (error) {
-      console.error('Error saving body metrics:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to save body metrics.',
-        variant: 'destructive',
-      })
-    } else {
-      toast({
-        title: 'Success',
-        description: 'Body metrics saved!',
-      })
-      // Update lastMetric to reflect the newly saved data
-      setLastMetric({
-        id: 'new', // Placeholder ID
-        userId: user.id,
-        date: newMetric.date,
-        weight: newMetric.weight || undefined,
-        height: newMetric.height || undefined,
-        bodyFatPercentage: newMetric.body_fat_percentage || undefined,
-      })
-    }
-    setIsSaving(false)
-  }
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <Card className="col-span-1">
-        <CardHeader>
-          <CardTitle>Body Metrics</CardTitle>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Latest Body Metrics</CardTitle>
+          <Scale className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-32">
-          <Loader2 className="h-6 w-6 animate-spin" />
+        <CardContent>
+          <Skeleton className="h-8 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-1/2" />
+          <div className="mt-4 space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+          </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
-    <Card className="col-span-1">
-      <CardHeader>
-        <CardTitle>Body Metrics</CardTitle>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Latest Body Metrics</CardTitle>
+        <Scale className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent className="space-y-4">
-        {lastMetric && (
-          <div className="text-sm text-muted-foreground">
-            Last updated: {new Date(lastMetric.date).toLocaleDateString()}
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="weight">Weight (kg/lbs)</Label>
-            <Input
-              id="weight"
-              type="number"
-              placeholder="e.g., 70"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="height">Height (cm/in)</Label>
-            <Input
-              id="height"
-              type="number"
-              placeholder="e.g., 175"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="body-fat">Body Fat (%)</Label>
-            <Input
-              id="body-fat"
-              type="number"
-              placeholder="e.g., 15"
-              value={bodyFat}
-              onChange={(e) => setBodyFat(e.target.value)}
-            />
-          </div>
+      <CardContent>
+        <div className="text-2xl font-bold">
+          {latestMetric?.weight ? `${latestMetric.weight} kg` : 'N/A'}
         </div>
-        <Button onClick={handleSaveMetrics} className="w-full" disabled={isSaving}>
-          {isSaving ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}
-          Save Metrics
-        </Button>
+        <p className="text-xs text-muted-foreground">
+          {latestMetric?.date ? `As of ${format(new Date(latestMetric.date), 'MMM dd, yyyy')}` : 'No data yet'}
+        </p>
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span>Body Fat:</span>
+            <span className="font-medium">
+              {latestMetric?.body_fat_percentage ? `${latestMetric.body_fat_percentage}%` : 'N/A'}
+            </span>
+          </div>
+          <Progress value={latestMetric?.body_fat_percentage || 0} className="h-2" />
+          <div className="flex items-center justify-between text-sm">
+            <span>Muscle Mass:</span>
+            <span className="font-medium">
+              {latestMetric?.muscle_mass_percentage ? `${latestMetric.muscle_mass_percentage}%` : 'N/A'}
+            </span>
+          </div>
+          <Progress value={latestMetric?.muscle_mass_percentage || 0} className="h-2" />
+        </div>
       </CardContent>
     </Card>
-  )
+  );
 }

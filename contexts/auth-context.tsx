@@ -1,305 +1,173 @@
 'use client'
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useReducer,
-  useCallback,
-} from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { getBrowserClient } from '@/lib/supabase'
+import { User as SupabaseUser } from '@supabase/supabase-js'
 import { User } from '@/types/fitness'
-import {
-  signIn as serverSignIn,
-  signUp as serverSignUp,
-  signOut as serverSignOut,
-  deleteAccount as serverDeleteAccount,
-  fetchUserProfile,
-} from '@/app/actions/auth-actions'
-import { toast } from '@/components/ui/use-toast'
+import { useRouter } from 'next/navigation'
+import { signIn, signUp, signOut, deleteAccount as deleteAccountAction } from '@/app/actions/auth-actions'
 
-interface AuthState {
-  user: User | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  error: string | null
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  isDemo: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, username: string) => Promise<void>;
+  logout: () => Promise<void>;
+  loginDemo: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
-type AuthAction =
-  | { type: 'LOGIN_START' }
-  | { type: 'LOGIN_SUCCESS'; payload: User }
-  | { type: 'LOGIN_FAILURE'; payload: string }
-  | { type: 'REGISTER_START' }
-  | { type: 'REGISTER_SUCCESS'; payload: User }
-  | { type: 'REGISTER_FAILURE'; payload: string }
-  | { type: 'LOGOUT' }
-  | { type: 'SET_USER'; payload: User | null }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null }
-
-const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,
-  error: null,
-}
-
-const AuthContext = createContext<
-  | (AuthState & {
-      login: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>
-      register: (name: string, email: string, password: string) => Promise<{ success: boolean; error: string | null }>
-      logout: () => Promise<void>
-      deleteUserAccount: () => Promise<{ success: boolean; error: string | null }>
-      demoLogin: () => Promise<void>
-    })
-  | undefined
->(undefined)
-
-function authReducer(state: AuthState, action: AuthAction): AuthState {
-  switch (action.type) {
-    case 'LOGIN_START':
-    case 'REGISTER_START':
-      return { ...state, isLoading: true, error: null }
-    case 'LOGIN_SUCCESS':
-    case 'REGISTER_SUCCESS':
-      return {
-        ...state,
-        user: action.payload,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      }
-    case 'LOGIN_FAILURE':
-    case 'REGISTER_FAILURE':
-      return {
-        ...state,
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: action.payload,
-      }
-    case 'LOGOUT':
-      return { ...initialState, isLoading: false }
-    case 'SET_USER':
-      return {
-        ...state,
-        user: action.payload,
-        isAuthenticated: !!action.payload,
-        isLoading: false,
-      }
-    case 'SET_LOADING':
-      return { ...state, isLoading: action.payload }
-    case 'SET_ERROR':
-      return { ...state, error: action.payload }
-    default:
-      return state
-  }
-}
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(authReducer, initialState)
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isDemo, setIsDemo] = useState(false)
+  const router = useRouter()
   const supabase = getBrowserClient()
 
-  const loadUserSession = useCallback(async () => {
-    dispatch({ type: 'SET_LOADING', payload: true })
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+  const fetchUser = useCallback(async () => {
+    setLoading(true)
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
-      if (session) {
-        const userProfile = await fetchUserProfile(session.user.id)
-        if (userProfile) {
-          dispatch({ type: 'SET_USER', payload: userProfile })
-        } else {
-          // If no profile, but auth session exists, it means user just signed up
-          // and needs to complete onboarding or profile creation.
-          // For now, we'll set a minimal user.
-          dispatch({
-            type: 'SET_USER',
-            payload: {
-              id: session.user.id,
-              name: session.user.user_metadata?.name || session.user.email || 'User',
-              email: session.user.email || '',
-            },
-          })
-        }
-      } else {
-        dispatch({ type: 'SET_USER', payload: null })
-      }
-    } catch (err: any) {
-      console.error('Error loading user session:', err)
-      dispatch({ type: 'SET_ERROR', payload: err.message || 'Failed to load session' })
-      dispatch({ type: 'SET_USER', payload: null })
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false })
+    if (sessionError) {
+      console.error('Error fetching session:', sessionError.message)
+      setUser(null)
+      setIsDemo(false)
+      setLoading(false)
+      return
     }
+
+    if (session) {
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
+
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError.message)
+        setUser(null)
+        setIsDemo(false)
+      } else {
+        setUser({
+          id: profile.id,
+          email: profile.email || session.user.email!,
+          username: profile.name || session.user.user_metadata.username,
+          primary_goal: profile.primary_goal,
+          preferences: profile.preferences,
+          created_at: profile.created_at,
+        })
+        setIsDemo(false)
+      }
+    } else {
+      setUser(null)
+      setIsDemo(false)
+    }
+    setLoading(false)
   }, [supabase])
 
   useEffect(() => {
-    loadUserSession()
+    fetchUser()
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (session) {
-            const userProfile = await fetchUserProfile(session.user.id)
-            if (userProfile) {
-              dispatch({ type: 'SET_USER', payload: userProfile })
-            } else {
-              // Handle case where auth session exists but public.users profile doesn't
-              // This might happen right after signup before profile is created
-              dispatch({
-                type: 'SET_USER',
-                payload: {
-                  id: session.user.id,
-                  name: session.user.user_metadata?.name || session.user.email || 'User',
-                  email: session.user.email || '',
-                },
-              })
-            }
-          }
-        } else if (event === 'SIGNED_OUT') {
-          dispatch({ type: 'LOGOUT' })
-          toast({
-            title: 'Logged out',
-            description: 'You have been successfully logged out.',
-          })
-        } else if (event === 'USER_DELETED') {
-          dispatch({ type: 'LOGOUT' })
-          toast({
-            title: 'Account Deleted',
-            description: 'Your account has been successfully deleted.',
-          })
-        }
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        fetchUser()
       }
-    )
+    })
+
+    // Check for demo user in local storage on initial load
+    const storedIsDemo = localStorage.getItem('isDemoUser') === 'true';
+    if (storedIsDemo) {
+      setIsDemo(true);
+      setUser({
+        id: 'demo-user-id',
+        username: 'DemoUser',
+        email: 'demo@example.com',
+        primary_goal: 'general_fitness',
+        preferences: {},
+        created_at: new Date().toISOString(),
+      });
+      setLoading(false);
+    }
 
     return () => {
       authListener.unsubscribe()
     }
-  }, [supabase, loadUserSession])
+  }, [fetchUser, supabase])
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      dispatch({ type: 'LOGIN_START' })
-      const formData = new FormData();
-      formData.append('email', email);
-      formData.append('password', password);
-      const result = await serverSignIn(formData);
-
-      if (result.success) {
-        // Re-fetch session to update client-side state after server action
-        await loadUserSession();
-        toast({
-          title: 'Login Successful',
-          description: 'Welcome back!',
-        });
-        return { success: true, error: null };
-      } else {
-        dispatch({ type: 'LOGIN_FAILURE', payload: result.error || 'Login failed' });
-        toast({
-          title: 'Login Failed',
-          description: result.error || 'Please check your credentials.',
-          variant: 'destructive',
-        });
-        return { success: false, error: result.error };
-      }
-    },
-    [loadUserSession]
-  )
-
-  const register = useCallback(
-    async (name: string, email: string, password: string) => {
-      dispatch({ type: 'REGISTER_START' })
-      const formData = new FormData();
-      formData.append('name', name);
-      formData.append('email', email);
-      formData.append('password', password);
-      const result = await serverSignUp(formData);
-
-      if (result.success) {
-        // Re-fetch session to update client-side state after server action
-        await loadUserSession();
-        toast({
-          title: 'Registration Successful',
-          description: 'Welcome to the fitness tracker!',
-        });
-        return { success: true, error: null };
-      } else {
-        dispatch({ type: 'REGISTER_FAILURE', payload: result.error || 'Registration failed' });
-        toast({
-          title: 'Registration Failed',
-          description: result.error || 'Please try again.',
-          variant: 'destructive',
-        });
-        return { success: false, error: result.error };
-      }
-    },
-    [loadUserSession]
-  )
-
-  const logout = useCallback(async () => {
-    await serverSignOut()
-    dispatch({ type: 'LOGOUT' })
-  }, [])
-
-  const deleteUserAccount = useCallback(async () => {
-    if (!state.user?.id) {
-      toast({
-        title: 'Error',
-        description: 'No user logged in to delete.',
-        variant: 'destructive',
-      });
-      return { success: false, error: 'No user logged in' };
+  const login = async (email: string, password: string) => {
+    setLoading(true)
+    const formData = new FormData()
+    formData.append('email', email)
+    formData.append('password', password)
+    const result = await signIn(formData)
+    if (!result.success) {
+      throw new Error(result.message)
     }
-    const result = await serverDeleteAccount(state.user.id);
-    if (result.success) {
-      dispatch({ type: 'LOGOUT' });
-      toast({
-        title: 'Account Deleted',
-        description: 'Your account has been successfully deleted.',
-      });
-      return { success: true, error: null };
-    } else {
-      toast({
-        title: 'Deletion Failed',
-        description: result.error || 'Could not delete account.',
-        variant: 'destructive',
-      });
-      return { success: false, error: result.error };
-    }
-  }, [state.user?.id]);
+    // fetchUser will be called by onAuthStateChange
+  }
 
-  const demoLogin = useCallback(async () => {
-    dispatch({ type: 'LOGIN_START' });
-    // Simulate a demo user login without actual Supabase auth
-    const demoUser: User = {
-      id: 'demo-user-123',
-      name: 'Demo User',
+  const register = async (email: string, password: string, username: string) => {
+    setLoading(true)
+    const formData = new FormData()
+    formData.append('email', email)
+    formData.append('password', password)
+    formData.append('username', username)
+    const result = await signUp(formData)
+    if (!result.success) {
+      throw new Error(result.message)
+    }
+    // fetchUser will be called by onAuthStateChange
+  }
+
+  const logout = async () => {
+    setLoading(true)
+    const result = await signOut()
+    if (!result.success) {
+      throw new Error(result.message)
+    }
+    setIsDemo(false);
+    localStorage.removeItem('isDemoUser');
+    setUser(null);
+    router.push('/login'); // Redirect to login after logout
+  }
+
+  const loginDemo = async () => {
+    setLoading(true);
+    // Simulate a demo user login
+    setIsDemo(true);
+    localStorage.setItem('isDemoUser', 'true');
+    setUser({
+      id: 'demo-user-id', // A consistent ID for the demo user
+      username: 'DemoUser',
       email: 'demo@example.com',
-      primaryGoal: 'general_fitness',
-    };
-    dispatch({ type: 'LOGIN_SUCCESS', payload: demoUser });
-    toast({
-      title: 'Demo Login Successful',
-      description: 'Welcome to the demo!',
+      primary_goal: 'general_fitness',
+      preferences: {},
+      created_at: new Date().toISOString(),
     });
-  }, []);
+    setLoading(false);
+    router.push('/'); // Redirect to home page
+  };
 
-  const value = React.useMemo(
-    () => ({
-      ...state,
-      login,
-      register,
-      logout,
-      deleteUserAccount,
-      demoLogin,
-    }),
-    [state, login, register, logout, deleteUserAccount, demoLogin]
+  const deleteAccount = async () => {
+    setLoading(true);
+    const result = await deleteAccountAction();
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+    setIsDemo(false);
+    localStorage.removeItem('isDemoUser');
+    setUser(null);
+    router.push('/login'); // Redirect to login after deletion
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, isDemo, login, register, logout, loginDemo, deleteAccount }}>
+      {children}
+    </AuthContext.Provider>
   )
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

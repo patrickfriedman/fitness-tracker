@@ -1,121 +1,80 @@
-# FitTracker - Modern Fitness Tracking Application
+# Fitness Tracker App
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/patrick-friedmans-projects/v0-fitness)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/39S8nm7l0VW)
+This is a fitness tracking application built with Next.js, React, and Supabase.
 
-FitTracker is a comprehensive fitness tracking application built with Next.js and TypeScript, featuring a modern UI powered by Radix UI and Tailwind CSS. It helps users track their workouts, nutrition, body metrics, and mood while providing social comparison features.
+## Features
 
-## 🌟 Features
+- User authentication (Sign up, Login, Demo Login)
+- Dashboard with various fitness widgets
+- Workout logging
+- Nutrition tracking
+- Body metrics recording
+- Mood tracking
+- Water intake logging
+- Workout planning
+- Activity heatmap
+- Weekly summary
 
-- **Workout Tracking**
-  - Custom workout templates
-  - Real-time workout logging
-  - Exercise history and progress tracking
-  - Rest timer and workout duration tracking
+## Setup
 
-- **Nutrition Management**
-  - Daily calorie tracking
-  - Water intake monitoring
-  - Meal logging with photo support
-  - Macro and micro nutrient tracking
+1.  **Clone the repository:**
+    \`\`\`bash
+    git clone <repository-url>
+    cd fitness-tracker
+    \`\`\`
 
-- **Body Metrics**
-  - Weight tracking
-  - Body fat percentage monitoring
-  - Progress visualization
-  - Goal setting and tracking
+2.  **Install dependencies:**
+    \`\`\`bash
+    pnpm install
+    \`\`\`
 
-- **Mood & Wellness**
-  - Daily mood tracking
-  - Energy level monitoring
-  - Motivation tracking
-  - Personal notes
+3.  **Set up Supabase:**
+    *   Create a new project on [Supabase](https://supabase.com/).
+    *   Go to "SQL Editor" and run the SQL scripts provided in the `supabase/schemas` folder in the order `01` to `07`.
+    *   Go to "Project Settings" -> "API" and copy your `Project URL` and `anon public` key.
+    *   Go to "Project Settings" -> "API" -> "Service Role" and copy your `service_role` key.
 
-- **Social Features**
-  - Activity comparison with friends
-  - Weekly leaderboards
-  - Challenge center
-  - Progress sharing
+4.  **Configure Environment Variables:**
+    Create a `.env.local` file in the root of your project and add the following:
+    \`\`\`
+    NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_PROJECT_URL"
+    NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
+    SUPABASE_SERVICE_ROLE_KEY="YOUR_SUPABASE_SERVICE_ROLE_KEY"
+    \`\`\`
 
-## 🚀 Getting Started
+5.  **Generate Supabase Types (Recommended):**
+    After running the SQL scripts, generate TypeScript types for your Supabase database:
+    \`\`\`bash
+    npx supabase gen types typescript --project-id "YOUR_SUPABASE_PROJECT_REF" --schema public > types/supabase.ts
+    \`\`\`
+    Replace `"YOUR_SUPABASE_PROJECT_REF"` with your actual Supabase project ID (found in Project Settings -> General -> Project ID).
 
-### Prerequisites
-- Node.js 18+ 
-- pnpm (recommended) or npm
+6.  **Run the development server:**
+    \`\`\`bash
+    pnpm dev
+    \`\`\`
 
-### Installation
+    Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-1. Clone the repository:
-\`\`\`bash
-git clone https://github.com/patrickfriedman/fitness-tracker.git
-cd fitness-tracker
-\`\`\`
+## Project Structure
 
-2. Install dependencies:
-\`\`\`bash
-pnpm install
-\`\`\`
+-   `app/`: Next.js App Router pages and layouts.
+-   `app/actions/`: Server Actions for authentication and data manipulation.
+-   `app/components/`: Custom React components used across the application.
+-   `components/ui/`: Shadcn/ui components.
+-   `contexts/`: React Contexts for global state management (e.g., AuthContext).
+-   `hooks/`: Custom React hooks.
+-   `lib/`: Utility functions and Supabase client setup.
+-   `public/`: Static assets.
+-   `scripts/supabase/schemas/`: SQL schema files for Supabase database setup.
+-   `types/`: TypeScript type definitions.
 
-3. Run the development server:
-\`\`\`bash
-pnpm dev
-\`\`\`
+## Technologies Used
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-### Building for Production
-
-\`\`\`bash
-pnpm build
-pnpm start
-\`\`\`
-
-## 🛠 Tech Stack
-
-- **Framework**: Next.js 15
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **UI Components**: Radix UI
-- **Charts**: Recharts
-- **Form Handling**: React Hook Form
-- **Validation**: Zod
-- **Theme**: Next-themes for dark/light mode
-- **Icons**: Lucide React
-
-## 📱 Responsive Design
-
-FitTracker is built with a mobile-first approach and is fully responsive across all devices:
-- Mobile phones
-- Tablets
-- Desktop computers
-
-## 🔒 Authentication & Data Security
-
-- Secure user authentication
-- Protected routes
-- Encrypted data storage
-- Safe data export/import
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details
-
-## 👥 Authors
-
-- **Patrick Friedman** - *Initial work* - [patrickfriedman](https://github.com/patrickfriedman)
-
-## 🙏 Acknowledgments
-
-- Built with [v0.dev](https://v0.dev)
-- UI Components from [shadcn/ui](https://ui.shadcn.com)
-- Icons from [Lucide](https://lucide.dev)
+-   Next.js
+-   React
+-   TypeScript
+-   Tailwind CSS
+-   Shadcn/ui
+-   Supabase
+-   Lucide React Icons

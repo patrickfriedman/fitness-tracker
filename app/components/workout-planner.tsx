@@ -12,206 +12,148 @@ import { getBrowserClient } from '@/lib/supabase'
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import type { PlannedWorkout } from '@/types/fitness'
+import { format, isToday, isFuture } from 'date-fns'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function WorkoutPlanner() {
-  const { user } = useAuth()
-  const supabase = getBrowserClient()
-  const { toast } = useToast()
-
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const { user, isDemo } = useAuth()
   const [plannedWorkouts, setPlannedWorkouts] = useState<PlannedWorkout[]>([])
+  const [loading, setLoading] = useState(true)
   const [workoutName, setWorkoutName] = useState('')
   const [workoutNotes, setWorkoutNotes] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-
-  const formattedSelectedDate = selectedDate?.toISOString().split('T')[0] // YYYY-MM-DD
+  const supabase = getBrowserClient()
 
   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const fetchPlannedWorkouts = async () => {
-      if (!user?.id || user.id === 'demo-user-123' || !formattedSelectedDate) {
-        setPlannedWorkouts([])
-        setIsLoading(false)
-        return
+      setLoading(true);
+      if (isDemo) {
+        // Simulate demo data
+        setPlannedWorkouts([
+          {
+            id: 'demo-plan-1',
+            user_id: user.id,
+            date: format(new Date(), 'yyyy-MM-dd'),
+            name: 'Morning Cardio',
+            notes: '30 min run',
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: 'demo-plan-2',
+            user_id: user.id,
+            date: format(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // 2 days from now
+            name: 'Leg Day',
+            notes: 'Heavy squats and deadlifts',
+            created_at: new Date().toISOString(),
+          },
+        ]);
+        setLoading(false);
+        return;
       }
-      setIsLoading(true)
+
       const { data, error } = await supabase
         .from('planned_workouts')
         .select('*')
         .eq('user_id', user.id)
-        .eq('date', formattedSelectedDate)
-        .order('created_at', { ascending: true })
+        .gte('date', format(new Date(), 'yyyy-MM-dd')) // Only future or today's workouts
+        .order('date', { ascending: true });
 
       if (error) {
-        console.error('Error fetching planned workouts:', error)
-        toast({
-          title: 'Error',
-          description: 'Failed to load planned workouts.',
-          variant: 'destructive',
-        })
-        setPlannedWorkouts([])
+        console.error('Error fetching planned workouts:', error.message);
       } else {
-        setPlannedWorkouts(data as PlannedWorkout[])
+        setPlannedWorkouts(data);
       }
-      setIsLoading(false)
-    }
+      setLoading(false);
+    };
 
-    fetchPlannedWorkouts()
-  }, [user, supabase, formattedSelectedDate, toast])
+    fetchPlannedWorkouts();
+  }, [user, isDemo, supabase]);
 
-  const handleAddWorkout = async () => {
-    if (!user?.id || user.id === 'demo-user-123' || !formattedSelectedDate || !workoutName) {
-      toast({
-        title: 'Missing Info',
-        description: 'Please select a date and enter a workout name.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    setIsSaving(true)
-    const newPlannedWorkout = {
-      user_id: user.id,
-      date: formattedSelectedDate,
-      name: workoutName,
-      notes: workoutNotes,
-    }
-
-    const { data, error } = await supabase
-      .from('planned_workouts')
-      .insert(newPlannedWorkout)
-      .select()
-
-    if (error) {
-      console.error('Error adding planned workout:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to add planned workout.',
-        variant: 'destructive',
-      })
-    } else if (data && data.length > 0) {
-      setPlannedWorkouts((prev) => [...prev, data[0] as PlannedWorkout])
-      setWorkoutName('')
-      setWorkoutNotes('')
-      toast({
-        title: 'Success',
-        description: 'Workout planned!',
-      })
-    }
-    setIsSaving(false)
-  }
+  const handleAddPlannedWorkout = () => {
+    // Placeholder for opening a workout planning form/modal
+    alert('Planning a new workout! (Feature coming soon)');
+  };
 
   const handleDeleteWorkout = async (id: string) => {
-    if (!user?.id || user.id === 'demo-user-123') {
-      toast({
-        title: 'Demo Mode',
-        description: 'Workouts cannot be deleted in demo mode.',
-      })
-      return
+    if (!user || isDemo) {
+      alert('Workouts cannot be deleted in demo mode.');
+      return;
     }
 
-    setIsSaving(true)
+    setIsSaving(true);
     const { error } = await supabase
       .from('planned_workouts')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', user.id);
 
     if (error) {
-      console.error('Error deleting planned workout:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to delete planned workout.',
-        variant: 'destructive',
-      })
+      console.error('Error deleting planned workout:', error.message);
     } else {
-      setPlannedWorkouts((prev) => prev.filter((workout) => workout.id !== id))
-      toast({
-        title: 'Success',
-        description: 'Workout deleted!',
-      })
+      setPlannedWorkouts((prev) => prev.filter((workout) => workout.id !== id));
     }
-    setIsSaving(false)
+    setIsSaving(false);
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Upcoming Workouts</CardTitle>
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-24 w-full mb-4" />
+          <Skeleton className="h-10 w-full" />
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
-    <Card className="col-span-full lg:col-span-2">
-      <CardHeader>
-        <CardTitle>Workout Planner</CardTitle>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Upcoming Workouts</CardTitle>
+        <Calendar className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <Label htmlFor="date-picker">Select Date</Label>
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            className="rounded-md border shadow"
-          />
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Plan Workout for {selectedDate?.toLocaleDateString()}</h3>
-          <div className="space-y-2">
-            <Label htmlFor="new-workout-name">Workout Name</Label>
-            <Input
-              id="new-workout-name"
-              placeholder="e.g., Leg Day"
-              value={workoutName}
-              onChange={(e) => setWorkoutName(e.target.value)}
-              disabled={isSaving}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-workout-notes">Notes</Label>
-            <Textarea
-              id="new-workout-notes"
-              placeholder="e.g., 3 sets of 10 reps"
-              value={workoutNotes}
-              onChange={(e) => setWorkoutNotes(e.target.value)}
-              disabled={isSaving}
-            />
-          </div>
-          <Button onClick={handleAddWorkout} className="w-full" disabled={isSaving}>
-            {isSaving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="mr-2 h-4 w-4" />
-            )}
-            Add Planned Workout
-          </Button>
-
-          <div className="space-y-2 mt-6">
-            <h4 className="text-md font-semibold">Planned Workouts:</h4>
-            {isLoading ? (
-              <div className="flex justify-center items-center h-20">
-                <Loader2 className="h-6 w-6 animate-spin" />
+      <CardContent>
+        {plannedWorkouts && plannedWorkouts.length > 0 ? (
+          <div className="space-y-3">
+            {plannedWorkouts.map((workout) => (
+              <div key={workout.id} className="flex items-center justify-between text-sm">
+                <div>
+                  <p className="font-medium">{workout.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isToday(new Date(workout.date)) ? 'Today' : format(new Date(workout.date), 'MMM dd')}
+                    {workout.notes && ` - ${workout.notes}`}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteWorkout(workout.id)}
+                  disabled={isSaving}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </div>
-            ) : plannedWorkouts.length === 0 ? (
-              <p className="text-muted-foreground">No workouts planned for this date.</p>
-            ) : (
-              <ul className="space-y-2">
-                {plannedWorkouts.map((workout) => (
-                  <li key={workout.id} className="flex justify-between items-center p-2 border rounded-md">
-                    <div>
-                      <p className="font-medium">{workout.name}</p>
-                      {workout.notes && <p className="text-sm text-muted-foreground">{workout.notes}</p>}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteWorkout(workout.id)}
-                      disabled={isSaving}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="text-muted-foreground text-center py-4">
+            No upcoming workouts planned.
+          </div>
+        )}
+        <Button className="w-full mt-4" onClick={handleAddPlannedWorkout}>
+          <Plus className="mr-2 h-4 w-4" />
+          Plan New Workout
+        </Button>
       </CardContent>
     </Card>
-  )
+  );
 }
