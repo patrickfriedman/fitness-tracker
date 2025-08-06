@@ -38,14 +38,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const register = async (userData: Partial<FitnessUser>) => {
+  const register = async (userData: Partial<FitnessUser> & { password?: string }) => {
+    if (!userData.email || !userData.password) {
+      throw new Error('Email and password are required')
+    }
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: userData.email!,
-      password: userData.password!, // Make sure password is included in userData
+      email: userData.email,
+      password: userData.password,
       options: {
         data: {
           name: userData.name,
         },
+        emailRedirectTo: `${window.location.origin}/auth/callback`
       },
     })
 

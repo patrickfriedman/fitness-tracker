@@ -38,6 +38,7 @@ export function LoginScreen() {
     await register({
       name: registerData.name,
       email: registerData.email,
+      password: registerData.password
     })
     setIsLoading(false)
   }
