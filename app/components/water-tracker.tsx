@@ -1,93 +1,126 @@
-'use client'
+"use client"
 
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/components/ui/use-toast"
 import { Droplet, Plus, Minus } from 'lucide-react'
 import { supabase } from "@/lib/supabase"
-import type { WaterEntry } from "@/types/fitness"
+import type { WaterLog } from "@/types/fitness"
+import { format } from "date-fns"
 
-const WATER_GOAL_ML = 2500 // Example daily goal in ml
+const WATER_GOAL_ML = 3000 // Example goal: 3 liters
 
-export default function WaterTracker() {
+export function WaterTracker() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const [currentWater, setCurrentWater] = useState(0)
+  const [currentAmount, setCurrentAmount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [waterLogId, setWaterLogId] = useState<string | null>(null)
 
-  useState(() => {
-    const fetchWaterIntake = async () => {
-      if (!user) return
-      setLoading(true)
-      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+  useEffect(() => {
+    if (user?.id) {
+      fetchWaterLog()
+    }
+  }, [user?.id])
+
+  const fetchWaterLog = async () => {
+    if (!user?.id) return
+
+    setLoading(true)
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd')
       const { data, error } = await supabase
         .from('water_logs')
-        .select('amount_ml')
+        .select('*')
         .eq('user_id', user.id)
         .eq('date', today)
         .single()
 
       if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-        console.error("Error fetching water intake:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load water intake.",
-          variant: "destructive",
-        })
-      } else if (data) {
-        setCurrentWater(data.amount_ml)
-      }
-      setLoading(false)
-    }
-    fetchWaterIntake()
-  }, [user])
-
-  const updateWaterIntake = async (newAmount: number) => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to track water intake.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-    try {
-      const { error } = await supabase
-        .from('water_logs')
-        .upsert({ user_id: user.id, date: today, amount_ml: newAmount }, { onConflict: 'user_id,date' })
-
-      if (error) {
         throw error
       }
-      setCurrentWater(newAmount)
-      toast({
-        title: "Water Updated!",
-        description: `You've logged ${newAmount}ml of water today.`,
-      })
+
+      if (data) {
+        setCurrentAmount(data.amount_ml)
+        setWaterLogId(data.id)
+      } else {
+        setCurrentAmount(0)
+        setWaterLogId(null)
+      }
     } catch (error: any) {
-      console.error("Error updating water intake:", error)
+      console.error("Error fetching water log:", error.message)
       toast({
         title: "Error",
-        description: `Failed to update water intake: ${error.message}`,
+        description: "Failed to load water intake.",
         variant: "destructive",
       })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateWaterLog = async (newAmount: number) => {
+    if (!user?.id) return
+
+    setLoading(true)
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd')
+      const logData = {
+        user_id: user.id,
+        date: today,
+        amount_ml: newAmount,
+      }
+
+      let error = null
+      if (waterLogId) {
+        const { error: updateError } = await supabase
+          .from('water_logs')
+          .update(logData)
+          .eq('id', waterLogId)
+        error = updateError
+      } else {
+        const { data, error: insertError } = await supabase
+          .from('water_logs')
+          .insert(logData)
+          .select()
+          .single()
+        error = insertError
+        if (data) setWaterLogId(data.id)
+      }
+
+      if (error) throw error
+
+      setCurrentAmount(newAmount)
+      toast({
+        title: "Success",
+        description: "Water intake updated.",
+      })
+    } catch (error: any) {
+      console.error("Error updating water log:", error.message)
+      toast({
+        title: "Error",
+        description: "Failed to update water intake.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleAddWater = (amount: number) => {
-    updateWaterIntake(currentWater + amount)
+    const newAmount = Math.min(WATER_GOAL_ML, currentAmount + amount)
+    updateWaterLog(newAmount)
   }
 
   const handleRemoveWater = (amount: number) => {
-    updateWaterIntake(Math.max(0, currentWater - amount))
+    const newAmount = Math.max(0, currentAmount - amount)
+    updateWaterLog(newAmount)
   }
 
-  const progress = (currentWater / WATER_GOAL_ML) * 100
+  const progressPercentage = (currentAmount / WATER_GOAL_ML) * 100
 
   return (
     <Card className="col-span-1">
@@ -97,21 +130,25 @@ export default function WaterTracker() {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="text-center text-sm text-muted-foreground">Loading water intake...</div>
+          <div className="text-center py-4">Loading...</div>
         ) : (
-          <>
-            <div className="text-2xl font-bold">{currentWater} ml</div>
-            <p className="text-xs text-muted-foreground">of {WATER_GOAL_ML} ml goal</p>
-            <Progress value={progress} className="mt-4" />
-            <div className="flex justify-between mt-4 space-x-2">
-              <Button variant="outline" onClick={() => handleRemoveWater(250)} size="sm">
-                <Minus className="h-4 w-4 mr-1" /> 250ml
+          <div className="space-y-4">
+            <div className="text-2xl font-bold">
+              {currentAmount / 1000} / {WATER_GOAL_ML / 1000} L
+            </div>
+            <Progress value={progressPercentage} className="w-full" />
+            <div className="flex justify-center gap-2">
+              <Button onClick={() => handleRemoveWater(250)} variant="outline" size="icon" disabled={loading}>
+                <Minus className="h-4 w-4" />
               </Button>
-              <Button onClick={() => handleAddWater(250)} size="sm">
-                <Plus className="h-4 w-4 mr-1" /> 250ml
+              <Button onClick={() => handleAddWater(250)} disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" /> Add 250ml
+              </Button>
+              <Button onClick={() => handleAddWater(500)} disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" /> Add 500ml
               </Button>
             </div>
-          </>
+          </div>
         )}
       </CardContent>
     </Card>

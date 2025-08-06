@@ -81,6 +81,9 @@ export async function serverDeleteAccount(userId: string) {
     await supabaseAdmin.from('workout_logs').delete().eq('user_id', userId)
     await supabaseAdmin.from('nutrition_logs').delete().eq('user_id', userId)
     await supabaseAdmin.from('body_metrics').delete().eq('user_id', userId)
+    await supabaseAdmin.from('mood_logs').delete().eq('user_id', userId)
+    await supabaseAdmin.from('water_logs').delete().eq('user_id', userId)
+    await supabaseAdmin.from('planned_workouts').delete().eq('user_id', userId)
     await supabaseAdmin.from('users').delete().eq('id', userId)
 
     // Then delete the auth user

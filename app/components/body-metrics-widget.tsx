@@ -1,109 +1,141 @@
-'use client'
+"use client"
 
-import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/components/ui/use-toast"
-import { PlusCircle, Scale, Ruler, Percent } from 'lucide-react'
+import { Scale, Ruler, Weight, PlusCircle, Edit } from 'lucide-react'
 import { supabase } from "@/lib/supabase"
 import type { BodyMetric } from "@/types/fitness"
+import { format } from "date-fns"
 
-export default function BodyMetricsWidget() {
+export function BodyMetricsWidget() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const [weight, setWeight] = useState("")
-  const [height, setHeight] = useState("")
-  const [bodyFat, setBodyFat] = useState("")
-  const [isLogging, setIsLogging] = useState(false)
-  const [recentMetrics, setRecentMetrics] = useState<BodyMetric[]>([])
-  const [loadingMetrics, setLoadingMetrics] = useState(true)
+  const [metrics, setMetrics] = useState<BodyMetric | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  const [weight, setWeight] = useState<string>("")
+  const [height, setHeight] = useState<string>("")
+  const [bodyFatPercentage, setBodyFatPercentage] = useState<string>("")
+  const [muscleMassPercentage, setMuscleMassPercentage] = useState<string>("")
+  const [waistCircumference, setWaistCircumference] = useState<string>("")
+  const [notes, setNotes] = useState<string>("")
 
   const units = user?.preferences.units || "imperial"
-  const weightUnit = units === "imperial" ? "lbs" : "kg"
-  const heightUnit = units === "imperial" ? "inches" : "cm"
 
-  // Fetch recent metrics on component mount
-  useState(() => {
-    const fetchMetrics = async () => {
-      if (!user) return
-      setLoadingMetrics(true)
+  useEffect(() => {
+    if (user?.id) {
+      fetchBodyMetrics()
+    }
+  }, [user?.id])
+
+  const fetchBodyMetrics = async () => {
+    if (!user?.id) return
+
+    setLoading(true)
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd')
       const { data, error } = await supabase
         .from('body_metrics')
         .select('*')
         .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(3) // Fetch last 3 entries for display
+        .eq('date', today)
+        .single()
 
-      if (error) {
-        console.error("Error fetching body metrics:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load body metrics.",
-          variant: "destructive",
-        })
-      } else {
-        setRecentMetrics(data as BodyMetric[])
-      }
-      setLoadingMetrics(false)
-    }
-    fetchMetrics()
-  }, [user])
-
-  const handleLogMetrics = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to log body metrics.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsLogging(true)
-    try {
-      const newMetric: Partial<BodyMetric> = {
-        user_id: user.id,
-        date: new Date().toISOString(),
-        weight: weight ? parseFloat(weight) : undefined,
-        height: height ? parseFloat(height) : undefined,
-        body_fat_percentage: bodyFat ? parseFloat(bodyFat) : undefined,
-      }
-
-      const { data, error } = await supabase
-        .from('body_metrics')
-        .insert(newMetric)
-        .select()
-
-      if (error) {
+      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
         throw error
       }
 
-      toast({
-        title: "Metrics Logged!",
-        description: "Your body metrics have been successfully recorded.",
-      })
-      setWeight("")
-      setHeight("")
-      setBodyFat("")
-      setIsLogging(false)
-      // Refresh recent metrics
-      setRecentMetrics((prev) => [data[0] as BodyMetric, ...prev].slice(0, 3))
+      if (data) {
+        setMetrics(data as BodyMetric)
+        setWeight(data.weight?.toString() || "")
+        setHeight(data.height?.toString() || "")
+        setBodyFatPercentage(data.body_fat_percentage?.toString() || "")
+        setMuscleMassPercentage(data.muscle_mass_percentage?.toString() || "")
+        setWaistCircumference(data.waist_circumference?.toString() || "")
+        setNotes(data.notes || "")
+      } else {
+        setMetrics(null)
+        resetForm()
+      }
     } catch (error: any) {
-      console.error("Error logging metrics:", error)
+      console.error("Error fetching body metrics:", error.message)
       toast({
         title: "Error",
-        description: `Failed to log metrics: ${error.message}`,
+        description: "Failed to load body metrics.",
         variant: "destructive",
       })
-      setIsLogging(false)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const latestMetric = recentMetrics[0]
+  const resetForm = () => {
+    setWeight("")
+    setHeight("")
+    setBodyFatPercentage("")
+    setMuscleMassPercentage("")
+    setWaistCircumference("")
+    setNotes("")
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user?.id) return
+
+    setLoading(true)
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd')
+      const metricData = {
+        user_id: user.id,
+        date: today,
+        weight: weight ? parseFloat(weight) : null,
+        height: height ? parseFloat(height) : null,
+        body_fat_percentage: bodyFatPercentage ? parseFloat(bodyFatPercentage) : null,
+        muscle_mass_percentage: muscleMassPercentage ? parseFloat(muscleMassPercentage) : null,
+        waist_circumference: waistCircumference ? parseFloat(waistCircumference) : null,
+        notes: notes || null,
+      }
+
+      let error = null
+      if (metrics) {
+        const { error: updateError } = await supabase
+          .from('body_metrics')
+          .update(metricData)
+          .eq('id', metrics.id)
+        error = updateError
+      } else {
+        const { error: insertError } = await supabase
+          .from('body_metrics')
+          .insert(metricData)
+        error = insertError
+      }
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: "Body metrics saved successfully!",
+      })
+      setIsDialogOpen(false)
+      fetchBodyMetrics() // Re-fetch to update the display
+    } catch (error: any) {
+      console.error("Error saving body metrics:", error.message)
+      toast({
+        title: "Error",
+        description: "Failed to save body metrics.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <Card className="col-span-1">
@@ -112,87 +144,118 @@ export default function BodyMetricsWidget() {
         <Scale className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        {loadingMetrics ? (
-          <div className="text-center text-sm text-muted-foreground">Loading metrics...</div>
-        ) : latestMetric ? (
-          <>
-            <div className="text-2xl font-bold">
-              {latestMetric.weight ? `${latestMetric.weight}${weightUnit}` : 'N/A'}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {latestMetric.height ? `${latestMetric.height}${heightUnit} height` : ''}
-              {latestMetric.height && latestMetric.body_fat_percentage ? ' • ' : ''}
-              {latestMetric.body_fat_percentage ? `${latestMetric.body_fat_percentage}% BF` : ''}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Last updated: {new Date(latestMetric.date).toLocaleDateString()}
-            </p>
-          </>
+        {loading ? (
+          <div className="text-center py-4">Loading...</div>
+        ) : metrics ? (
+          <div className="space-y-2">
+            <p className="text-2xl font-bold">{metrics.weight || 'N/A'} {units === 'imperial' ? 'lbs' : 'kg'}</p>
+            <p className="text-sm text-muted-foreground">Weight</p>
+            <p className="text-2xl font-bold">{metrics.height || 'N/A'} {units === 'imperial' ? 'in' : 'cm'}</p>
+            <p className="text-sm text-muted-foreground">Height</p>
+            {metrics.bodyFatPercentage && (
+              <>
+                <p className="text-2xl font-bold">{metrics.bodyFatPercentage}%</p>
+                <p className="text-sm text-muted-foreground">Body Fat</p>
+              </>
+            )}
+            {metrics.waistCircumference && (
+              <>
+                <p className="text-2xl font-bold">{metrics.waistCircumference} {units === 'imperial' ? 'in' : 'cm'}</p>
+                <p className="text-sm text-muted-foreground">Waist</p>
+              </>
+            )}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="mt-4 w-full">
+                  <Edit className="mr-2 h-4 w-4" /> Edit Metrics
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Edit Body Metrics</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="weight" className="text-right">Weight ({units === 'imperial' ? 'lbs' : 'kg'})</Label>
+                    <Input id="weight" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="height" className="text-right">Height ({units === 'imperial' ? 'in' : 'cm'})</Label>
+                    <Input id="height" type="number" value={height} onChange={(e) => setHeight(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="bodyFat" className="text-right">Body Fat (%)</Label>
+                    <Input id="bodyFat" type="number" value={bodyFatPercentage} onChange={(e) => setBodyFatPercentage(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="muscleMass" className="text-right">Muscle Mass (%)</Label>
+                    <Input id="muscleMass" type="number" value={muscleMassPercentage} onChange={(e) => setMuscleMassPercentage(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="waist" className="text-right">Waist ({units === 'imperial' ? 'in' : 'cm'})</Label>
+                    <Input id="waist" type="number" value={waistCircumference} onChange={(e) => setWaistCircumference(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="notes" className="text-right">Notes</Label>
+                    <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="col-span-3" />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? "Saving..." : "Save changes"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         ) : (
-          <div className="text-sm text-muted-foreground">No metrics logged yet.</div>
+          <div className="text-center py-4">
+            <p className="text-muted-foreground">No metrics logged for today.</p>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="mt-4">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Log Today's Metrics
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Log Body Metrics</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="weight" className="text-right">Weight ({units === 'imperial' ? 'lbs' : 'kg'})</Label>
+                    <Input id="weight" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="height" className="text-right">Height ({units === 'imperial' ? 'in' : 'cm'})</Label>
+                    <Input id="height" type="number" value={height} onChange={(e) => setHeight(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="bodyFat" className="text-right">Body Fat (%)</Label>
+                    <Input id="bodyFat" type="number" value={bodyFatPercentage} onChange={(e) => setBodyFatPercentage(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="muscleMass" className="text-right">Muscle Mass (%)</Label>
+                    <Input id="muscleMass" type="number" value={muscleMassPercentage} onChange={(e) => setMuscleMassPercentage(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="waist" className="text-right">Waist ({units === 'imperial' ? 'in' : 'cm'})</Label>
+                    <Input id="waist" type="number" value={waistCircumference} onChange={(e) => setWaistCircumference(e.target.value)} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="notes" className="text-right">Notes</Label>
+                    <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="col-span-3" />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? "Logging..." : "Log Metrics"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
-
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="mt-4 w-full">
-              <PlusCircle className="mr-2 h-4 w-4" /> Log Metrics
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Log Body Metrics</DialogTitle>
-              <DialogDescription>
-                Enter your current body measurements.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="weight" className="text-right">
-                  Weight ({weightUnit})
-                </Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  className="col-span-3"
-                  disabled={isLogging}
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="height" className="text-right">
-                  Height ({heightUnit})
-                </Label>
-                <Input
-                  id="height"
-                  type="number"
-                  value={height}
-                  onChange={(e) => setHeight(e.target.value)}
-                  className="col-span-3"
-                  disabled={isLogging}
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="bodyFat" className="text-right">
-                  Body Fat (%)
-                </Label>
-                <Input
-                  id="bodyFat"
-                  type="number"
-                  value={bodyFat}
-                  onChange={(e) => setBodyFat(e.target.value)}
-                  className="col-span-3"
-                  disabled={isLogging}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" onClick={handleLogMetrics} disabled={isLogging}>
-                {isLogging ? "Logging..." : "Save Metrics"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </CardContent>
     </Card>
   )

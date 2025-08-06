@@ -2,62 +2,33 @@
 
 import { useAuth } from "@/contexts/auth-context"
 import LoginScreen from "@/components/login-screen"
-import OnboardingFlow from "@/app/components/onboarding-flow"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { OnboardingFlow } from "@/app/components/onboarding-flow"
+import { BodyMetricsWidget } from "@/app/components/body-metrics-widget"
+import { WaterTracker } from "@/app/components/water-tracker"
+import { MoodTracker } from "@/app/components/mood-tracker"
+import { MotivationalQuote } from "@/app/components/motivational-quote"
+import { WorkoutLogger } from "@/app/components/workout-logger"
+import { NutritionTracker } from "@/app/components/nutrition-tracker"
+import { ActivityHeatmap } from "@/app/components/activity-heatmap"
+import { WeeklySummary } from "@/app/components/weekly-summary"
+import { WorkoutPlanner } from "@/app/components/workout-planner"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Dumbbell, UserIcon, LogOut, Settings, Trash2 } from 'lucide-react'
 import { useState } from "react"
-import { useToast } from "@/components/ui/use-toast"
-import BodyMetricsWidget from "@/app/components/body-metrics-widget"
-import WaterTracker from "@/app/components/water-tracker"
-import MoodTracker from "@/app/components/mood-tracker"
-import MotivationalQuote from "@/app/components/motivational-quote"
-import WorkoutLogger from "@/app/components/workout-logger"
-import NutritionTracker from "@/app/components/nutrition-tracker"
-import ActivityHeatmap from "@/app/components/activity-heatmap"
-import WeeklySummary from "@/app/components/weekly-summary"
-import WorkoutPlanner from "@/app/components/workout-planner"
-import { Settings, LogOut, Trash2, UserIcon } from 'lucide-react'
 
-export default function HomePage() {
+export default function Home() {
   const { user, loading, logout, deleteAccount } = useAuth()
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const { toast } = useToast()
-
-  const handleDeleteAccount = async () => {
-    if (user?.id === "demo-user") {
-      toast({
-        title: "Demo Account",
-        description: "Cannot delete the demo account.",
-        variant: "destructive",
-      })
-      setShowDeleteConfirm(false)
-      return
-    }
-    const success = await deleteAccount()
-    if (success) {
-      toast({
-        title: "Account Deleted",
-        description: "Your account has been successfully deleted.",
-      })
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to delete account. Please try again.",
-        variant: "destructive",
-      })
-    }
-    setShowDeleteConfirm(false)
-  }
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Loading...</p>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Loading application...</p>
         </div>
       </div>
     )
@@ -67,31 +38,41 @@ export default function HomePage() {
     return <LoginScreen />
   }
 
-  // Simple check for onboarding completion (can be expanded)
-  const isOnboarded = user.primaryGoal !== 'general_fitness' || user.name !== ''; // Example: if goal is set and name is not empty
+  // If user exists but hasn't completed onboarding (e.g., primaryGoal is default)
+  // This is a simplified check; a real app might have a dedicated onboarding status
+  if (user.primaryGoal === 'general_fitness' && user.id !== "demo-user") {
+    return <OnboardingFlow />
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center justify-between">
-          <h1 className="text-2xl font-bold">FitTracker</h1>
+      <header className="sticky top-0 z-40 w-full border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+        <div className="container flex h-16 items-center justify-between py-4">
+          <div className="flex items-center space-x-4">
+            <Dumbbell className="h-6 w-6 text-blue-600" />
+            <span className="text-xl font-bold">FitTracker Pro</span>
+          </div>
+          <nav className="hidden md:flex space-x-4">
+            <Button variant="ghost">Dashboard</Button>
+            <Button variant="ghost">Workouts</Button>
+            <Button variant="ghost">Nutrition</Button>
+            <Button variant="ghost">Progress</Button>
+          </nav>
           <div className="flex items-center space-x-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder-user.jpg" alt="User Avatar" />
-                    <AvatarFallback>{user.username ? user.username.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+                    <AvatarImage src="/placeholder-user.jpg" alt="@shadcn" />
+                    <AvatarFallback>{user.name ? user.name.charAt(0) : user.username.charAt(0)}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.name || user.username}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
+                    <p className="text-sm font-medium leading-none">{user.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">@{user.username}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -108,54 +89,53 @@ export default function HomePage() {
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
-                <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                  <DialogTrigger asChild>
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                      <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                      <span className="text-destructive">Delete Account</span>
+                <DropdownMenuSeparator />
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      <span>Delete Account</span>
                     </DropdownMenuItem>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Are you absolutely sure?</DialogTitle>
-                      <DialogDescription>
-                        This action cannot be undone. This will permanently delete your account
-                        and remove your data from our servers.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-                        Cancel
-                      </Button>
-                      <Button variant="destructive" onClick={handleDeleteAccount}>
-                        Delete Account
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={async () => {
+                          setIsDeletingAccount(true)
+                          await deleteAccount()
+                          setIsDeletingAccount(false)
+                        }}
+                        disabled={isDeletingAccount}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        {isDeletingAccount ? "Deleting..." : "Delete Account"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
       </header>
 
-      <main className="container py-8">
-        {!isOnboarded ? (
-          <OnboardingFlow />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <BodyMetricsWidget />
-            <WaterTracker />
-            <MoodTracker />
-            <MotivationalQuote />
-            <WorkoutLogger />
-            <NutritionTracker />
-            <ActivityHeatmap />
-            <WeeklySummary />
-            <WorkoutPlanner />
-            {/* Add more widgets here */}
-          </div>
-        )}
+      <main className="container py-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <BodyMetricsWidget />
+        <WorkoutLogger />
+        <NutritionTracker />
+        <WaterTracker />
+        <MoodTracker />
+        <ActivityHeatmap />
+        <WeeklySummary />
+        <WorkoutPlanner />
+        <MotivationalQuote />
       </main>
     </div>
   )

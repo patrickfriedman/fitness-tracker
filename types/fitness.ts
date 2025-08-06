@@ -1,56 +1,55 @@
-export interface User {
+export type User = {
   id: string;
   name: string;
-  username: string;
+  username: string; // Derived from email for Supabase Auth
   email: string;
-  primaryGoal: 'strength' | 'hypertrophy' | 'endurance' | 'weight_loss' | 'general_fitness';
+  primaryGoal: 'strength' | 'hypertrophy' | 'fat_loss' | 'endurance' | 'general_fitness';
   createdAt: string;
   preferences: {
-    theme: 'light' | 'dark';
+    theme: 'light' | 'dark' | 'system';
     units: 'imperial' | 'metric';
-    todayWidgets: string[]; // e.g., ['metrics', 'quick-actions', 'mood', 'water']
+    todayWidgets: string[]; // Array of widget IDs to display on the dashboard
   };
-}
+};
 
-export interface WorkoutLog {
+export type WorkoutLog = {
   id: string;
-  user_id: string;
-  date: string; // ISO date string
+  userId: string;
+  date: string; // YYYY-MM-DD
   name: string;
-  duration_minutes: number;
-  exercises: Exercise[];
+  durationMinutes?: number;
+  exercises: ExerciseLog[];
   notes?: string;
-  calories_burned?: number;
-}
+  caloriesBurned?: number;
+  createdAt: string;
+};
 
-export interface Exercise {
-  id: string;
+export type ExerciseLog = {
   name: string;
-  sets: Set[];
-  notes?: string;
-}
+  sets: SetLog[];
+};
 
-export interface Set {
-  id: string;
+export type SetLog = {
   reps: number;
   weight: number; // in kg or lbs based on user preferences
   unit: 'kg' | 'lbs';
-  rpe?: number; // Rate of Perceived Exertion
-}
+  rir?: number; // Reps in Reserve
+};
 
-export interface NutritionLog {
+export type NutritionLog = {
   id: string;
-  user_id: string;
-  date: string; // ISO date string
-  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  food_items: FoodItem[];
-  total_calories: number;
-  total_protein: number;
-  total_carbs: number;
-  total_fat: number;
-}
+  userId: string;
+  date: string; // YYYY-MM-DD
+  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  foodItems: FoodItem[];
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  createdAt: string;
+};
 
-export interface FoodItem {
+export type FoodItem = {
   name: string;
   calories: number;
   protein: number;
@@ -58,31 +57,43 @@ export interface FoodItem {
   fat: number;
   quantity: number;
   unit: string;
-}
+};
 
-export interface BodyMetric {
+export type BodyMetric = {
   id: string;
-  user_id: string;
-  date: string; // ISO date string
+  userId: string;
+  date: string; // YYYY-MM-DD
   weight?: number; // in kg or lbs
   height?: number; // in cm or inches
-  body_fat_percentage?: number;
-  muscle_mass_percentage?: number;
-  waist_circumference?: number; // in cm or inches
+  bodyFatPercentage?: number;
+  muscleMassPercentage?: number;
+  waistCircumference?: number; // in cm or inches
   notes?: string;
-}
+  createdAt: string;
+};
 
-export interface MoodEntry {
+export type MoodLog = {
   id: string;
-  user_id: string;
-  date: string; // ISO date string
-  mood_score: number; // e.g., 1-5
+  userId: string;
+  date: string; // YYYY-MM-DD
+  moodScore: number; // e.g., 1-5
   notes?: string;
-}
+  createdAt: string;
+};
 
-export interface WaterEntry {
+export type WaterLog = {
   id: string;
-  user_id: string;
-  date: string; // ISO date string
-  amount_ml: number;
-}
+  userId: string;
+  date: string; // YYYY-MM-DD
+  amountMl: number; // in milliliters
+  createdAt: string;
+};
+
+export type PlannedWorkout = {
+  id: string;
+  userId: string;
+  date: string; // YYYY-MM-DD
+  name: string;
+  notes?: string;
+  createdAt: string;
+};
