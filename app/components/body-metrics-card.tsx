@@ -1,171 +1,113 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { Scale, Target, TrendingUp, TrendingDown, Ruler, Weight, Percent, BarChart } from 'lucide-react'
-import type { BodyMetrics } from "../../types/fitness"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { useState } from 'react'
+import { useAuth } from '@/contexts/auth-context'
+import { getBrowserClient } from '@/lib/supabase'
+import { Loader2, Save } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast'
 
-interface BodyMetricsCardProps {
-  userId: string
-  currentMetrics: BodyMetrics | null
-  onUpdate: (metrics: BodyMetrics) => void
-}
+// This component is likely a duplicate or older version of BodyMetricsWidget.
+// Keeping it for completeness as it was in the previous context, but
+// BodyMetricsWidget is the more comprehensive one.
+export default function BodyMetricsCard() {
+  const { user } = useAuth()
+  const supabase = getBrowserClient()
+  const { toast } = useToast()
 
-export function BodyMetricsCard({ userId, currentMetrics, onUpdate }: BodyMetricsCardProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [formData, setFormData] = useState({
-    weight: currentMetrics?.weight?.toString() || "",
-    bodyFatPercentage: currentMetrics?.bodyFatPercentage?.toString() || "",
-    goalWeight: currentMetrics?.goalWeight?.toString() || "",
-    goalBodyFat: currentMetrics?.goalBodyFat?.toString() || "",
-  })
+  const [weight, setWeight] = useState<string>('')
+  const [height, setHeight] = useState<string>('')
+  const [bodyFat, setBodyFat] = useState<string>('')
+  const [isSaving, setIsSaving] = useState(false)
 
-  // Mock historical data for chart
-  const historicalData = [
-    { date: "2025-07-20", weight: 185.2, bodyFat: 19.1 },
-    { date: "2025-07-21", weight: 184.8, bodyFat: 18.9 },
-    { date: "2025-07-22", weight: 184.1, bodyFat: 18.7 },
-    { date: "2025-07-23", weight: 183.5, bodyFat: 18.5 },
-    { date: "2025-07-24", weight: 183.2, bodyFat: 18.4 },
-    { date: "2025-07-25", weight: 182.9, bodyFat: 18.3 },
-    { date: "2025-07-26", weight: 182.6, bodyFat: 18.2 },
-    { date: "2025-07-27", weight: 182.4, bodyFat: 18.2 },
-  ]
-
-  const handleSave = () => {
-    const updatedMetrics: BodyMetrics = {
-      userId,
-      date: new Date().toISOString().split("T")[0],
-      weight: formData.weight ? Number.parseFloat(formData.weight) : undefined,
-      bodyFatPercentage: formData.bodyFatPercentage ? Number.parseFloat(formData.bodyFatPercentage) : undefined,
-      goalWeight: formData.goalWeight ? Number.parseFloat(formData.goalWeight) : undefined,
-      goalBodyFat: formData.goalBodyFat ? Number.parseFloat(formData.goalBodyFat) : undefined,
+  const handleSaveMetrics = async () => {
+    if (!user?.id || user.id === 'demo-user-123') {
+      toast({
+        title: 'Demo Mode',
+        description: 'Body metrics cannot be saved in demo mode.',
+      })
+      return
     }
 
-    onUpdate(updatedMetrics)
-    setIsEditing(false)
+    setIsSaving(true)
+    const newMetric = {
+      user_id: user.id,
+      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+      weight: parseFloat(weight) || null,
+      height: parseFloat(height) || null,
+      body_fat_percentage: parseFloat(bodyFat) || null,
+    }
+
+    const { error } = await supabase.from('body_metrics').insert(newMetric)
+
+    if (error) {
+      console.error('Error saving body metrics:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to save body metrics.',
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Body metrics saved!',
+      })
+      setWeight('');
+      setHeight('');
+      setBodyFat('');
+    }
+    setIsSaving(false)
   }
 
-  const weightTrend =
-    historicalData.length >= 2
-      ? historicalData[historicalData.length - 1].weight - historicalData[historicalData.length - 2].weight
-      : 0
-
-  const bodyFatTrend =
-    historicalData.length >= 2
-      ? historicalData[historicalData.length - 1].bodyFat - historicalData[historicalData.length - 2].bodyFat
-      : 0
-
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Body Metrics</CardTitle>
-        <BarChart className="h-4 w-4 text-muted-foreground" />
+    <Card className="col-span-1">
+      <CardHeader>
+        <CardTitle>Log Body Metrics</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          {[
-            { title: "Weight", value: currentMetrics?.weight || "--", unit: "lb", icon: Scale },
-            { title: "Body Fat", value: currentMetrics?.bodyFatPercentage || "--", unit: "%", icon: Ruler },
-            { title: "Goal Weight", value: currentMetrics?.goalWeight || "--", unit: "lb", icon: Weight },
-            { title: "Goal Body Fat", value: currentMetrics?.goalBodyFat || "--", unit: "%", icon: Target },
-          ].map((metric, index) => (
-            <div key={index}>
-              {isEditing && index < 2 ? (
-                <div className="space-y-4 mt-4">
-                  <Label htmlFor={metric.title.toLowerCase()}>{metric.title} ({metric.unit})</Label>
-                  <Input
-                    id={metric.title.toLowerCase()}
-                    type="number"
-                    step="0.1"
-                    value={formData[metric.title.toLowerCase()]}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, [metric.title.toLowerCase()]: e.target.value }))}
-                    placeholder={metric.value.toString()}
-                  />
-                </div>
-              ) : (
-                <>
-                  {index < 2 && (
-                    <p className="text-xs text-muted-foreground mt-4">
-                      Last updated: Today
-                    </p>
-                  )}
-                  {index < 2 && (
-                    <div className="flex items-center justify-between mt-4">
-                      <span className="text-sm font-medium text-gray-600">{metric.title}</span>
-                      <div className="flex items-center space-x-1">
-                        {(metric.title === "Weight" ? weightTrend : bodyFatTrend) !== 0 && (
-                          <>
-                            {(metric.title === "Weight" ? weightTrend : bodyFatTrend) > 0 ? (
-                              <TrendingUp className="h-3 w-3 text-red-500" />
-                            ) : (
-                              <TrendingDown className="h-3 w-3 text-green-500" />
-                            )}
-                            <span className={`text-xs ${(metric.title === "Weight" ? weightTrend : bodyFatTrend) > 0 ? "text-red-500" : "text-green-500"}`}>
-                              {Math.abs(metric.title === "Weight" ? weightTrend : bodyFatTrend).toFixed(1)} {metric.unit}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {index >= 2 && (
-                    <div className="flex items-center space-x-2 mt-4">
-                      <Target className="h-3 w-3 text-gray-400" />
-                      <span className="text-xs text-gray-600">Goal: {metric.value} {metric.unit}</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-          {isEditing && (
-            <Button onClick={handleSave} className="w-full mt-4">
-              Save Metrics
-            </Button>
-          )}
-          {!isEditing && (
-            <div className="h-32 mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={historicalData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 10 }}
-                    tickFormatter={(value) => new Date(value).getDate().toString()}
-                  />
-                  <YAxis hide />
-                  <Tooltip
-                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                    formatter={(value: number, name: string) => [
-                      `${value}${name === "weight" ? " lb" : "%"}`,
-                      name === "weight" ? "Weight" : "Body Fat",
-                    ]}
-                  />
-                  <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} />
-                  <Line type="monotone" dataKey="bodyFat" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-          {!isEditing && (
-            <div className="flex space-x-2 mt-4">
-              <Badge variant="outline" className="text-xs">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
-                Weight
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                <div className="w-2 h-2 bg-amber-500 rounded-full mr-1"></div>
-                Body Fat
-              </Badge>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="weight-card">Weight (kg/lbs)</Label>
+            <Input
+              id="weight-card"
+              type="number"
+              placeholder="e.g., 70"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="height-card">Height (cm/in)</Label>
+            <Input
+              id="height-card"
+              type="number"
+              placeholder="e.g., 175"
+              value={height}
+              onChange={(e) => setHeight(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="body-fat-card">Body Fat (%)</Label>
+            <Input
+              id="body-fat-card"
+              type="number"
+              placeholder="e.g., 15"
+              value={bodyFat}
+              onChange={(e) => setBodyFat(e.target.value)}
+            />
+          </div>
         </div>
+        <Button onClick={handleSaveMetrics} className="w-full" disabled={isSaving}>
+          {isSaving ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
+          Save Metrics
+        </Button>
       </CardContent>
     </Card>
   )

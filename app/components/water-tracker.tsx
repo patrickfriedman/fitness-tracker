@@ -1,59 +1,69 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import { WaterLog } from '@/types/fitness'
 import { getBrowserClient } from '@/lib/supabase'
-import { Loader2, Plus, Minus } from 'lucide-react'
-import { toast } from '@/components/ui/use-toast'
+import { Loader2, Plus, Minus, Droplet } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast'
+import type { WaterLog } from '@/types/fitness'
 
-const WATER_GOAL_ML = 2000 // Example daily water goal in ml (2 liters)
-const INCREMENT_ML = 250 // Amount to add/subtract per button click
+const WATER_GOAL_ML = 2000 // Example daily water goal in ml
 
 export default function WaterTracker() {
   const { user } = useAuth()
-  const [currentWater, setCurrentWater] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [isUpdating, setIsUpdating] = useState(false)
   const supabase = getBrowserClient()
+  const { toast } = useToast()
 
-  const fetchWaterLog = async () => {
-    if (!user?.id) return
-    setLoading(true)
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-    const { data, error } = await supabase
-      .from('water_logs')
-      .select('amount_ml')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .single()
+  const [currentWater, setCurrentWater] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-      console.error('Error fetching water log:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load water intake.',
-        variant: 'destructive',
-      })
-    } else if (data) {
-      setCurrentWater(data.amount_ml)
-    } else {
-      setCurrentWater(0)
-    }
-    setLoading(false)
-  }
+  const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
 
   useEffect(() => {
-    fetchWaterLog()
-  }, [user])
+    const fetchWaterLog = async () => {
+      if (!user?.id || user.id === 'demo-user-123') {
+        setIsLoading(false)
+        return
+      }
+      setIsLoading(true)
+      const { data, error } = await supabase
+        .from('water_logs')
+        .select('amount_ml')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .single()
 
-  const updateWaterLog = async (newAmount: number) => {
-    if (!user?.id) return
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching water log:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to load water intake.',
+          variant: 'destructive',
+        })
+      } else if (data) {
+        setCurrentWater(data.amount_ml || 0)
+      }
+      setIsLoading(false)
+    }
+
+    fetchWaterLog()
+  }, [user, supabase, today, toast])
+
+  const updateWater = async (amount: number) => {
+    if (!user?.id || user.id === 'demo-user-123') {
+      toast({
+        title: 'Demo Mode',
+        description: 'Water intake cannot be saved in demo mode.',
+      })
+      return
+    }
+
     setIsUpdating(true)
-    const today = new Date().toISOString().split('T')[0]
+    const newAmount = Math.max(0, currentWater + amount)
 
     const { error } = await supabase
       .from('water_logs')
@@ -76,51 +86,54 @@ export default function WaterTracker() {
     } else {
       setCurrentWater(newAmount)
       toast({
-        title: 'Water Updated',
-        description: `Water intake set to ${newAmount / 1000} L.`,
+        title: 'Success',
+        description: 'Water intake updated!',
       })
     }
     setIsUpdating(false)
   }
 
-  const handleAddWater = () => {
-    const newAmount = currentWater + INCREMENT_ML
-    updateWaterLog(newAmount)
-  }
+  const progress = (currentWater / WATER_GOAL_ML) * 100
 
-  const handleSubtractWater = () => {
-    const newAmount = Math.max(0, currentWater - INCREMENT_ML)
-    updateWaterLog(newAmount)
+  if (isLoading) {
+    return (
+      <Card className="col-span-1">
+        <CardHeader>
+          <CardTitle>Water Intake</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </CardContent>
+      </Card>
+    )
   }
-
-  const progressPercentage = (currentWater / WATER_GOAL_ML) * 100
 
   return (
-    <Card className="widget-card">
-      <CardHeader className="widget-header">
-        <CardTitle className="widget-title">Water Intake</CardTitle>
+    <Card className="col-span-1">
+      <CardHeader>
+        <CardTitle>Water Intake</CardTitle>
       </CardHeader>
-      <CardContent className="widget-content space-y-4">
-        {loading ? (
-          <div className="flex justify-center items-center h-24">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : (
-          <>
-            <div className="text-center text-2xl font-bold">
-              {(currentWater / 1000).toFixed(1)} L / {(WATER_GOAL_ML / 1000).toFixed(1)} L
-            </div>
-            <Progress value={progressPercentage} className="w-full" />
-            <div className="flex justify-center gap-2">
-              <Button onClick={handleSubtractWater} disabled={isUpdating || currentWater === 0} variant="outline" size="icon">
-                <Minus className="h-4 w-4" />
-              </Button>
-              <Button onClick={handleAddWater} disabled={isUpdating} size="icon">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </>
-        )}
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-center space-x-2">
+          <Droplet className="h-8 w-8 text-blue-500" />
+          <span className="text-4xl font-bold">
+            {Math.round(currentWater / 1000)}L
+          </span>
+          <span className="text-xl text-muted-foreground">/ {WATER_GOAL_ML / 1000}L</span>
+        </div>
+        <Progress value={progress} className="w-full" />
+        <div className="flex justify-center space-x-4">
+          <Button
+            onClick={() => updateWater(-250)}
+            disabled={isUpdating || currentWater === 0}
+            variant="outline"
+          >
+            <Minus className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => updateWater(250)} disabled={isUpdating}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

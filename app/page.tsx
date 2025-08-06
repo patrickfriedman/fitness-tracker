@@ -26,16 +26,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Sun, Moon, Settings, LogOut, Trash2 } from 'lucide-react'
+import { Sun, Moon, Settings, LogOut, Trash2, Dumbbell, UserIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 
 export default function Home() {
-  const { user, isAuthenticated, loading, logout, deleteUserAccount } = useAuth()
+  const { user, isAuthenticated, isLoading, logout, deleteUserAccount, demoLogin } = useAuth()
   const { theme, setTheme } = useTheme()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -51,13 +51,22 @@ export default function Home() {
   }
 
   // Example: Check if user has completed onboarding (e.g., set primary goal)
-  const hasCompletedOnboarding = user?.primaryGoal !== undefined && user.primaryGoal !== null;
+  const hasCompletedOnboarding = user?.primaryGoal !== undefined && user.primaryGoal !== null && user.primaryGoal !== 'general_fitness';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between">
-          <h1 className="text-2xl font-bold">Fitness Tracker</h1>
+          <div className="flex items-center space-x-2">
+            <Dumbbell className="h-6 w-6 text-blue-600" />
+            <h1 className="text-2xl font-bold">Fitness Tracker</h1>
+            {/* New: Demo button on logo area */}
+            {user?.id !== 'demo-user-123' && (
+              <Button variant="ghost" size="sm" onClick={demoLogin} className="ml-4">
+                Try Demo
+              </Button>
+            )}
+          </div>
           <div className="flex items-center space-x-4">
             <Button
               variant="ghost"
@@ -125,7 +134,7 @@ export default function Home() {
       </header>
 
       <main className="container py-8">
-        {!hasCompletedOnboarding ? (
+        {!hasCompletedOnboarding && user?.id !== 'demo-user-123' ? (
           <OnboardingFlow />
         ) : (
           <div className="dashboard-grid">

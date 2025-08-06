@@ -1,186 +1,171 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import { BodyMetric } from '@/types/fitness'
 import { getBrowserClient } from '@/lib/supabase'
-import { Loader2, PlusCircle } from 'lucide-react'
-import { toast } from '@/components/ui/use-toast'
+import { Loader2, Plus, Save } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast'
+import type { BodyMetric } from '@/types/fitness'
 
 export default function BodyMetricsWidget() {
   const { user } = useAuth()
-  const [metrics, setMetrics] = useState<BodyMetric[]>([])
-  const [loading, setLoading] = useState(true)
-  const [isAdding, setIsAdding] = useState(false)
-  const [newWeight, setNewWeight] = useState<string>('')
-  const [newBodyFat, setNewBodyFat] = useState<string>('')
-  const [newNotes, setNewNotes] = useState<string>('')
   const supabase = getBrowserClient()
+  const { toast } = useToast()
 
-  const fetchMetrics = async () => {
-    if (!user?.id) return
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('body_metrics')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
-      .limit(5) // Show last 5 entries
-
-    if (error) {
-      console.error('Error fetching body metrics:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load body metrics.',
-        variant: 'destructive',
-      })
-    } else {
-      setMetrics(data as BodyMetric[])
-    }
-    setLoading(false)
-  }
+  const [weight, setWeight] = useState<string>('')
+  const [height, setHeight] = useState<string>('')
+  const [bodyFat, setBodyFat] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [lastMetric, setLastMetric] = useState<BodyMetric | null>(null)
 
   useEffect(() => {
-    fetchMetrics()
-  }, [user])
+    const fetchLastMetrics = async () => {
+      if (!user?.id || user.id === 'demo-user-123') {
+        setIsLoading(false)
+        return
+      }
+      setIsLoading(true)
+      const { data, error } = await supabase
+        .from('body_metrics')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(1)
+        .single()
 
-  const handleAddMetric = async () => {
-    if (!user?.id) return
-    setIsAdding(true)
-    const parsedWeight = parseFloat(newWeight)
-    const parsedBodyFat = parseFloat(newBodyFat)
+      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
+        console.error('Error fetching body metrics:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to load body metrics.',
+          variant: 'destructive',
+        })
+      } else if (data) {
+        setLastMetric(data as BodyMetric)
+        setWeight(data.weight?.toString() || '')
+        setHeight(data.height?.toString() || '')
+        setBodyFat(data.body_fat_percentage?.toString() || '')
+      }
+      setIsLoading(false)
+    }
 
-    if (isNaN(parsedWeight) && isNaN(parsedBodyFat)) {
+    fetchLastMetrics()
+  }, [user, supabase, toast])
+
+  const handleSaveMetrics = async () => {
+    if (!user?.id || user.id === 'demo-user-123') {
       toast({
-        title: 'Input Error',
-        description: 'Please enter at least a valid weight or body fat percentage.',
-        variant: 'destructive',
+        title: 'Demo Mode',
+        description: 'Body metrics cannot be saved in demo mode.',
       })
-      setIsAdding(false)
       return
     }
 
-    const { error } = await supabase.from('body_metrics').insert({
+    setIsSaving(true)
+    const newMetric = {
       user_id: user.id,
       date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-      weight: isNaN(parsedWeight) ? null : parsedWeight,
-      body_fat_percentage: isNaN(parsedBodyFat) ? null : parsedBodyFat,
-      notes: newNotes || null,
-    })
+      weight: parseFloat(weight) || null,
+      height: parseFloat(height) || null,
+      body_fat_percentage: parseFloat(bodyFat) || null,
+    }
+
+    const { error } = await supabase.from('body_metrics').insert(newMetric)
 
     if (error) {
-      console.error('Error adding body metric:', error)
+      console.error('Error saving body metrics:', error)
       toast({
         title: 'Error',
-        description: 'Failed to add body metric.',
+        description: 'Failed to save body metrics.',
         variant: 'destructive',
       })
     } else {
       toast({
         title: 'Success',
-        description: 'Body metric added successfully!',
+        description: 'Body metrics saved!',
       })
-      setNewWeight('')
-      setNewBodyFat('')
-      setNewNotes('')
-      fetchMetrics() // Refresh data
+      // Update lastMetric to reflect the newly saved data
+      setLastMetric({
+        id: 'new', // Placeholder ID
+        userId: user.id,
+        date: newMetric.date,
+        weight: newMetric.weight || undefined,
+        height: newMetric.height || undefined,
+        bodyFatPercentage: newMetric.body_fat_percentage || undefined,
+      })
     }
-    setIsAdding(false)
+    setIsSaving(false)
   }
 
-  const latestMetric = metrics[0]
+  if (isLoading) {
+    return (
+      <Card className="col-span-1">
+        <CardHeader>
+          <CardTitle>Body Metrics</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
-    <Card className="widget-card">
-      <CardHeader className="widget-header">
-        <CardTitle className="widget-title">Body Metrics</CardTitle>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <PlusCircle className="h-4 w-4 mr-2" /> Add Metric
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Body Metric</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="weight">Weight ({user?.preferences?.units === 'metric' ? 'kg' : 'lbs'})</Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  step="0.1"
-                  value={newWeight}
-                  onChange={(e) => setNewWeight(e.target.value)}
-                  placeholder="e.g., 180.5"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bodyFat">Body Fat (%)</Label>
-                <Input
-                  id="bodyFat"
-                  type="number"
-                  step="0.1"
-                  value={newBodyFat}
-                  onChange={(e) => setNewBodyFat(e.target.value)}
-                  placeholder="e.g., 15.2"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Input
-                  id="notes"
-                  value={newNotes}
-                  onChange={(e) => setNewNotes(e.target.value)}
-                  placeholder="Any additional notes..."
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleAddMetric} disabled={isAdding}>
-                {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Metric'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+    <Card className="col-span-1">
+      <CardHeader>
+        <CardTitle>Body Metrics</CardTitle>
       </CardHeader>
-      <CardContent className="widget-content">
-        {loading ? (
-          <div className="flex justify-center items-center h-24">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <CardContent className="space-y-4">
+        {lastMetric && (
+          <div className="text-sm text-muted-foreground">
+            Last updated: {new Date(lastMetric.date).toLocaleDateString()}
           </div>
-        ) : latestMetric ? (
-          <div className="space-y-2">
-            <p>
-              <span className="font-medium">Last Updated:</span>{' '}
-              {new Date(latestMetric.date).toLocaleDateString()}
-            </p>
-            {latestMetric.weight && (
-              <p>
-                <span className="font-medium">Weight:</span> {latestMetric.weight}{' '}
-                {user?.preferences?.units === 'metric' ? 'kg' : 'lbs'}
-              </p>
-            )}
-            {latestMetric.body_fat_percentage && (
-              <p>
-                <span className="font-medium">Body Fat:</span> {latestMetric.body_fat_percentage}%
-              </p>
-            )}
-            {latestMetric.notes && (
-              <p>
-                <span className="font-medium">Notes:</span> {latestMetric.notes}
-              </p>
-            )}
-          </div>
-        ) : (
-          <p className="text-muted-foreground">No body metrics recorded yet. Add your first entry!</p>
         )}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="weight">Weight (kg/lbs)</Label>
+            <Input
+              id="weight"
+              type="number"
+              placeholder="e.g., 70"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="height">Height (cm/in)</Label>
+            <Input
+              id="height"
+              type="number"
+              placeholder="e.g., 175"
+              value={height}
+              onChange={(e) => setHeight(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="body-fat">Body Fat (%)</Label>
+            <Input
+              id="body-fat"
+              type="number"
+              placeholder="e.g., 15"
+              value={bodyFat}
+              onChange={(e) => setBodyFat(e.target.value)}
+            />
+          </div>
+        </div>
+        <Button onClick={handleSaveMetrics} className="w-full" disabled={isSaving}>
+          {isSaving ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
+          Save Metrics
+        </Button>
       </CardContent>
     </Card>
   )

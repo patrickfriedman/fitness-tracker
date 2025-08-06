@@ -1,15 +1,15 @@
-import type { Metadata } from "next"
+import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/contexts/auth-context"
-import { Toaster } from "@/components/ui/toaster"
+import './globals.css'
+import { ThemeProvider } from '@/components/theme-provider'
+import { AuthProvider } from '@/contexts/auth-context'
+import { Toaster } from '@/components/ui/toaster'
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "Fitness Tracker",
-  description: "Track your fitness journey with ease.",
+  title: 'Fitness Tracker',
+  description: 'Track your fitness journey with ease.',
     generator: 'v0.dev'
 }
 
@@ -27,9 +27,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AuthProvider>{children}</AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>

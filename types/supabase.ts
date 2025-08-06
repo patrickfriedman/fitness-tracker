@@ -25,7 +25,7 @@ export type Database = {
         Insert: {
           body_fat_percentage?: number | null
           created_at?: string
-          date: string
+          date?: string
           height?: number | null
           id?: string
           muscle_mass_percentage?: number | null
@@ -61,15 +61,15 @@ export type Database = {
           created_at: string
           date: string
           id: string
-          mood_score: number
+          mood_score: number | null
           notes: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
-          date: string
+          date?: string
           id?: string
-          mood_score: number
+          mood_score?: number | null
           notes?: string | null
           user_id: string
         }
@@ -77,7 +77,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
-          mood_score?: number
+          mood_score?: number | null
           notes?: string | null
           user_id?: string
         }
@@ -97,7 +97,7 @@ export type Database = {
           date: string
           food_items: Json[] | null
           id: string
-          meal_type: string
+          meal_type: string | null
           total_calories: number | null
           total_carbs: number | null
           total_fat: number | null
@@ -106,10 +106,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          date: string
+          date?: string
           food_items?: Json[] | null
           id?: string
-          meal_type: string
+          meal_type?: string | null
           total_calories?: number | null
           total_carbs?: number | null
           total_fat?: number | null
@@ -121,7 +121,7 @@ export type Database = {
           date?: string
           food_items?: Json[] | null
           id?: string
-          meal_type?: string
+          meal_type?: string | null
           total_calories?: number | null
           total_carbs?: number | null
           total_fat?: number | null
@@ -143,7 +143,7 @@ export type Database = {
           created_at: string
           date: string
           id: string
-          name: string
+          name: string | null
           notes: string | null
           user_id: string
         }
@@ -151,7 +151,7 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
-          name: string
+          name?: string | null
           notes?: string | null
           user_id: string
         }
@@ -159,7 +159,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
-          name?: string
+          name?: string | null
           notes?: string | null
           user_id?: string
         }
@@ -179,24 +179,24 @@ export type Database = {
           email: string | null
           id: string
           name: string | null
-          preferences: Json | null
           primary_goal: string | null
+          preferences: Json | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           id: string
           name?: string | null
-          preferences?: Json | null
           primary_goal?: string | null
+          preferences?: Json | null
         }
         Update: {
           created_at?: string
           email?: string | null
           id?: string
           name?: string | null
-          preferences?: Json | null
           primary_goal?: string | null
+          preferences?: Json | null
         }
         Relationships: [
           {
@@ -210,21 +210,21 @@ export type Database = {
       }
       water_logs: {
         Row: {
-          amount_ml: number
+          amount_ml: number | null
           created_at: string
           date: string
           id: string
           user_id: string
         }
         Insert: {
-          amount_ml: number
+          amount_ml?: number | null
           created_at?: string
-          date: string
+          date?: string
           id?: string
           user_id: string
         }
         Update: {
-          amount_ml?: number
+          amount_ml?: number | null
           created_at?: string
           date?: string
           id?: string
@@ -248,18 +248,18 @@ export type Database = {
           duration_minutes: number | null
           exercises: Json[] | null
           id: string
-          name: string
+          name: string | null
           notes: string | null
           user_id: string
         }
         Insert: {
           calories_burned?: number | null
           created_at?: string
-          date: string
+          date?: string
           duration_minutes?: number | null
           exercises?: Json[] | null
           id?: string
-          name: string
+          name?: string | null
           notes?: string | null
           user_id: string
         }
@@ -270,7 +270,7 @@ export type Database = {
           duration_minutes?: number | null
           exercises?: Json[] | null
           id?: string
-          name?: string
+          name?: string | null
           notes?: string | null
           user_id?: string
         }
@@ -311,16 +311,14 @@ export type Tables<
         Database[PublicTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Row: infer R
     }
     ? R
     : never
   : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
         PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+    ? (PublicSchema["Tables"] & PublicSchema["Views"])[PublicTableNameOrOptions] extends {
         Row: infer R
       }
       ? R

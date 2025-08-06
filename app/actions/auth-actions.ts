@@ -16,7 +16,7 @@ export async function signIn(formData: FormData) {
   })
 
   if (error) {
-    console.error('Sign-in error:', error.message)
+    console.error('Server sign-in error:', error.message)
     return { success: false, error: error.message }
   }
 
@@ -41,7 +41,7 @@ export async function signUp(formData: FormData) {
   })
 
   if (authError) {
-    console.error('Sign-up error:', authError.message)
+    console.error('Server sign-up error:', authError.message)
     return { success: false, error: authError.message }
   }
 

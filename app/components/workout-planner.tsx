@@ -1,136 +1,121 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { format } from 'date-fns'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import { PlannedWorkout } from '@/types/fitness'
 import { getBrowserClient } from '@/lib/supabase'
-import { Loader2, PlusCircle, CalendarIcon, Edit, Trash2 } from 'lucide-react'
-import { toast } from '@/components/ui/use-toast'
-import { cn } from '@/lib/utils'
+import { Loader2, Plus, Save, Trash2 } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast'
+import type { PlannedWorkout } from '@/types/fitness'
 
 export default function WorkoutPlanner() {
   const { user } = useAuth()
-  const [plannedWorkouts, setPlannedWorkouts] = useState<PlannedWorkout[]>([])
-  const [loading, setLoading] = useState(true)
-  const [isAdding, setIsAdding] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [currentWorkout, setCurrentWorkout] = useState<PlannedWorkout | null>(null)
-  const [workoutName, setWorkoutName] = useState('')
-  const [workoutDate, setWorkoutDate] = useState<Date | undefined>(new Date())
-  const [workoutNotes, setWorkoutNotes] = useState('')
   const supabase = getBrowserClient()
+  const { toast } = useToast()
 
-  const fetchPlannedWorkouts = async () => {
-    if (!user?.id) return
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('planned_workouts')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('date', format(new Date(), 'yyyy-MM-dd')) // Only future or today's workouts
-      .order('date', { ascending: true })
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const [plannedWorkouts, setPlannedWorkouts] = useState<PlannedWorkout[]>([])
+  const [workoutName, setWorkoutName] = useState('')
+  const [workoutNotes, setWorkoutNotes] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
 
-    if (error) {
-      console.error('Error fetching planned workouts:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load planned workouts.',
-        variant: 'destructive',
-      })
-    } else {
-      setPlannedWorkouts(data as PlannedWorkout[])
-    }
-    setLoading(false)
-  }
+  const formattedSelectedDate = selectedDate?.toISOString().split('T')[0] // YYYY-MM-DD
 
   useEffect(() => {
+    const fetchPlannedWorkouts = async () => {
+      if (!user?.id || user.id === 'demo-user-123' || !formattedSelectedDate) {
+        setPlannedWorkouts([])
+        setIsLoading(false)
+        return
+      }
+      setIsLoading(true)
+      const { data, error } = await supabase
+        .from('planned_workouts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', formattedSelectedDate)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching planned workouts:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to load planned workouts.',
+          variant: 'destructive',
+        })
+        setPlannedWorkouts([])
+      } else {
+        setPlannedWorkouts(data as PlannedWorkout[])
+      }
+      setIsLoading(false)
+    }
+
     fetchPlannedWorkouts()
-  }, [user])
+  }, [user, supabase, formattedSelectedDate, toast])
 
-  const resetForm = () => {
-    setWorkoutName('')
-    setWorkoutDate(new Date())
-    setWorkoutNotes('')
-    setCurrentWorkout(null)
-    setIsEditing(false)
-  }
-
-  const handleAddOrUpdateWorkout = async () => {
-    if (!user?.id || !workoutName || !workoutDate) {
+  const handleAddWorkout = async () => {
+    if (!user?.id || user.id === 'demo-user-123' || !formattedSelectedDate || !workoutName) {
       toast({
-        title: 'Input Error',
-        description: 'Please fill in all required fields (Name, Date).',
+        title: 'Missing Info',
+        description: 'Please select a date and enter a workout name.',
         variant: 'destructive',
       })
       return
     }
-    setIsAdding(true)
 
-    const workoutData = {
+    setIsSaving(true)
+    const newPlannedWorkout = {
       user_id: user.id,
+      date: formattedSelectedDate,
       name: workoutName,
-      date: format(workoutDate, 'yyyy-MM-dd'),
-      notes: workoutNotes || null,
+      notes: workoutNotes,
     }
 
-    let error = null;
-    if (isEditing && currentWorkout) {
-      const { error: updateError } = await supabase
-        .from('planned_workouts')
-        .update(workoutData)
-        .eq('id', currentWorkout.id);
-      error = updateError;
-    } else {
-      const { error: insertError } = await supabase
-        .from('planned_workouts')
-        .insert(workoutData);
-      error = insertError;
-    }
+    const { data, error } = await supabase
+      .from('planned_workouts')
+      .insert(newPlannedWorkout)
+      .select()
 
     if (error) {
-      console.error('Error saving planned workout:', error)
+      console.error('Error adding planned workout:', error)
       toast({
         title: 'Error',
-        description: `Failed to ${isEditing ? 'update' : 'add'} planned workout.`,
+        description: 'Failed to add planned workout.',
         variant: 'destructive',
       })
-    } else {
+    } else if (data && data.length > 0) {
+      setPlannedWorkouts((prev) => [...prev, data[0] as PlannedWorkout])
+      setWorkoutName('')
+      setWorkoutNotes('')
       toast({
         title: 'Success',
-        description: `Workout ${isEditing ? 'updated' : 'planned'} successfully!`,
+        description: 'Workout planned!',
       })
-      resetForm()
-      fetchPlannedWorkouts() // Refresh data
     }
-    setIsAdding(false)
+    setIsSaving(false)
   }
 
-  const handleEditClick = (workout: PlannedWorkout) => {
-    setCurrentWorkout(workout)
-    setWorkoutName(workout.name)
-    setWorkoutDate(new Date(workout.date))
-    setWorkoutNotes(workout.notes || '')
-    setIsEditing(true)
-  }
+  const handleDeleteWorkout = async (id: string) => {
+    if (!user?.id || user.id === 'demo-user-123') {
+      toast({
+        title: 'Demo Mode',
+        description: 'Workouts cannot be deleted in demo mode.',
+      })
+      return
+    }
 
-  const handleDeleteWorkout = async (workoutId: string) => {
-    if (!user?.id) return
-    setIsAdding(true) // Use isAdding to disable buttons during delete
-
+    setIsSaving(true)
     const { error } = await supabase
       .from('planned_workouts')
       .delete()
-      .eq('id', workoutId)
-      .eq('user_id', user.id) // Ensure user owns the workout
+      .eq('id', id)
+      .eq('user_id', user.id)
 
     if (error) {
       console.error('Error deleting planned workout:', error)
@@ -140,175 +125,92 @@ export default function WorkoutPlanner() {
         variant: 'destructive',
       })
     } else {
+      setPlannedWorkouts((prev) => prev.filter((workout) => workout.id !== id))
       toast({
         title: 'Success',
-        description: 'Planned workout deleted.',
+        description: 'Workout deleted!',
       })
-      fetchPlannedWorkouts() // Refresh data
     }
-    setIsAdding(false)
+    setIsSaving(false)
   }
 
   return (
-    <Card className="widget-card col-span-full">
-      <CardHeader className="widget-header">
-        <CardTitle className="widget-title">Workout Planner</CardTitle>
-        <Dialog onOpenChange={(open) => { if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <PlusCircle className="h-4 w-4 mr-2" /> Plan Workout
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{isEditing ? 'Edit Planned Workout' : 'Plan New Workout'}</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="planName">Workout Name</Label>
-                <Input
-                  id="planName"
-                  value={workoutName}
-                  onChange={(e) => setWorkoutName(e.target.value)}
-                  placeholder="e.g., Leg Day"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="planDate">Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !workoutDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {workoutDate ? format(workoutDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={workoutDate}
-                      onSelect={setWorkoutDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="planNotes">Notes (optional)</Label>
-                <Textarea
-                  id="planNotes"
-                  value={workoutNotes}
-                  onChange={(e) => setWorkoutNotes(e.target.value)}
-                  placeholder="e.g., Focus on heavy compounds."
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleAddOrUpdateWorkout} disabled={isAdding}>
-                {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isEditing ? 'Update Workout' : 'Plan Workout')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+    <Card className="col-span-full lg:col-span-2">
+      <CardHeader>
+        <CardTitle>Workout Planner</CardTitle>
       </CardHeader>
-      <CardContent className="widget-content">
-        {loading ? (
-          <div className="flex justify-center items-center h-24">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <Label htmlFor="date-picker">Select Date</Label>
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={setSelectedDate}
+            className="rounded-md border shadow"
+          />
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Plan Workout for {selectedDate?.toLocaleDateString()}</h3>
+          <div className="space-y-2">
+            <Label htmlFor="new-workout-name">Workout Name</Label>
+            <Input
+              id="new-workout-name"
+              placeholder="e.g., Leg Day"
+              value={workoutName}
+              onChange={(e) => setWorkoutName(e.target.value)}
+              disabled={isSaving}
+            />
           </div>
-        ) : plannedWorkouts.length > 0 ? (
-          <div className="space-y-3">
-            {plannedWorkouts.map((workout) => (
-              <Card key={workout.id} className="p-3 flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-md">{workout.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(workout.date).toLocaleDateString()}
-                  </p>
-                  {workout.notes && <p className="text-xs italic mt-1">{workout.notes}</p>}
-                </div>
-                <div className="flex gap-2">
-                  <Dialog onOpenChange={(open) => { if (!open) resetForm(); }} >
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => handleEditClick(workout)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    {isEditing && currentWorkout?.id === workout.id && (
-                      <DialogContent className="max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>Edit Planned Workout</DialogTitle>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="editPlanName">Workout Name</Label>
-                            <Input
-                              id="editPlanName"
-                              value={workoutName}
-                              onChange={(e) => setWorkoutName(e.target.value)}
-                              placeholder="e.g., Leg Day"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="editPlanDate">Date</Label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full justify-start text-left font-normal",
-                                    !workoutDate && "text-muted-foreground"
-                                  )}
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {workoutDate ? format(workoutDate, "PPP") : <span>Pick a date</span>}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                  mode="single"
-                                  selected={workoutDate}
-                                  onSelect={setWorkoutDate}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="editPlanNotes">Notes (optional)</Label>
-                            <Textarea
-                              id="editPlanNotes"
-                              value={workoutNotes}
-                              onChange={(e) => setWorkoutNotes(e.target.value)}
-                              placeholder="e.g., Focus on heavy compounds."
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button onClick={handleAddOrUpdateWorkout} disabled={isAdding}>
-                            {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Update Workout'}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    )}
-                  </Dialog>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteWorkout(workout.id)} disabled={isAdding}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </Card>
-            ))}
+          <div className="space-y-2">
+            <Label htmlFor="new-workout-notes">Notes</Label>
+            <Textarea
+              id="new-workout-notes"
+              placeholder="e.g., 3 sets of 10 reps"
+              value={workoutNotes}
+              onChange={(e) => setWorkoutNotes(e.target.value)}
+              disabled={isSaving}
+            />
           </div>
-        ) : (
-          <p className="text-muted-foreground">No workouts planned yet. Start planning your week!</p>
-        )}
+          <Button onClick={handleAddWorkout} className="w-full" disabled={isSaving}>
+            {isSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="mr-2 h-4 w-4" />
+            )}
+            Add Planned Workout
+          </Button>
+
+          <div className="space-y-2 mt-6">
+            <h4 className="text-md font-semibold">Planned Workouts:</h4>
+            {isLoading ? (
+              <div className="flex justify-center items-center h-20">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : plannedWorkouts.length === 0 ? (
+              <p className="text-muted-foreground">No workouts planned for this date.</p>
+            ) : (
+              <ul className="space-y-2">
+                {plannedWorkouts.map((workout) => (
+                  <li key={workout.id} className="flex justify-between items-center p-2 border rounded-md">
+                    <div>
+                      <p className="font-medium">{workout.name}</p>
+                      {workout.notes && <p className="text-sm text-muted-foreground">{workout.notes}</p>}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteWorkout(workout.id)}
+                      disabled={isSaving}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   )

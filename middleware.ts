@@ -1,37 +1,11 @@
-import { createServerClient } from '@supabase/ssr'
+import { createMiddlewareClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name) => req.cookies.get(name)?.value,
-        set: (name, value, options) => {
-          res.cookies.set(name, value, options)
-        },
-        remove: (name, options) => {
-          res.cookies.set(name, '', options)
-        },
-      },
-    }
-  )
+  const supabase = createMiddlewareClient({ req, res })
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  // If user is not logged in and trying to access a protected route, redirect to login
-  if (!session && req.nextUrl.pathname !== '/login' && req.nextUrl.pathname !== '/register') {
-    return NextResponse.redirect(new URL('/login', req.url))
-  }
-
-  // If user is logged in and trying to access login/register, redirect to home
-  if (session && (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/register')) {
-    return NextResponse.redirect(new URL('/', req.url))
-  }
+  await supabase.auth.getSession()
 
   return res
 }
@@ -43,10 +17,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - api (API routes)
-     * - login (login page)
-     * - register (register page)
+     * - any other files in the public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|api|login|register).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

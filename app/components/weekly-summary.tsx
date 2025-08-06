@@ -1,146 +1,161 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BarChart } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { getBrowserClient } from '@/lib/supabase'
-import { useEffect, useState } from 'react'
-import { Loader2, BarChart, Activity, Utensils, Scale } from 'lucide-react'
-import { toast } from '@/components/ui/use-toast'
+import { Loader2 } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast'
 
-interface WeeklySummaryData {
-  totalWorkouts: number;
-  totalWorkoutDuration: number; // minutes
-  totalCaloriesConsumed: number;
-  averageWeight: number;
+// Helper to get dates for the last 7 days
+const getLast7Days = () => {
+  const dates = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    dates.push(d.toISOString().split('T')[0]) // YYYY-MM-DD
+  }
+  return dates
 }
 
 export default function WeeklySummary() {
   const { user } = useAuth()
-  const [summary, setSummary] = useState<WeeklySummaryData | null>(null)
-  const [loading, setLoading] = useState(true)
   const supabase = getBrowserClient()
+  const { toast } = useToast()
 
-  const fetchWeeklySummary = async () => {
-    if (!user?.id) return
-    setLoading(true)
-
-    const today = new Date()
-    const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay())) // Sunday
-    const endOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 6)) // Saturday
-
-    const startDate = startOfWeek.toISOString().split('T')[0]
-    const endDate = endOfWeek.toISOString().split('T')[0]
-
-    try {
-      // Fetch workout logs
-      const { data: workoutData, error: workoutError } = await supabase
-        .from('workout_logs')
-        .select('duration_minutes')
-        .eq('user_id', user.id)
-        .gte('date', startDate)
-        .lte('date', endDate)
-
-      if (workoutError) throw workoutError
-
-      // Fetch nutrition logs
-      const { data: nutritionData, error: nutritionError } = await supabase
-        .from('nutrition_logs')
-        .select('total_calories')
-        .eq('user_id', user.id)
-        .gte('date', startDate)
-        .lte('date', endDate)
-
-      if (nutritionError) throw nutritionError
-
-      // Fetch body metrics
-      const { data: bodyMetricData, error: bodyMetricError } = await supabase
-        .from('body_metrics')
-        .select('weight')
-        .eq('user_id', user.id)
-        .gte('date', startDate)
-        .lte('date', endDate)
-        .order('date', { ascending: false }) // Get most recent for average
-
-      if (bodyMetricError) throw bodyMetricError
-
-      const totalWorkouts = workoutData.length
-      const totalWorkoutDuration = workoutData.reduce((sum, log) => sum + (log.duration_minutes || 0), 0)
-      const totalCaloriesConsumed = nutritionData.reduce((sum, log) => sum + (log.total_calories || 0), 0)
-      const averageWeight = bodyMetricData.length > 0
-        ? bodyMetricData.reduce((sum, metric) => sum + (metric.weight || 0), 0) / bodyMetricData.length
-        : 0
-
-      setSummary({
-        totalWorkouts,
-        totalWorkoutDuration,
-        totalCaloriesConsumed,
-        averageWeight,
-      })
-
-    } catch (error: any) {
-      console.error('Error fetching weekly summary:', error.message)
-      toast({
-        title: 'Error',
-        description: 'Failed to load weekly summary.',
-        variant: 'destructive',
-      })
-      setSummary(null)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [summaryData, setSummaryData] = useState({
+    workouts: 0,
+    totalDuration: 0,
+    totalCalories: 0,
+    avgMood: 0,
+  })
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    const fetchWeeklySummary = async () => {
+      if (!user?.id || user.id === 'demo-user-123') {
+        // Simulate demo data
+        setSummaryData({
+          workouts: Math.floor(Math.random() * 5) + 2,
+          totalDuration: Math.floor(Math.random() * 200) + 100,
+          totalCalories: Math.floor(Math.random() * 1500) + 500,
+          avgMood: parseFloat((Math.random() * 4 + 1).toFixed(1)),
+        })
+        setIsLoading(false)
+        return
+      }
+
+      setIsLoading(true)
+      const last7Days = getLast7Days()
+      const startDate = last7Days[0]
+      const endDate = last7Days[last7Days.length - 1]
+
+      try {
+        // Fetch workout logs
+        const { data: workouts, error: workoutError } = await supabase
+          .from('workout_logs')
+          .select('duration_minutes, calories_burned')
+          .eq('user_id', user.id)
+          .gte('date', startDate)
+          .lte('date', endDate)
+
+        // Fetch nutrition logs
+        const { data: nutrition, error: nutritionError } = await supabase
+          .from('nutrition_logs')
+          .select('total_calories')
+          .eq('user_id', user.id)
+          .gte('date', startDate)
+          .lte('date', endDate)
+
+        // Fetch mood logs
+        const { data: moods, error: moodError } = await supabase
+          .from('mood_logs')
+          .select('mood_score')
+          .eq('user_id', user.id)
+          .gte('date', startDate)
+          .lte('date', endDate)
+
+        if (workoutError || nutritionError || moodError) {
+          console.error('Error fetching weekly summary:', workoutError || nutritionError || moodError)
+          toast({
+            title: 'Error',
+            description: 'Failed to load weekly summary.',
+            variant: 'destructive',
+          })
+          setIsLoading(false)
+          return
+        }
+
+        const totalWorkouts = workouts?.length || 0
+        const totalDuration = workouts?.reduce((sum, w) => sum + (w.duration_minutes || 0), 0) || 0
+        const totalCaloriesConsumed = nutrition?.reduce((sum, n) => sum + (n.total_calories || 0), 0) || 0
+        const avgMood = moods?.length > 0 ? (moods.reduce((sum, m) => sum + (m.mood_score || 0), 0) / moods.length) : 0
+
+        setSummaryData({
+          workouts: totalWorkouts,
+          totalDuration: totalDuration,
+          totalCalories: totalCaloriesConsumed,
+          avgMood: parseFloat(avgMood.toFixed(1)),
+        })
+      } catch (error) {
+        console.error('Unexpected error in weekly summary:', error)
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred while loading summary.',
+          variant: 'destructive',
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
     fetchWeeklySummary()
-  }, [user])
+  }, [user, supabase, toast])
+
+  if (isLoading) {
+    return (
+      <Card className="col-span-1">
+        <CardHeader>
+          <CardTitle>Weekly Summary</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-48">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
-    <Card className="widget-card col-span-full md:col-span-1">
-      <CardHeader className="widget-header">
-        <CardTitle className="widget-title">Weekly Summary</CardTitle>
+    <Card className="col-span-1">
+      <CardHeader>
+        <CardTitle>Weekly Summary</CardTitle>
       </CardHeader>
-      <CardContent className="widget-content space-y-3">
-        {loading ? (
-          <div className="flex justify-center items-center h-24">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : summary ? (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center space-x-2">
-              <Activity className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Workouts</p>
-                <p className="text-lg font-bold">{summary.totalWorkouts}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <BarChart className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Duration</p>
-                <p className="text-lg font-bold">{summary.totalWorkoutDuration} min</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Utensils className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Calories</p>
-                <p className="text-lg font-bold">{summary.totalCaloriesConsumed.toFixed(0)} kcal</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Scale className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Avg. Weight</p>
-                <p className="text-lg font-bold">
-                  {summary.averageWeight.toFixed(1)}{' '}
-                  {user?.preferences?.units === 'metric' ? 'kg' : 'lbs'}
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <p className="text-muted-foreground">No data for this week yet.</p>
-        )}
+      <CardContent className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <BarChart className="h-6 w-6 text-blue-500" />
+          <p className="text-lg">
+            <span className="font-bold">{summaryData.workouts}</span> Workouts Logged
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-blue-500">⏱️</span>
+          <p className="text-lg">
+            <span className="font-bold">{summaryData.totalDuration.toFixed(0)}</span> Minutes Exercised
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-blue-500">🍔</span>
+          <p className="text-lg">
+            <span className="font-bold">{summaryData.totalCalories.toFixed(0)}</span> Calories Consumed
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-blue-500">😊</span>
+          <p className="text-lg">
+            Average Mood: <span className="font-bold">{summaryData.avgMood}</span>/5
+          </p>
+        </div>
       </CardContent>
     </Card>
   )
