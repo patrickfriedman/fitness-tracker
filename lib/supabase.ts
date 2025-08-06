@@ -26,7 +26,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export const supabaseAdmin = createClient<Database>(
   supabaseUrl,
-  supabaseServiceKey || '',
+  supabaseServiceKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6eWZ6emNsZW95d3RtaHdueGl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTk4MDIxNiwiZXhwIjoyMDY1NTU2MjE2fQ.zlv5gpg7bxf2X0QJXNcsH1vOyJSC8zCheJyr10zwZB8',
   {
     auth: {
       autoRefreshToken: false,
