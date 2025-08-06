@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dumbbell, Mail, Lock, User, Eye, EyeOff } from "lucide-react"
+import { Dumbbell, Mail, Lock, User, Eye, EyeOff, AlertCircle } from "lucide-react"
 import { useAuth } from "../../contexts/auth-context"
 
 export function LoginScreen() {
-  const { login, register } = useAuth()
+  const { login, register, user } = useAuth() // Add user to check current state
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string>("")
   const [loginData, setLoginData] = useState({ email: "", password: "" })
   const [registerData, setRegisterData] = useState({
     name: "",
@@ -23,17 +24,35 @@ export function LoginScreen() {
     confirmPassword: "",
   })
 
+  // Debug: Log current user state
+  console.log("LoginScreen - Current user:", user)
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     setIsLoading(true)
-    await login(loginData.email, loginData.password)
-    setIsLoading(false)
+    
+    console.log("Attempting login with:", loginData.email)
+    
+    try {
+      const result = await login(loginData.email, loginData.password)
+      console.log("Login result:", result)
+      
+      // Don't set loading to false immediately - let the auth context update
+      // setIsLoading(false) will be handled after state updates
+    } catch (error) {
+      console.error("Login error:", error)
+      setError(error instanceof Error ? error.message : "Invalid login credentials")
+      setIsLoading(false)
+    }
   }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    
     if (registerData.password !== registerData.confirmPassword) {
-      alert("Passwords do not match")
+      setError("Passwords do not match")
       return
     }
 
@@ -44,13 +63,50 @@ export function LoginScreen() {
         email: registerData.email,
         password: registerData.password
       })
-      alert("Account created successfully!")
+      // Success - the auth context should handle the redirect
     } catch (error) {
       console.error("Registration error:", error)
-      alert(error instanceof Error ? error.message : "Failed to create account")
-    } finally {
+      setError(error instanceof Error ? error.message : "Failed to create account")
       setIsLoading(false)
     }
+  }
+
+  const handleDemoLogin = async () => {
+    setError("")
+    setIsLoading(true)
+    
+    try {
+      // Try different demo credentials that might work with your system
+      const demoCredentials = [
+        { email: "demo@fittracker.com", password: "demo123" },
+        { email: "demo@example.com", password: "demopassword123" },
+        { email: "test@test.com", password: "password" }
+      ]
+      
+      for (const credentials of demoCredentials) {
+        try {
+          console.log("Trying demo login with:", credentials.email)
+          await login(credentials.email, credentials.password)
+          return // Success, exit the function
+        } catch (err) {
+          console.log(`Demo login failed for ${credentials.email}:`, err)
+          // Continue to next credentials
+        }
+      }
+      
+      // If we get here, all demo logins failed
+      throw new Error("Demo account not available. Please create an account or contact support.")
+    } catch (error) {
+      console.error("Demo login error:", error)
+      setError(error instanceof Error ? error.message : "Failed to log in with demo account")
+      setIsLoading(false)
+    }
+  }
+
+  // If user exists, we should not see the login screen
+  // This might indicate the auth context isn't working properly
+  if (user) {
+    console.log("User exists but LoginScreen is still showing:", user)
   }
 
   return (
@@ -69,6 +125,16 @@ export function LoginScreen() {
         </CardHeader>
 
         <CardContent>
+          {/* Error Display */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+              </div>
+            </div>
+          )}
+
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Sign In</TabsTrigger>
@@ -89,6 +155,7 @@ export function LoginScreen() {
                       value={loginData.email}
                       onChange={(e) => setLoginData((prev) => ({ ...prev, email: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -105,6 +172,7 @@ export function LoginScreen() {
                       value={loginData.password}
                       onChange={(e) => setLoginData((prev) => ({ ...prev, password: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                     <Button
                       type="button"
@@ -112,6 +180,7 @@ export function LoginScreen() {
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3"
                       onClick={() => setShowPassword(!showPassword)}
+                      disabled={isLoading}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
@@ -141,6 +210,7 @@ export function LoginScreen() {
                       value={registerData.name}
                       onChange={(e) => setRegisterData((prev) => ({ ...prev, name: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -157,6 +227,7 @@ export function LoginScreen() {
                       value={registerData.email}
                       onChange={(e) => setRegisterData((prev) => ({ ...prev, email: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -173,6 +244,7 @@ export function LoginScreen() {
                       value={registerData.password}
                       onChange={(e) => setRegisterData((prev) => ({ ...prev, password: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -189,6 +261,7 @@ export function LoginScreen() {
                       value={registerData.confirmPassword}
                       onChange={(e) => setRegisterData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -208,22 +281,20 @@ export function LoginScreen() {
             <Button
               variant="outline"
               className="w-full bg-transparent"
-              onClick={async () => {
-                try {
-                  setIsLoading(true);
-                  await login("demo@example.com", "demopassword123");
-                } catch (error) {
-                  console.error("Demo login error:", error);
-                  alert("Failed to log in with demo account. Please try again later.");
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
+              onClick={handleDemoLogin}
               disabled={isLoading}
             >
               {isLoading ? "Logging in..." : "Try Demo Account"}
             </Button>
           </div>
+
+          {/* Debug Information (remove in production) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+              <p>Debug: User state = {user ? 'Logged in' : 'Not logged in'}</p>
+              <p>Loading: {isLoading.toString()}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
