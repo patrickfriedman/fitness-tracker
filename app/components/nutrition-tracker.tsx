@@ -6,163 +6,177 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus, Apple, Target } from 'lucide-react'
+import { Badge } from "@/components/ui/badge"
+import { Plus, Utensils, Trash2 } from 'lucide-react'
+
+interface FoodItem {
+  id: string
+  name: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
 
 export function NutritionTracker() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [dailyStats, setDailyStats] = useState({
-    calories: 1450,
-    protein: 85,
-    carbs: 120,
-    fat: 45
-  })
-  const [newEntry, setNewEntry] = useState({
-    food: "",
+  const [foods, setFoods] = useState<FoodItem[]>([])
+  const [newFood, setNewFood] = useState({
+    name: "",
     calories: "",
     protein: "",
     carbs: "",
     fat: ""
   })
 
-  const goals = {
-    calories: 2000,
+  const dailyGoals = {
+    calories: 2200,
     protein: 150,
-    carbs: 200,
-    fat: 65
+    carbs: 250,
+    fat: 75
   }
 
-  const handleAddEntry = () => {
-    if (newEntry.food && newEntry.calories) {
-      setDailyStats(prev => ({
-        calories: prev.calories + parseInt(newEntry.calories),
-        protein: prev.protein + (parseInt(newEntry.protein) || 0),
-        carbs: prev.carbs + (parseInt(newEntry.carbs) || 0),
-        fat: prev.fat + (parseInt(newEntry.fat) || 0)
-      }))
-      setNewEntry({ food: "", calories: "", protein: "", carbs: "", fat: "" })
-      setIsOpen(false)
+  const totals = foods.reduce(
+    (acc, food) => ({
+      calories: acc.calories + food.calories,
+      protein: acc.protein + food.protein,
+      carbs: acc.carbs + food.carbs,
+      fat: acc.fat + food.fat
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  )
+
+  const addFood = () => {
+    if (newFood.name && newFood.calories) {
+      const food: FoodItem = {
+        id: Date.now().toString(),
+        name: newFood.name,
+        calories: parseInt(newFood.calories) || 0,
+        protein: parseInt(newFood.protein) || 0,
+        carbs: parseInt(newFood.carbs) || 0,
+        fat: parseInt(newFood.fat) || 0
+      }
+      setFoods(prev => [...prev, food])
+      setNewFood({ name: "", calories: "", protein: "", carbs: "", fat: "" })
     }
+  }
+
+  const removeFood = (id: string) => {
+    setFoods(prev => prev.filter(food => food.id !== id))
   }
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg font-semibold flex items-center">
-          <Apple className="mr-2 h-5 w-5" />
-          Nutrition Tracker
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <Utensils className="h-5 w-5" />
+          <span>Nutrition Tracker</span>
         </CardTitle>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Food
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Food Entry</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="food">Food Item</Label>
-                <Input
-                  id="food"
-                  placeholder="e.g., Chicken Breast"
-                  value={newEntry.food}
-                  onChange={(e) => setNewEntry(prev => ({ ...prev, food: e.target.value }))}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="calories">Calories</Label>
-                  <Input
-                    id="calories"
-                    type="number"
-                    placeholder="250"
-                    value={newEntry.calories}
-                    onChange={(e) => setNewEntry(prev => ({ ...prev, calories: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="protein">Protein (g)</Label>
-                  <Input
-                    id="protein"
-                    type="number"
-                    placeholder="25"
-                    value={newEntry.protein}
-                    onChange={(e) => setNewEntry(prev => ({ ...prev, protein: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="carbs">Carbs (g)</Label>
-                  <Input
-                    id="carbs"
-                    type="number"
-                    placeholder="10"
-                    value={newEntry.carbs}
-                    onChange={(e) => setNewEntry(prev => ({ ...prev, carbs: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="fat">Fat (g)</Label>
-                  <Input
-                    id="fat"
-                    type="number"
-                    placeholder="5"
-                    value={newEntry.fat}
-                    onChange={(e) => setNewEntry(prev => ({ ...prev, fat: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <Button onClick={handleAddEntry} className="w-full">
-                Add Entry
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Calories</span>
-              <span className="text-sm text-gray-600">
-                {dailyStats.calories}/{goals.calories}
-              </span>
+      <CardContent className="space-y-6">
+        {/* Daily Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Calories", value: totals.calories, goal: dailyGoals.calories, unit: "kcal" },
+            { label: "Protein", value: totals.protein, goal: dailyGoals.protein, unit: "g" },
+            { label: "Carbs", value: totals.carbs, goal: dailyGoals.carbs, unit: "g" },
+            { label: "Fat", value: totals.fat, goal: dailyGoals.fat, unit: "g" }
+          ].map((macro) => (
+            <div key={macro.label} className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>{macro.label}</span>
+                <span>{macro.value}/{macro.goal}{macro.unit}</span>
+              </div>
+              <Progress value={(macro.value / macro.goal) * 100} className="h-2" />
             </div>
-            <Progress value={(dailyStats.calories / goals.calories) * 100} />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Protein</span>
-              <span className="text-sm text-gray-600">
-                {dailyStats.protein}g/{goals.protein}g
-              </span>
-            </div>
-            <Progress value={(dailyStats.protein / goals.protein) * 100} />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Carbs</span>
-              <span className="text-sm text-gray-600">
-                {dailyStats.carbs}g/{goals.carbs}g
-              </span>
-            </div>
-            <Progress value={(dailyStats.carbs / goals.carbs) * 100} />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Fat</span>
-              <span className="text-sm text-gray-600">
-                {dailyStats.fat}g/{goals.fat}g
-              </span>
-            </div>
-            <Progress value={(dailyStats.fat / goals.fat) * 100} />
-          </div>
+          ))}
         </div>
+
+        {/* Add Food Form */}
+        <div className="border rounded-lg p-4 space-y-4">
+          <h4 className="font-medium">Add Food</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="food-name">Food Name</Label>
+              <Input
+                id="food-name"
+                placeholder="e.g., Chicken Breast"
+                value={newFood.name}
+                onChange={(e) => setNewFood(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="calories">Calories</Label>
+              <Input
+                id="calories"
+                type="number"
+                placeholder="200"
+                value={newFood.calories}
+                onChange={(e) => setNewFood(prev => ({ ...prev, calories: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="protein">Protein (g)</Label>
+              <Input
+                id="protein"
+                type="number"
+                placeholder="25"
+                value={newFood.protein}
+                onChange={(e) => setNewFood(prev => ({ ...prev, protein: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="carbs">Carbs (g)</Label>
+              <Input
+                id="carbs"
+                type="number"
+                placeholder="10"
+                value={newFood.carbs}
+                onChange={(e) => setNewFood(prev => ({ ...prev, carbs: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fat">Fat (g)</Label>
+              <Input
+                id="fat"
+                type="number"
+                placeholder="5"
+                value={newFood.fat}
+                onChange={(e) => setNewFood(prev => ({ ...prev, fat: e.target.value }))}
+              />
+            </div>
+          </div>
+          <Button onClick={addFood} className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Food
+          </Button>
+        </div>
+
+        {/* Food List */}
+        {foods.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="font-medium">Today's Foods</h4>
+            {foods.map((food) => (
+              <div key={food.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <p className="font-medium">{food.name}</p>
+                  <div className="flex space-x-4 text-sm text-gray-600">
+                    <span>{food.calories} kcal</span>
+                    <span>P: {food.protein}g</span>
+                    <span>C: {food.carbs}g</span>
+                    <span>F: {food.fat}g</span>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => removeFood(food.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -29,11 +29,11 @@ export function ActivityHeatmap() {
   
   const getActivityColor = (level: number) => {
     const colors = [
-      "bg-gray-100 dark:bg-gray-800", // 0 - no activity
-      "bg-green-100 dark:bg-green-900", // 1 - low
-      "bg-green-300 dark:bg-green-700", // 2 - medium
-      "bg-green-500 dark:bg-green-500", // 3 - high
-      "bg-green-700 dark:bg-green-300"  // 4 - very high
+      "bg-gray-100 dark:bg-gray-800", // No activity
+      "bg-green-100 dark:bg-green-900", // Low
+      "bg-green-300 dark:bg-green-700", // Medium
+      "bg-green-500 dark:bg-green-500", // High
+      "bg-green-700 dark:bg-green-300"  // Very high
     ]
     return colors[level] || colors[0]
   }
@@ -46,13 +46,13 @@ export function ActivityHeatmap() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold flex items-center">
-          <Calendar className="mr-2 h-5 w-5" />
-          Activity Heatmap
+        <CardTitle className="flex items-center space-x-2">
+          <Calendar className="h-5 w-5" />
+          <span>Activity Heatmap</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
+        <div className="space-y-4">
           <div className="grid grid-cols-12 gap-1">
             {weeks.map((week, weekIndex) => (
               <div key={weekIndex} className="space-y-1">
@@ -60,14 +60,14 @@ export function ActivityHeatmap() {
                   <div
                     key={`${weekIndex}-${dayIndex}`}
                     className={`w-3 h-3 rounded-sm ${getActivityColor(day.activity)}`}
-                    title={`${day.date}: ${day.activity} activities`}
+                    title={`${day.date}: ${day.activity} workouts`}
                   />
                 ))}
               </div>
             ))}
           </div>
           
-          <div className="flex items-center justify-between text-xs text-gray-500 mt-4">
+          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
             <span>Less</span>
             <div className="flex space-x-1">
               {[0, 1, 2, 3, 4].map((level) => (

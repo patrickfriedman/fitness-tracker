@@ -1,45 +1,43 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dumbbell, User, Lock, Eye, EyeOff } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dumbbell, Mail, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { useAuth } from "@/contexts/auth-context"
 
 export function LoginScreen() {
-  const { login, register, user } = useAuth()
+  const { login, register } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [loginData, setLoginData] = useState({ username: "", password: "" })
+  const [error, setError] = useState<string>("")
+  const [loginData, setLoginData] = useState({ email: "", password: "" })
   const [registerData, setRegisterData] = useState({
     name: "",
-    username: "",
+    email: "",
     password: "",
     confirmPassword: "",
+    primaryGoal: "hypertrophy" as "strength" | "hypertrophy" | "fat_loss" | "endurance"
   })
-
-  // Debug logging
-  useEffect(() => {
-    console.log("LoginScreen - Current user:", user)
-    if (user) {
-      console.log("User exists but LoginScreen is still showing:", user)
-    }
-  }, [user])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     setIsLoading(true)
+    
     try {
-      console.log("Attempting login with:", loginData.username)
-      const result = await login(loginData.username, loginData.password)
-      console.log("Login result:", result)
+      const success = await login(loginData.email, loginData.password)
+      if (!success) {
+        setError("Invalid email or password")
+      }
     } catch (error) {
       console.error("Login error:", error)
-      alert(error instanceof Error ? error.message : "Invalid login credentials")
+      setError("Login failed. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -47,30 +45,53 @@ export function LoginScreen() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    
     if (registerData.password !== registerData.confirmPassword) {
-      alert("Passwords do not match")
+      setError("Passwords do not match")
+      return
+    }
+
+    if (registerData.password.length < 6) {
+      setError("Password must be at least 6 characters")
       return
     }
 
     setIsLoading(true)
     try {
-      await register({
+      const success = await register({
         name: registerData.name,
-        username: registerData.username,
-        password: registerData.password
+        email: registerData.email,
+        password: registerData.password,
+        primaryGoal: registerData.primaryGoal
       })
-      alert("Account created successfully!")
+      
+      if (!success) {
+        setError("Failed to create account. Please try again.")
+      }
     } catch (error) {
       console.error("Registration error:", error)
-      alert(error instanceof Error ? error.message : "Failed to create account")
+      setError("Registration failed. Please try again.")
     } finally {
       setIsLoading(false)
     }
   }
 
-  // If user exists, don't render the login screen
-  if (user) {
-    return null
+  const handleDemoLogin = async () => {
+    setError("")
+    setIsLoading(true)
+    
+    try {
+      const success = await login("demo@fittracker.com", "demo123")
+      if (!success) {
+        setError("Demo account not available")
+      }
+    } catch (error) {
+      console.error("Demo login error:", error)
+      setError("Demo account not available")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -89,6 +110,16 @@ export function LoginScreen() {
         </CardHeader>
 
         <CardContent>
+          {/* Error Display */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+              </div>
+            </div>
+          )}
+
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Sign In</TabsTrigger>
@@ -98,17 +129,18 @@ export function LoginScreen() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="email">Email</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      id="username"
-                      type="text"
-                      placeholder="Enter your username"
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
                       className="pl-10"
-                      value={loginData.username}
-                      onChange={(e) => setLoginData((prev) => ({ ...prev, username: e.target.value }))}
+                      value={loginData.email}
+                      onChange={(e) => setLoginData((prev) => ({ ...prev, email: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -125,6 +157,7 @@ export function LoginScreen() {
                       value={loginData.password}
                       onChange={(e) => setLoginData((prev) => ({ ...prev, password: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                     <Button
                       type="button"
@@ -132,6 +165,7 @@ export function LoginScreen() {
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3"
                       onClick={() => setShowPassword(!showPassword)}
+                      disabled={isLoading}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
@@ -161,24 +195,46 @@ export function LoginScreen() {
                       value={registerData.name}
                       onChange={(e) => setRegisterData((prev) => ({ ...prev, name: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="register-username">Username</Label>
+                  <Label htmlFor="register-email">Email</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      id="register-username"
-                      type="text"
-                      placeholder="Choose a username"
+                      id="register-email"
+                      type="email"
+                      placeholder="Enter your email"
                       className="pl-10"
-                      value={registerData.username}
-                      onChange={(e) => setRegisterData((prev) => ({ ...prev, username: e.target.value }))}
+                      value={registerData.email}
+                      onChange={(e) => setRegisterData((prev) => ({ ...prev, email: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="primary-goal">Primary Goal</Label>
+                  <Select
+                    value={registerData.primaryGoal}
+                    onValueChange={(value: "strength" | "hypertrophy" | "fat_loss" | "endurance") => 
+                      setRegisterData((prev) => ({ ...prev, primaryGoal: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your primary goal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="strength">Strength</SelectItem>
+                      <SelectItem value="hypertrophy">Muscle Building</SelectItem>
+                      <SelectItem value="fat_loss">Fat Loss</SelectItem>
+                      <SelectItem value="endurance">Endurance</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -188,11 +244,13 @@ export function LoginScreen() {
                     <Input
                       id="register-password"
                       type="password"
-                      placeholder="Create a password"
+                      placeholder="Create a password (min 6 characters)"
                       className="pl-10"
                       value={registerData.password}
                       onChange={(e) => setRegisterData((prev) => ({ ...prev, password: e.target.value }))}
                       required
+                      disabled={isLoading}
+                      minLength={6}
                     />
                   </div>
                 </div>
@@ -209,6 +267,7 @@ export function LoginScreen() {
                       value={registerData.confirmPassword}
                       onChange={(e) => setRegisterData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -228,17 +287,7 @@ export function LoginScreen() {
             <Button
               variant="outline"
               className="w-full bg-transparent"
-              onClick={async () => {
-                try {
-                  setIsLoading(true)
-                  await login("demo", "demo")
-                } catch (error) {
-                  console.error("Demo login error:", error)
-                  alert("Failed to log in with demo account. Please try again later.")
-                } finally {
-                  setIsLoading(false)
-                }
-              }}
+              onClick={handleDemoLogin}
               disabled={isLoading}
             >
               {isLoading ? "Logging in..." : "Try Demo Account"}

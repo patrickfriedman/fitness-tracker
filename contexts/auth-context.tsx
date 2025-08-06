@@ -1,132 +1,234 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import type { User } from "../types/fitness"
+import { supabase } from "@/lib/supabase"
+import type { User } from "@/types/fitness"
 
 interface AuthContextType {
   user: User | null
-  login: (username: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<boolean>
   logout: () => void
-  register: (userData: Partial<User>) => Promise<boolean>
+  register: (userData: Partial<User> & { email: string; password: string }) => Promise<boolean>
   updateUser: (userData: Partial<User>) => void
   deleteAccount: () => Promise<boolean>
+  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check for stored user session
-    try {
-      const storedUser = localStorage.getItem("fitness-user")
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser)
-        console.log("Found stored user:", parsedUser)
-        setUser(parsedUser)
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserProfile(session.user.id)
+      } else {
+        setLoading(false)
       }
-    } catch (error) {
-      console.error("Error loading stored user:", error)
-      localStorage.removeItem("fitness-user")
-    } finally {
-      setIsLoading(false)
-    }
+    })
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        await fetchUserProfile(session.user.id)
+      } else {
+        setUser(null)
+        setLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const fetchUserProfile = async (userId: string) => {
     try {
-      // Mock authentication - in real app, this would call an API
-      const mockUser: User = {
-        id: `user-${Date.now()}`,
-        name: username === "demo" ? "Demo User" : username,
-        username,
-        primaryGoal: "hypertrophy",
-        createdAt: new Date().toISOString(),
-        preferences: {
-          theme: "light",
-          units: "imperial",
-          todayWidgets: ["metrics", "quick-actions", "mood", "water"],
-        },
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        console.error('Error fetching user profile:', error)
+        setLoading(false)
+        return
       }
 
-      setUser(mockUser)
-      localStorage.setItem("fitness-user", JSON.stringify(mockUser))
-      console.log("User logged in successfully:", mockUser)
-      return true
+      if (data) {
+        const userProfile: User = {
+          id: data.id,
+          name: data.name,
+          username: data.email.split('@')[0],
+          email: data.email,
+          primaryGoal: data.primary_goal,
+          createdAt: data.created_at,
+          preferences: data.preferences || {
+            theme: "light",
+            units: "imperial",
+            todayWidgets: ["metrics", "quick-actions", "mood", "water"],
+          },
+        }
+        setUser(userProfile)
+      }
     } catch (error) {
-      console.error("Login error:", error)
-      throw error
+      console.error('Error in fetchUserProfile:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const register = async (userData: Partial<User>): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        name: userData.name || "",
-        username: userData.username || "",
-        primaryGoal: userData.primaryGoal || "hypertrophy",
-        createdAt: new Date().toISOString(),
-        preferences: {
-          theme: "light",
-          units: "imperial",
-          todayWidgets: ["metrics", "quick-actions", "mood", "water"],
-        },
+      setLoading(true)
+      
+      // Handle demo login
+      if (email === "demo@fittracker.com" || email === "demo") {
+        const demoUser: User = {
+          id: "demo-user",
+          name: "Demo User",
+          username: "demo",
+          email: "demo@fittracker.com",
+          primaryGoal: "hypertrophy",
+          createdAt: new Date().toISOString(),
+          preferences: {
+            theme: "light",
+            units: "imperial",
+            todayWidgets: ["metrics", "quick-actions", "mood", "water"],
+          },
+        }
+        setUser(demoUser)
+        setLoading(false)
+        return true
       }
 
-      setUser(newUser)
-      localStorage.setItem("fitness-user", JSON.stringify(newUser))
-      return true
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        console.error('Login error:', error)
+        setLoading(false)
+        return false
+      }
+
+      if (data.user) {
+        await fetchUserProfile(data.user.id)
+        return true
+      }
+
+      setLoading(false)
+      return false
     } catch (error) {
-      console.error("Registration error:", error)
-      throw error
+      console.error('Login error:', error)
+      setLoading(false)
+      return false
     }
   }
 
-  const logout = () => {
+  const register = async (userData: Partial<User> & { email: string; password: string }): Promise<boolean> => {
+    try {
+      setLoading(true)
+
+      // Sign up with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+      })
+
+      if (error) {
+        console.error('Registration error:', error)
+        setLoading(false)
+        return false
+      }
+
+      if (data.user) {
+        // Create user profile in users table
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert({
+            id: data.user.id,
+            name: userData.name || '',
+            email: userData.email,
+            primary_goal: userData.primaryGoal || 'hypertrophy',
+            preferences: {
+              theme: "light",
+              units: "imperial",
+              todayWidgets: ["metrics", "quick-actions", "mood", "water"],
+            }
+          })
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError)
+          setLoading(false)
+          return false
+        }
+
+        await fetchUserProfile(data.user.id)
+        return true
+      }
+
+      setLoading(false)
+      return false
+    } catch (error) {
+      console.error('Registration error:', error)
+      setLoading(false)
+      return false
+    }
+  }
+
+  const logout = async () => {
+    await supabase.auth.signOut()
     setUser(null)
-    localStorage.removeItem("fitness-user")
   }
 
   const deleteAccount = async (): Promise<boolean> => {
     try {
-      // In a real app, this would call an API to delete the account
+      if (!user) return false
+
+      // Delete user data from custom tables
+      await supabase.from('workout_logs').delete().eq('user_id', user.id)
+      await supabase.from('nutrition_logs').delete().eq('user_id', user.id)
+      await supabase.from('body_metrics').delete().eq('user_id', user.id)
+      await supabase.from('users').delete().eq('id', user.id)
+
+      // Sign out
+      await supabase.auth.signOut()
       setUser(null)
-      localStorage.removeItem("fitness-user")
-      localStorage.removeItem("fitness-workouts")
-      localStorage.removeItem("fitness-nutrition")
-      localStorage.removeItem("fitness-metrics")
       return true
     } catch (error) {
-      console.error("Delete account error:", error)
-      throw error
+      console.error('Delete account error:', error)
+      return false
     }
   }
 
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData }
-      setUser(updatedUser)
-      localStorage.setItem("fitness-user", JSON.stringify(updatedUser))
-    }
-  }
+  const updateUser = async (userData: Partial<User>) => {
+    if (!user) return
 
-  // Don't render children until we've checked for stored user
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    )
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          name: userData.name,
+          primary_goal: userData.primaryGoal,
+          preferences: userData.preferences
+        })
+        .eq('id', user.id)
+
+      if (!error) {
+        const updatedUser = { ...user, ...userData }
+        setUser(updatedUser)
+      }
+    } catch (error) {
+      console.error('Update user error:', error)
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, updateUser, deleteAccount }}>
+    <AuthContext.Provider value={{ user, login, logout, register, updateUser, deleteAccount, loading }}>
       {children}
     </AuthContext.Provider>
   )

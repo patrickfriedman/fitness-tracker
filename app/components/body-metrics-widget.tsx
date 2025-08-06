@@ -10,7 +10,7 @@ import { Scale, TrendingUp, Plus } from 'lucide-react'
 
 export function BodyMetricsWidget() {
   const [metrics, setMetrics] = useState({
-    weight: 150,
+    weight: 175,
     bodyFat: 15,
     lastUpdated: "2024-01-15"
   })
@@ -36,10 +36,10 @@ export function BodyMetricsWidget() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Body Metrics</CardTitle>
+        <CardTitle className="text-lg font-medium">Body Metrics</CardTitle>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="sm">
+            <Button size="sm" variant="outline">
               <Plus className="h-4 w-4" />
             </Button>
           </DialogTrigger>
@@ -48,7 +48,7 @@ export function BodyMetricsWidget() {
               <DialogTitle>Update Body Metrics</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="weight">Weight (lbs)</Label>
                 <Input
                   id="weight"
@@ -58,8 +58,8 @@ export function BodyMetricsWidget() {
                   onChange={(e) => setNewMetrics(prev => ({ ...prev, weight: e.target.value }))}
                 />
               </div>
-              <div>
-                <Label htmlFor="bodyFat">Body Fat %</Label>
+              <div className="space-y-2">
+                <Label htmlFor="bodyFat">Body Fat % (optional)</Label>
                 <Input
                   id="bodyFat"
                   type="number"
@@ -75,26 +75,32 @@ export function BodyMetricsWidget() {
           </DialogContent>
         </Dialog>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          <div className="flex items-center space-x-2">
-            <Scale className="h-4 w-4 text-blue-600" />
-            <div>
-              <p className="text-2xl font-bold">{metrics.weight} lbs</p>
-              <p className="text-xs text-gray-500">Weight</p>
-            </div>
+      <CardContent className="space-y-4">
+        <div className="flex items-center space-x-4">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+            <Scale className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <div className="flex items-center space-x-2">
-            <TrendingUp className="h-4 w-4 text-green-600" />
+          <div>
+            <p className="text-2xl font-bold">{metrics.weight} lbs</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Current Weight</p>
+          </div>
+        </div>
+        
+        {metrics.bodyFat && (
+          <div className="flex items-center space-x-4">
+            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
             <div>
               <p className="text-2xl font-bold">{metrics.bodyFat}%</p>
-              <p className="text-xs text-gray-500">Body Fat</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Body Fat</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500">
-            Last updated: {new Date(metrics.lastUpdated).toLocaleDateString()}
-          </p>
-        </div>
+        )}
+        
+        <p className="text-xs text-gray-500">
+          Last updated: {new Date(metrics.lastUpdated).toLocaleDateString()}
+        </p>
       </CardContent>
     </Card>
   )

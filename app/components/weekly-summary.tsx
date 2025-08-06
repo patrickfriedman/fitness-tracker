@@ -2,15 +2,17 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Target, Clock, Flame } from 'lucide-react'
 
 export function WeeklySummary() {
   const weeklyStats = {
     workoutsCompleted: 4,
     workoutsPlanned: 5,
-    totalDuration: 180, // minutes
+    totalDuration: 240, // minutes
     caloriesBurned: 1200,
-    avgMood: 4.2
+    averageIntensity: 7.5,
+    streak: 3
   }
 
   const workoutProgress = (weeklyStats.workoutsCompleted / weeklyStats.workoutsPlanned) * 100
@@ -18,64 +20,61 @@ export function WeeklySummary() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold flex items-center">
-          <TrendingUp className="mr-2 h-5 w-5" />
-          Weekly Summary
+        <CardTitle className="flex items-center space-x-2">
+          <TrendingUp className="h-5 w-5" />
+          <span>Weekly Summary</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
+        {/* Workout Progress */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">Workouts This Week</span>
+            <span className="text-sm text-gray-600">
+              {weeklyStats.workoutsCompleted}/{weeklyStats.workoutsPlanned}
+            </span>
+          </div>
+          <Progress value={workoutProgress} className="h-2" />
+        </div>
+
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Target className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium">Workouts</span>
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span>{weeklyStats.workoutsCompleted}/{weeklyStats.workoutsPlanned}</span>
-                <span>{Math.round(workoutProgress)}%</span>
-              </div>
-              <Progress value={workoutProgress} />
-            </div>
+          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <Clock className="h-5 w-5 text-blue-600 mx-auto mb-1" />
+            <p className="text-2xl font-bold text-blue-600">{weeklyStats.totalDuration}</p>
+            <p className="text-xs text-gray-600">Minutes</p>
           </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium">Duration</span>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{weeklyStats.totalDuration}m</p>
-              <p className="text-xs text-gray-500">Total time</p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Flame className="h-4 w-4 text-orange-600" />
-              <span className="text-sm font-medium">Calories</span>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{weeklyStats.caloriesBurned}</p>
-              <p className="text-xs text-gray-500">Burned</p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <span className="text-lg">😊</span>
-              <span className="text-sm font-medium">Avg Mood</span>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{weeklyStats.avgMood}/5</p>
-              <p className="text-xs text-gray-500">This week</p>
-            </div>
+          
+          <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+            <Flame className="h-5 w-5 text-orange-600 mx-auto mb-1" />
+            <p className="text-2xl font-bold text-orange-600">{weeklyStats.caloriesBurned}</p>
+            <p className="text-xs text-gray-600">Calories</p>
           </div>
         </div>
 
-        <div className="pt-4 border-t">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Great week! You're {Math.round(workoutProgress)}% towards your workout goal.
+        {/* Additional Stats */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm">Average Intensity</span>
+            <Badge variant="outline">{weeklyStats.averageIntensity}/10</Badge>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-sm">Current Streak</span>
+            <Badge variant="default">{weeklyStats.streak} days</Badge>
+          </div>
+        </div>
+
+        {/* Weekly Goal */}
+        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+          <div className="flex items-center space-x-2 mb-2">
+            <Target className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium text-green-700 dark:text-green-300">
+              Weekly Goal
+            </span>
+          </div>
+          <p className="text-sm text-green-600 dark:text-green-400">
+            Complete 5 workouts this week - you're 80% there! 💪
           </p>
         </div>
       </CardContent>

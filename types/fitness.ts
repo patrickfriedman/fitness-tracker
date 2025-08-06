@@ -1,72 +1,101 @@
 export interface User {
   id: string
   name: string
-  username: string
+  username?: string
   email?: string
-  avatar?: string
-  primaryGoal: "weight_loss" | "muscle_gain" | "maintenance" | "endurance" | "hypertrophy"
+  primaryGoal: "strength" | "hypertrophy" | "fat_loss" | "endurance"
   createdAt: string
-  preferences: {
+  preferences?: {
     theme: "light" | "dark"
     units: "metric" | "imperial"
     todayWidgets: string[]
+    fitnessLevel?: string
+    workoutDays?: number
+    preferredTime?: string
+    equipment?: string[]
   }
 }
 
-export interface WorkoutSet {
-  reps: number
-  weight: number
-  completed: boolean
-  restTime?: number
-}
-
-export interface WorkoutExercise {
+export interface WorkoutLog {
   id: string
-  exerciseName: string
-  sets: WorkoutSet[]
-  restTime: number
-  notes: string
+  userId: string
+  date: string
+  startTime: string
+  endTime?: string
+  duration?: number
+  label: string
+  exercises: Exercise[]
+  workingWeights?: Record<string, number>
+  notes?: string
+  createdAt: string
 }
 
-export interface Workout {
+export interface Exercise {
   id: string
   name: string
-  date: string
-  duration: number
-  exercises: WorkoutExercise[]
-  notes: string
+  sets: Set[]
+  restTime?: number
+  notes?: string
 }
 
-export interface NutritionEntry {
+export interface Set {
+  reps: number
+  weight: number
+  rpe?: number
+  completed?: boolean
+}
+
+export interface NutritionLog {
   id: string
+  userId: string
   date: string
-  meal: "breakfast" | "lunch" | "dinner" | "snack"
-  food: string
+  meals?: Meal[]
+  caloriesConsumed: number
+  protein: number
+  carbs: number
+  fat: number
+  createdAt: string
+}
+
+export interface Meal {
+  id: string
+  name: string
+  foods: FoodItem[]
+  calories: number
+  macros: {
+    protein: number
+    carbs: number
+    fat: number
+  }
+}
+
+export interface FoodItem {
+  id: string
+  name: string
   calories: number
   protein: number
   carbs: number
   fat: number
+  quantity?: number
+  unit?: string
 }
 
 export interface BodyMetrics {
   id: string
+  userId: string
   date: string
   weight?: number
-  bodyFat?: number
-  muscleMass?: number
-  measurements?: {
-    chest?: number
-    waist?: number
-    hips?: number
-    arms?: number
-    thighs?: number
-  }
+  bodyFatPercentage?: number
+  measurements?: Record<string, number>
+  createdAt: string
 }
 
-export interface MoodEntry {
+export interface WorkoutTemplate {
   id: string
-  date: string
-  mood: "great" | "good" | "okay" | "bad"
-  energy: number
-  notes?: string
+  name: string
+  exercises: Exercise[]
+  estimatedDuration: number
+  difficulty: "beginner" | "intermediate" | "advanced"
+  equipment: string[]
+  muscleGroups: string[]
 }

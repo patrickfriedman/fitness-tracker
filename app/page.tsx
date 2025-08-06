@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuth } from "@/contexts/auth-context"
-import { LoginScreen } from "@/app/components/login-screen"
+import { LoginScreen } from "@/components/login-screen"
 import { OnboardingFlow } from "@/app/components/onboarding-flow"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Dumbbell, Plus, Calendar, TrendingUp, Settings, User, LogOut, Trash2, Home, Activity, Target, BarChart3 } from 'lucide-react'
+import { Dumbbell, Plus, Calendar, Settings, User, LogOut, Trash2, Home, Activity, Target, BarChart3 } from 'lucide-react'
 import { BodyMetricsWidget } from "@/app/components/body-metrics-widget"
 import { MoodTracker } from "@/app/components/mood-tracker"
 import { MotivationalQuote } from "@/app/components/motivational-quote"
@@ -22,7 +22,7 @@ import { WorkoutPlanner } from "@/app/components/workout-planner"
 import { WaterTracker } from "@/app/components/water-tracker"
 
 export default function HomePage() {
-  const { user, logout, deleteAccount } = useAuth()
+  const { user, logout, deleteAccount, loading } = useAuth()
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [activeTab, setActiveTab] = useState("today")
 
@@ -40,6 +40,18 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to delete account:", error)
     }
+  }
+
+  // Show loading screen
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   // Show login screen if no user
@@ -152,7 +164,7 @@ export default function HomePage() {
                     <div className="flex flex-col space-y-1 leading-none">
                       <p className="font-medium">{user.name}</p>
                       <p className="w-[200px] truncate text-sm text-muted-foreground">
-                        {user.username}
+                        {user.email}
                       </p>
                     </div>
                   </div>
