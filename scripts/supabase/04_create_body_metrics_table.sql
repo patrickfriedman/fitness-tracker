@@ -1,32 +1,25 @@
-CREATE TABLE public.body_metrics (
-    id uuid NOT NULL DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL,
-    date date NOT NULL DEFAULT now(),
-    weight numeric NULL,
-    height numeric NULL,
-    body_fat_percentage numeric NULL,
-    muscle_mass_percentage numeric NULL,
-    waist_circumference numeric NULL,
-    notes text NULL,
-    created_at timestamp with time zone NOT NULL DEFAULT now(),
-    CONSTRAINT body_metrics_pkey PRIMARY KEY (id),
-    CONSTRAINT body_metrics_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+-- Create body_metrics table
+create table body_metrics (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  created_at timestamp with time zone default now(),
+  weight decimal(5,2) not null, -- in kg
+  body_fat decimal(4,2), -- percentage
+  muscle_mass decimal(4,2) -- percentage
+  -- Add other metrics like BMI, measurements if needed
 );
 
-ALTER TABLE public.body_metrics ENABLE ROW LEVEL SECURITY;
+-- Set up Row Level Security (RLS)
+alter table body_metrics enable row level security;
 
-CREATE POLICY "Allow authenticated users to read their own body metrics"
-ON public.body_metrics FOR SELECT
-USING (auth.uid() = user_id);
+create policy "Users can view their own body metrics."
+  on body_metrics for select using (auth.uid() = user_id);
 
-CREATE POLICY "Allow authenticated users to insert their own body metrics"
-ON public.body_metrics FOR INSERT
-WITH CHECK (auth.uid() = user_id);
+create policy "Users can insert their own body metrics."
+  on body_metrics for insert with check (auth.uid() = user_id);
 
-CREATE POLICY "Allow authenticated users to update their own body metrics"
-ON public.body_metrics FOR UPDATE
-USING (auth.uid() = user_id);
+create policy "Users can update their own body metrics."
+  on body_metrics for update using (auth.uid() = user_id);
 
-CREATE POLICY "Allow authenticated users to delete their own body metrics"
-ON public.body_metrics FOR DELETE
-USING (auth.uid() = user_id);
+create policy "Users can delete their own body metrics."
+  on body_metrics for delete using (auth.uid() = user_id);

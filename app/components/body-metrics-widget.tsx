@@ -1,117 +1,124 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { Scale, TrendingUp, TrendingDown } from 'lucide-react'
-import { useAuth } from '@/contexts/auth-context'
-import { useEffect, useState } from 'react'
-import { getBrowserClient } from '@/lib/supabase'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { toast } from '@/components/ui/use-toast'
 import { BodyMetric } from '@/types/fitness'
-import { format } from 'date-fns'
-import { Skeleton } from '@/components/ui/skeleton'
 
 export default function BodyMetricsWidget() {
-  const { user, isDemo } = useAuth()
-  const [latestMetric, setLatestMetric] = useState<BodyMetric | null>(null)
-  const [loading, setLoading] = useState(true)
-  const supabase = getBrowserClient()
+  const [metrics, setMetrics] = useState<BodyMetric[]>([
+    { id: '1', date: new Date('2023-01-01'), weight: 70, bodyFat: 15, muscleMass: 30 },
+    { id: '2', date: new Date('2023-02-01'), weight: 69, bodyFat: 14.8, muscleMass: 30.2 },
+  ])
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [newMetric, setNewMetric] = useState<Omit<BodyMetric, 'id'>>({
+    date: new Date(),
+    weight: 0,
+    bodyFat: 0,
+    muscleMass: 0,
+  })
 
-  useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
+  const handleAddMetric = () => {
+    if (newMetric.weight > 0) {
+      setMetrics([...metrics, { ...newMetric, id: Date.now().toString() }])
+      setNewMetric({ date: new Date(), weight: 0, bodyFat: 0, muscleMass: 0 })
+      setIsDialogOpen(false)
+      toast({
+        title: 'Body Metric Added',
+        description: 'Your new body metric has been recorded.',
+      })
+    } else {
+      toast({
+        title: 'Invalid Input',
+        description: 'Please enter a valid weight.',
+        variant: 'destructive',
+      })
     }
-
-    const fetchLatestMetric = async () => {
-      setLoading(true);
-      if (isDemo) {
-        // Simulate demo data
-        setLatestMetric({
-          id: 'demo-metric-1',
-          user_id: user.id,
-          date: format(new Date(), 'yyyy-MM-dd'),
-          weight: 75,
-          height: 175,
-          body_fat_percentage: 18,
-          muscle_mass_percentage: 40,
-          waist_circumference: 80,
-          notes: 'Demo data for body metrics.',
-          created_at: new Date().toISOString(),
-        });
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('body_metrics')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-        console.error('Error fetching latest body metric:', error.message);
-      } else if (data) {
-        setLatestMetric(data);
-      } else {
-        setLatestMetric(null);
-      }
-      setLoading(false);
-    };
-
-    fetchLatestMetric();
-  }, [user, isDemo, supabase]);
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Latest Body Metrics</CardTitle>
-          <Scale className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-8 w-3/4 mb-2" />
-          <Skeleton className="h-4 w-1/2" />
-          <div className="mt-4 space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-          </div>
-        </CardContent>
-      </Card>
-    );
   }
 
+  const latestMetric = metrics.sort((a, b) => b.date.getTime() - a.date.getTime())[0]
+
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Latest Body Metrics</CardTitle>
-        <Scale className="h-4 w-4 text-muted-foreground" />
+        <CardTitle className="text-sm font-medium">Body Metrics</CardTitle>
+        <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>
+          Add Metric
+        </Button>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">
-          {latestMetric?.weight ? `${latestMetric.weight} kg` : 'N/A'}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {latestMetric?.date ? `As of ${format(new Date(latestMetric.date), 'MMM dd, yyyy')}` : 'No data yet'}
-        </p>
-        <div className="mt-4 space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span>Body Fat:</span>
-            <span className="font-medium">
-              {latestMetric?.body_fat_percentage ? `${latestMetric.body_fat_percentage}%` : 'N/A'}
-            </span>
+        {latestMetric ? (
+          <div className="text-2xl font-bold">
+            {latestMetric.weight} kg
+            <p className="text-xs text-muted-foreground">
+              Last updated: {latestMetric.date.toLocaleDateString()}
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+              <div>
+                <span className="font-medium">Body Fat:</span> {latestMetric.bodyFat}%
+              </div>
+              <div>
+                <span className="font-medium">Muscle Mass:</span> {latestMetric.muscleMass}%
+              </div>
+            </div>
           </div>
-          <Progress value={latestMetric?.body_fat_percentage || 0} className="h-2" />
-          <div className="flex items-center justify-between text-sm">
-            <span>Muscle Mass:</span>
-            <span className="font-medium">
-              {latestMetric?.muscle_mass_percentage ? `${latestMetric.muscle_mass_percentage}%` : 'N/A'}
-            </span>
-          </div>
-          <Progress value={latestMetric?.muscle_mass_percentage || 0} className="h-2" />
-        </div>
+        ) : (
+          <p className="text-muted-foreground">No body metrics recorded yet.</p>
+        )}
       </CardContent>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Body Metric</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="weight" className="text-right">
+                Weight (kg)
+              </Label>
+              <Input
+                id="weight"
+                type="number"
+                value={newMetric.weight}
+                onChange={(e) => setNewMetric({ ...newMetric, weight: parseFloat(e.target.value) })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="bodyFat" className="text-right">
+                Body Fat (%)
+              </Label>
+              <Input
+                id="bodyFat"
+                type="number"
+                value={newMetric.bodyFat}
+                onChange={(e) => setNewMetric({ ...newMetric, bodyFat: parseFloat(e.target.value) })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="muscleMass" className="text-right">
+                Muscle Mass (%)
+              </Label>
+              <Input
+                id="muscleMass"
+                type="number"
+                value={newMetric.muscleMass}
+                onChange={(e) => setNewMetric({ ...newMetric, muscleMass: parseFloat(e.target.value) })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleAddMetric}>Save changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
-  );
+  )
 }

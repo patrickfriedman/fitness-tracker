@@ -1,142 +1,128 @@
 'use client'
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { CalendarHeatmap } from 'react-calendar-heatmap'
-import 'react-calendar-heatmap/dist/styles.css'
-import {
-  Tooltip,
-  TooltipRoot,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider
-} from '@/components/ui/tooltip'
-import { useAuth } from '@/contexts/auth-context'
-import { useEffect, useState } from 'react'
-import { getBrowserClient } from '@/lib/supabase'
-import { WorkoutLog } from '@/types/fitness'
-import { format, subYears, addDays } from 'date-fns'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
+import { useState, useEffect } from 'react'
 
-interface HeatmapValue {
-  date: string;
-  count: number;
+// Helper to generate a range of dates
+const getDatesInMonth = (year: number, month: number) => {
+  const date = new Date(year, month, 1)
+  const dates = []
+  while (date.getMonth() === month) {
+    dates.push(new Date(date))
+    date.setDate(date.getDate() + 1)
+  }
+  return dates
+}
+
+// Simulate activity data
+const generateActivityData = (year: number, month: number) => {
+  const dates = getDatesInMonth(year, month)
+  return dates.map((date) => ({
+    date: date.toISOString().split('T')[0], // YYYY-MM-DD
+    count: Math.floor(Math.random() * 5), // 0-4 activities
+  }))
 }
 
 export default function ActivityHeatmap() {
-  const { user, isDemo } = useAuth()
-  const [heatmapData, setHeatmapData] = useState<HeatmapValue[]>([])
-  const [loading, setLoading] = useState(true)
-  const supabase = getBrowserClient()
+  const [activityData, setActivityData] = useState<Array<{ date: string; count: number }>>([])
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
+    setActivityData(generateActivityData(currentYear, currentMonth))
+  }, [currentYear, currentMonth])
+
+  const getIntensityClass = (count: number) => {
+    if (count === 0) return 'bg-gray-200 dark:bg-gray-700'
+    if (count === 1) return 'bg-green-100 dark:bg-green-900/20'
+    if (count === 2) return 'bg-green-200 dark:bg-green-900/40'
+    if (count === 3) return 'bg-green-300 dark:bg-green-900/60'
+    if (count === 4) return 'bg-green-400 dark:bg-green-900/80'
+    return 'bg-green-500 dark:bg-green-900'
+  }
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ]
+
+  const handleMonthChange = (direction: 'prev' | 'next') => {
+    let newMonth = currentMonth
+    let newYear = currentYear
+
+    if (direction === 'prev') {
+      newMonth--
+      if (newMonth < 0) {
+        newMonth = 11
+        newYear--
+      }
+    } else {
+      newMonth++
+      if (newMonth > 11) {
+        newMonth = 0
+        newYear++
+      }
     }
-
-    const fetchActivityData = async () => {
-      setLoading(true);
-      if (isDemo) {
-        // Simulate demo data for the last year
-        const today = new Date();
-        const oneYearAgo = subYears(today, 1);
-        const demoData: HeatmapValue[] = [];
-        for (let d = oneYearAgo; d <= today; d = addDays(d, 1)) {
-          const count = Math.floor(Math.random() * 4); // 0-3 workouts
-          if (count > 0) {
-            demoData.push({ date: format(d, 'yyyy-MM-dd'), count });
-          }
-        }
-        setHeatmapData(demoData);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch workout logs for the last year
-      const oneYearAgo = format(subYears(new Date(), 1), 'yyyy-MM-dd');
-      const { data, error } = await supabase
-        .from('workout_logs')
-        .select('date')
-        .eq('user_id', user.id)
-        .gte('date', oneYearAgo);
-
-      if (error) {
-        console.error('Error fetching activity data:', error.message);
-      } else {
-        // Aggregate data by date
-        const aggregatedData: { [key: string]: number } = {};
-        data.forEach(log => {
-          const dateKey = format(new Date(log.date), 'yyyy-MM-dd');
-          aggregatedData[dateKey] = (aggregatedData[dateKey] || 0) + 1;
-        });
-
-        const formattedData = Object.entries(aggregatedData).map(([date, count]) => ({
-          date,
-          count,
-        }));
-        setHeatmapData(formattedData);
-      }
-      setLoading(false);
-    };
-
-    fetchActivityData();
-  }, [user, isDemo, supabase]);
-
-  const endDate = new Date();
-  const startDate = subYears(endDate, 1);
-
-  if (loading) {
-    return (
-      <Card className="col-span-full">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Activity Heatmap</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-48 w-full" />
-        </CardContent>
-      </Card>
-    );
+    setCurrentMonth(newMonth)
+    setCurrentYear(newYear)
   }
 
   return (
-    <Card className="col-span-full">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-sm font-medium">Activity Heatmap</CardTitle>
+        <CardTitle>Activity Heatmap</CardTitle>
       </CardHeader>
       <CardContent>
-        <CalendarHeatmap
-          startDate={startDate}
-          endDate={endDate}
-          values={heatmapData}
-          classForValue={(value) => {
-            if (!value) {
-              return 'color-empty';
-            }
-            return `color-scale-${Math.min(value.count, 4)}`;
-          }}
-          tooltipDataAttrs={(value: HeatmapValue) => {
-            return {
-              'data-tooltip-id': 'heatmap-tooltip',
-              'data-tooltip-content': value.date
-                ? `${value.count} workouts on ${format(new Date(value.date), 'MMM dd, yyyy')}`
-                : 'No workouts',
-            };
-          }}
-          showWeekdayLabels
-          gutterSize={2}
-          horizontal={false} // Display vertically
-        />
-        <style jsx global>{`
-          .react-calendar-heatmap .color-empty { fill: #ebedf0; }
-          .react-calendar-heatmap .color-scale-1 { fill: #9be9a8; }
-          .react-calendar-heatmap .color-scale-2 { fill: #40c463; }
-          .react-calendar-heatmap .color-scale-3 { fill: #30a14e; }
-          .react-calendar-heatmap .color-scale-4 { fill: #216e39; }
-          .react-calendar-heatmap text { font-size: 8px; } /* Adjust font size for labels */
-        `}</style>
-        {/* Tooltip component from shadcn/ui, assuming it's available */}
-        {/* <Tooltip id="heatmap-tooltip" /> */}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">
+            {monthNames[currentMonth]} {currentYear}
+          </h3>
+          <div className="space-x-2">
+            <Button variant="outline" size="sm" onClick={() => handleMonthChange('prev')}>
+              Prev
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleMonthChange('next')}>
+              Next
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+            <div key={day} className="text-center text-xs text-muted-foreground">
+              {day}
+            </div>
+          ))}
+          {activityData.map((day, index) => (
+            <TooltipProvider key={day.date}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className={cn(
+                      'h-6 w-6 rounded-sm cursor-pointer',
+                      getIntensityClass(day.count)
+                    )}
+                    style={{
+                      gridColumnStart: index === 0 ? new Date(day.date).getDay() + 1 : 'auto',
+                    }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{day.date}</p>
+                  <p>{day.count} activities</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ))}
+        </div>
+        <div className="flex justify-end text-xs text-muted-foreground mt-4">
+          Less <div className="h-3 w-3 rounded-sm bg-gray-200 dark:bg-gray-700 mx-1" />
+          <div className="h-3 w-3 rounded-sm bg-green-100 dark:bg-green-900/20 mx-1" />
+          <div className="h-3 w-3 rounded-sm bg-green-300 dark:bg-green-900/60 mx-1" />
+          <div className="h-3 w-3 rounded-sm bg-green-500 dark:bg-green-900 mx-1" /> More
+        </div>
       </CardContent>
     </Card>
-  );
+  )
 }

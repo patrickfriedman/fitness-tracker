@@ -1,150 +1,137 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { useFormStatus } from 'react-dom'
+import { useFormState } from 'react-dom'
+import { login, signup } from '@/app/actions/auth-actions'
 import { useAuth } from '@/contexts/auth-context'
 import { Loader2 } from 'lucide-react'
-import Image from 'next/image'
+import { toast } from '@/components/ui/use-toast'
+
+function SubmitButton({ text }: { text: string }) {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" className="w-full" disabled={pending}>
+      {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+      {text}
+    </Button>
+  )
+}
 
 export default function LoginScreen() {
-  const { login, register, loginDemo } = useAuth()
-  const [isRegistering, setIsRegistering] = useState(false)
-  const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isLogin, setIsLogin] = useState(true)
+  const { loginDemoUser } = useAuth()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    try {
-      if (isRegistering) {
-        await register(email, password, username)
-      } else {
-        await login(email, password)
-      }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.')
-    } finally {
-      setLoading(false)
-    }
+  const [loginState, loginAction] = useFormState(login, {
+    success: false,
+    message: '',
+    errors: {},
+  })
+
+  const [signupState, signupAction] = useFormState(signup, {
+    success: false,
+    message: '',
+    errors: {},
+  })
+
+  // Show toast messages for login/signup results
+  if (loginState.message && !loginState.errors) {
+    toast({
+      title: loginState.success ? 'Login Successful' : 'Login Failed',
+      description: loginState.message,
+      variant: loginState.success ? 'default' : 'destructive',
+    })
+    loginState.message = '' // Clear message after showing toast
   }
 
-  const handleDemoLogin = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      await loginDemo()
-    } catch (err: any) {
-      setError(err.message || 'Failed to log in as demo user.')
-    } finally {
-      setLoading(false)
-    }
+  if (signupState.message && !signupState.errors) {
+    toast({
+      title: signupState.success ? 'Sign Up Successful' : 'Sign Up Failed',
+      description: signupState.message,
+      variant: signupState.success ? 'default' : 'destructive',
+    })
+    signupState.message = '' // Clear message after showing toast
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <Button variant="ghost" onClick={handleDemoLogin} disabled={loading}>
-              <Image src="/placeholder-logo.png" alt="Fitness App Logo" width={64} height={64} />
-            </Button>
-          </div>
-          <CardTitle className="text-3xl font-bold">
-            {isRegistering ? 'Create Account' : 'Login'}
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl">
+            {isLogin ? 'Login' : 'Sign Up'}
           </CardTitle>
           <CardDescription>
-            {isRegistering ? 'Enter your details to create an account' : 'Enter your credentials to access your fitness journey'}
+            {isLogin
+              ? 'Enter your credentials to access your fitness dashboard.'
+              : 'Create an account to start your fitness journey.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {isRegistering && (
+          <form action={isLogin ? loginAction : signupAction} className="space-y-4">
+            {!isLogin && (
               <div>
                 <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="john_doe"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  disabled={loading}
-                />
+                <Input id="username" name="username" type="text" placeholder="john_doe" required />
+                {signupState.errors?.username && (
+                  <p className="text-red-500 text-sm mt-1">{signupState.errors.username}</p>
+                )}
               </div>
             )}
             <div>
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-              />
+              <Input id="email" name="email" type="email" placeholder="m@example.com" required />
+              {isLogin && loginState.errors?.email && (
+                <p className="text-red-500 text-sm mt-1">{loginState.errors.email}</p>
+              )}
+              {!isLogin && signupState.errors?.email && (
+                <p className="text-red-500 text-sm mt-1">{signupState.errors.email}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isRegistering ? 'Creating...' : 'Logging in...'}
-                </>
-              ) : (
-                isRegistering ? 'Create Account' : 'Login'
+              <Input id="password" name="password" type="password" required />
+              {isLogin && loginState.errors?.password && (
+                <p className="text-red-500 text-sm mt-1">{loginState.errors.password}</p>
               )}
-            </Button>
+              {!isLogin && signupState.errors?.password && (
+                <p className="text-red-500 text-sm mt-1">{signupState.errors.password}</p>
+              )}
+            </div>
+            {isLogin && loginState.message && !loginState.errors && (
+              <p className="text-red-500 text-sm text-center">{loginState.message}</p>
+            )}
+            {!isLogin && signupState.message && !signupState.errors && (
+              <p className="text-green-500 text-sm text-center">{signupState.message}</p>
+            )}
+            <SubmitButton text={isLogin ? 'Login' : 'Sign Up'} />
           </form>
-          <div className="mt-6 text-center text-sm">
-            {isRegistering ? (
+          <div className="mt-4 text-center text-sm">
+            {isLogin ? (
               <>
-                Already have an account?{' '}
-                <Button variant="link" onClick={() => setIsRegistering(false)} disabled={loading}>
-                  Login
+                Don't have an account?{' '}
+                <Button variant="link" onClick={() => setIsLogin(false)} className="p-0 h-auto">
+                  Sign up
                 </Button>
               </>
             ) : (
               <>
-                Don&apos;t have an account?{' '}
-                <Button variant="link" onClick={() => setIsRegistering(true)} disabled={loading}>
-                  Sign Up
+                Already have an account?{' '}
+                <Button variant="link" onClick={() => setIsLogin(true)} className="p-0 h-auto">
+                  Login
                 </Button>
               </>
             )}
           </div>
-          <div className="mt-4 text-center">
-            <Button variant="outline" onClick={handleDemoLogin} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Entering Demo...
-                </>
-              ) : (
-                'Continue as Demo User'
-              )}
-            </Button>
-          </div>
         </CardContent>
+        <CardFooter>
+          <Button variant="outline" className="w-full" onClick={loginDemoUser}>
+            Continue with Demo Account
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   )

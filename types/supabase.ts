@@ -11,46 +11,33 @@ export type Database = {
     Tables: {
       body_metrics: {
         Row: {
-          body_fat_percentage: number | null
+          body_fat: number | null
           created_at: string
-          date: string
-          height: number | null
           id: string
-          muscle_mass_percentage: number | null
-          notes: string | null
+          muscle_mass: number | null
           user_id: string
-          waist_circumference: number | null
-          weight: number | null
+          weight: number
         }
         Insert: {
-          body_fat_percentage?: number | null
+          body_fat?: number | null
           created_at?: string
-          date?: string
-          height?: number | null
           id?: string
-          muscle_mass_percentage?: number | null
-          notes?: string | null
+          muscle_mass?: number | null
           user_id: string
-          waist_circumference?: number | null
-          weight?: number | null
+          weight: number
         }
         Update: {
-          body_fat_percentage?: number | null
+          body_fat?: number | null
           created_at?: string
-          date?: string
-          height?: number | null
           id?: string
-          muscle_mass_percentage?: number | null
-          notes?: string | null
+          muscle_mass?: number | null
           user_id?: string
-          waist_circumference?: number | null
-          weight?: number | null
+          weight?: number
         }
         Relationships: [
           {
             foreignKeyName: "body_metrics_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -59,25 +46,22 @@ export type Database = {
       mood_logs: {
         Row: {
           created_at: string
-          date: string
           id: string
-          mood_score: number | null
+          mood: string
           notes: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
-          date?: string
           id?: string
-          mood_score?: number | null
+          mood: string
           notes?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
-          date?: string
           id?: string
-          mood_score?: number | null
+          mood?: string
           notes?: string | null
           user_id?: string
         }
@@ -85,7 +69,6 @@ export type Database = {
           {
             foreignKeyName: "mood_logs_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -93,46 +76,42 @@ export type Database = {
       }
       nutrition_logs: {
         Row: {
+          calories: number
+          carbs: number | null
           created_at: string
-          date: string
-          food_items: Json[] | null
+          fat: number | null
+          food_items: string
           id: string
-          meal_type: string | null
-          total_calories: number | null
-          total_carbs: number | null
-          total_fat: number | null
-          total_protein: number | null
+          meal_type: string
+          protein: number | null
           user_id: string
         }
         Insert: {
+          calories: number
+          carbs?: number | null
           created_at?: string
-          date?: string
-          food_items?: Json[] | null
+          fat?: number | null
+          food_items: string
           id?: string
-          meal_type?: string | null
-          total_calories?: number | null
-          total_carbs?: number | null
-          total_fat?: number | null
-          total_protein?: number | null
+          meal_type: string
+          protein?: number | null
           user_id: string
         }
         Update: {
+          calories?: number
+          carbs?: number | null
           created_at?: string
-          date?: string
-          food_items?: Json[] | null
+          fat?: number | null
+          food_items?: string
           id?: string
-          meal_type?: string | null
-          total_calories?: number | null
-          total_carbs?: number | null
-          total_fat?: number | null
-          total_protein?: number | null
+          meal_type?: string
+          protein?: number | null
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "nutrition_logs_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -141,33 +120,32 @@ export type Database = {
       planned_workouts: {
         Row: {
           created_at: string
-          date: string
+          description: string | null
+          exercises: Json | null
           id: string
-          name: string | null
-          notes: string | null
+          title: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          date: string
+          description?: string | null
+          exercises?: Json | null
           id?: string
-          name?: string | null
-          notes?: string | null
+          title: string
           user_id: string
         }
         Update: {
           created_at?: string
-          date?: string
+          description?: string | null
+          exercises?: Json | null
           id?: string
-          name?: string | null
-          notes?: string | null
+          title?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "planned_workouts_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -176,33 +154,26 @@ export type Database = {
       users: {
         Row: {
           created_at: string
-          email: string | null
+          email: string
           id: string
-          name: string | null
-          primary_goal: string | null
-          preferences: Json | null
+          username: string
         }
         Insert: {
           created_at?: string
-          email?: string | null
+          email: string
           id: string
-          name?: string | null
-          primary_goal?: string | null
-          preferences?: Json | null
+          username: string
         }
         Update: {
           created_at?: string
-          email?: string | null
+          email?: string
           id?: string
-          name?: string | null
-          primary_goal?: string | null
-          preferences?: Json | null
+          username?: string
         }
         Relationships: [
           {
             foreignKeyName: "users_id_fkey"
             columns: ["id"]
-            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -210,23 +181,20 @@ export type Database = {
       }
       water_logs: {
         Row: {
-          amount_ml: number | null
+          amount: number
           created_at: string
-          date: string
           id: string
           user_id: string
         }
         Insert: {
-          amount_ml?: number | null
+          amount: number
           created_at?: string
-          date?: string
           id?: string
           user_id: string
         }
         Update: {
-          amount_ml?: number | null
+          amount?: number
           created_at?: string
-          date?: string
           id?: string
           user_id?: string
         }
@@ -234,7 +202,6 @@ export type Database = {
           {
             foreignKeyName: "water_logs_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -244,41 +211,37 @@ export type Database = {
         Row: {
           calories_burned: number | null
           created_at: string
-          date: string
-          duration_minutes: number | null
-          exercises: Json[] | null
+          duration: number
+          exercises: Json | null
           id: string
-          name: string | null
           notes: string | null
+          type: string
           user_id: string
         }
         Insert: {
           calories_burned?: number | null
           created_at?: string
-          date?: string
-          duration_minutes?: number | null
-          exercises?: Json[] | null
+          duration: number
+          exercises?: Json | null
           id?: string
-          name?: string | null
           notes?: string | null
+          type: string
           user_id: string
         }
         Update: {
           calories_burned?: number | null
           created_at?: string
-          date?: string
-          duration_minutes?: number | null
-          exercises?: Json[] | null
+          duration?: number
+          exercises?: Json | null
           id?: string
-          name?: string | null
           notes?: string | null
+          type?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "workout_logs_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -311,14 +274,16 @@ export type Tables<
         Database[PublicTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
   : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
         PublicSchema["Views"])
-    ? (PublicSchema["Tables"] & PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -379,3 +344,4 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
+  : never

@@ -1,133 +1,134 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { Utensils, Plus, Loader2 } from 'lucide-react'
-import { useAuth } from '@/contexts/auth-context'
-import { useEffect, useState } from 'react'
-import { getBrowserClient } from '@/lib/supabase'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { PlusIcon, TrashIcon } from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
 import { NutritionLog } from '@/types/fitness'
-import { format } from 'date-fns'
-import { Skeleton } from '@/components/ui/skeleton'
-
-const DAILY_CALORIE_GOAL = 2000; // Example daily calorie goal
 
 export default function NutritionTracker() {
-  const { user, isDemo } = useAuth()
-  const [todayNutrition, setTodayNutrition] = useState<NutritionLog[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const supabase = getBrowserClient()
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const [nutritionLogs, setNutritionLogs] = useState<NutritionLog[]>([])
+  const [newMeal, setNewMeal] = useState<Omit<NutritionLog, 'id'>>({
+    date: new Date(),
+    mealType: '',
+    foodItems: '',
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+  })
 
-  const fetchNutritionLogs = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    if (isDemo) {
-      // Simulate demo data
-      setTodayNutrition([
-        {
-          id: 'demo-nut-1',
-          user_id: user.id,
-          date: today,
-          meal_type: 'breakfast',
-          food_items: [{ name: 'Oatmeal', quantity: 1, unit: 'serving', calories: 150, protein: 5, carbs: 25, fat: 3 }],
-          total_calories: 150, total_protein: 5, total_carbs: 25, total_fat: 3,
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: 'demo-nut-2',
-          user_id: user.id,
-          date: today,
-          meal_type: 'lunch',
-          food_items: [{ name: 'Chicken Salad', quantity: 1, unit: 'serving', calories: 350, protein: 30, carbs: 15, fat: 20 }],
-          total_calories: 350, total_protein: 30, total_carbs: 15, total_fat: 20,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-      setLoading(false);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('nutrition_logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('date', today);
-
-    if (error) {
-      console.error('Error fetching nutrition logs:', error.message);
+  const handleAddMeal = () => {
+    if (newMeal.mealType && newMeal.foodItems && newMeal.calories > 0) {
+      setNutritionLogs([...nutritionLogs, { ...newMeal, id: Date.now().toString() }])
+      setNewMeal({ date: new Date(), mealType: '', foodItems: '', calories: 0, protein: 0, carbs: 0, fat: 0 })
+      toast({
+        title: 'Meal Logged!',
+        description: 'Your meal has been successfully recorded.',
+      })
     } else {
-      setTodayNutrition(data);
+      toast({
+        title: 'Invalid Input',
+        description: 'Please enter meal type, food items, and calories.',
+        variant: 'destructive',
+      })
     }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchNutritionLogs();
-  }, [user, isDemo, today]);
-
-  const totalCaloriesToday = todayNutrition?.reduce((sum, log) => sum + (log.total_calories || 0), 0) || 0;
-  const progressPercentage = (totalCaloriesToday / DAILY_CALORIE_GOAL) * 100;
-
-  const handleLogMeal = () => {
-    // Placeholder for opening a meal logging form/modal
-    alert('Logging a new meal! (Feature coming soon)');
-  };
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Daily Nutrition</CardTitle>
-          <Utensils className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-8 w-3/4 mb-2" />
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-2 w-full mt-4" />
-          <Skeleton className="h-10 w-full mt-4" />
-        </CardContent>
-      </Card>
-    );
   }
 
+  const handleRemoveMeal = (id: string) => {
+    setNutritionLogs(nutritionLogs.filter((log) => log.id !== id))
+    toast({
+      title: 'Meal Removed',
+      description: 'The nutrition log has been deleted.',
+    })
+  }
+
+  const totalCaloriesToday = nutritionLogs
+    .filter(log => log.date.toDateString() === new Date().toDateString())
+    .reduce((sum, log) => sum + log.calories, 0)
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Daily Nutrition</CardTitle>
-        <Utensils className="h-4 w-4 text-muted-foreground" />
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Nutrition Tracker</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">
-          {totalCaloriesToday} kcal
+      <CardContent className="space-y-6">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Log a New Meal</h3>
+          <Input
+            placeholder="Meal Type (e.g., Breakfast, Lunch, Snack)"
+            value={newMeal.mealType}
+            onChange={(e) => setNewMeal({ ...newMeal, mealType: e.target.value })}
+          />
+          <Textarea
+            placeholder="Food Items (e.g., 2 eggs, 1 toast, 1 apple)"
+            value={newMeal.foodItems}
+            onChange={(e) => setNewMeal({ ...newMeal, foodItems: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              type="number"
+              placeholder="Calories (kcal)"
+              value={newMeal.calories || ''}
+              onChange={(e) => setNewMeal({ ...newMeal, calories: parseInt(e.target.value) || 0 })}
+            />
+            <Input
+              type="number"
+              placeholder="Protein (g)"
+              value={newMeal.protein || ''}
+              onChange={(e) => setNewMeal({ ...newMeal, protein: parseInt(e.target.value) || 0 })}
+            />
+            <Input
+              type="number"
+              placeholder="Carbs (g)"
+              value={newMeal.carbs || ''}
+              onChange={(e) => setNewMeal({ ...newMeal, carbs: parseInt(e.target.value) || 0 })}
+            />
+            <Input
+              type="number"
+              placeholder="Fat (g)"
+              value={newMeal.fat || ''}
+              onChange={(e) => setNewMeal({ ...newMeal, fat: parseInt(e.target.value) || 0 })}
+            />
+          </div>
+          <Button onClick={handleAddMeal} className="w-full">
+            Log Meal
+          </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {Math.round(progressPercentage)}% of daily goal ({DAILY_CALORIE_GOAL} kcal)
-        </p>
-        <Progress value={progressPercentage} className="mt-4 h-2" />
-        <div className="mt-4 text-sm">
-          <p className="font-medium">Meals Logged:</p>
-          <ul className="list-disc pl-5">
-            {todayNutrition && todayNutrition.length > 0 ? (
-              todayNutrition.map((log, index) => (
-                <li key={index}>
-                  {log.meal_type.charAt(0).toUpperCase() + log.meal_type.slice(1)}: {log.total_calories} kcal
-                </li>
-              ))
-            ) : (
-              <li>No meals logged today.</li>
-            )}
-          </ul>
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Your Nutrition History</h3>
+          <div className="text-lg font-bold">Total Calories Today: {totalCaloriesToday} kcal</div>
+          {nutritionLogs.length === 0 ? (
+            <p className="text-muted-foreground">No meals logged yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {nutritionLogs.map((log) => (
+                <Card key={log.id} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold">{log.mealType}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {log.date.toLocaleDateString()} - {log.calories} kcal
+                      </p>
+                      <p className="text-sm mt-1">{log.foodItems}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        P: {log.protein}g | C: {log.carbs}g | F: {log.fat}g
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveMeal(log.id)}>
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
-        <Button className="w-full mt-4" onClick={handleLogMeal}>
-          <Plus className="mr-2 h-4 w-4" />
-          Log New Meal
-        </Button>
       </CardContent>
     </Card>
-  );
+  )
 }

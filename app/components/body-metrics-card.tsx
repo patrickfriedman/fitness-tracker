@@ -1,74 +1,49 @@
 'use client'
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Scale, Plus, Loader2 } from 'lucide-react'
-import { useAuth } from '@/contexts/auth-context'
-import { useEffect, useState } from 'react'
-import { getBrowserClient } from '@/lib/supabase'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useState } from 'react'
 import { BodyMetric } from '@/types/fitness'
-import { format } from 'date-fns'
-import { Skeleton } from '@/components/ui/skeleton'
 
 export default function BodyMetricsCard() {
-  const { user, isDemo } = useAuth()
-  const [latestMetric, setLatestMetric] = useState<BodyMetric | null>(null)
-  const [loading, setLoading] = useState(true)
-  const supabase = getBrowserClient()
+  const [metricsHistory, setMetricsHistory] = useState<BodyMetric[]>([
+    { id: '1', date: new Date('2023-01-01'), weight: 70, bodyFat: 15, muscleMass: 30 },
+    { id: '2', date: new Date('2023-02-01'), weight: 69, bodyFat: 14.8, muscleMass: 30.2 },
+    { id: '3', date: new Date('2023-03-01'), weight: 68.5, bodyFat: 14.5, muscleMass: 30.5 },
+    { id: '4', date: new Date('2023-04-01'), weight: 68, bodyFat: 14.2, muscleMass: 30.8 },
+  ])
 
-  useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchLatestMetric = async () => {
-      setLoading(true);
-      if (isDemo) {
-        // Simulate demo data
-        setLatestMetric({
-          id: 'demo-metric-1',
-          user_id: user.id,
-          date: format(new Date(), 'yyyy-MM-dd'),
-          weight: 75,
-          height: 175,
-          body_fat_percentage: 18,
-          muscle_mass_percentage: 40,
-          waist_circumference: 80,
-          notes: 'Demo data for body metrics.',
-          created_at: new Date().toISOString(),
-        });
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('body_metrics')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching latest body metric:', error.message);
-      } else if (data) {
-        setLatestMetric(data);
-      } else {
-        setLatestMetric(null);
-      }
-      setLoading(false);
-    };
-
-    fetchLatestMetric();
-  }, [user, isDemo, supabase]);
-
-  const handleLogMetrics = () => {
-    // Placeholder for opening a body metrics logging form/modal
-    alert('Logging new body metrics! (Feature coming soon)');
-  };
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Body Metrics History</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {metricsHistory.length === 0 ? (
+          <p className="text-muted-foreground">No historical data available.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Weight (kg)</TableHead>
+                <TableHead>Body Fat (%)</TableHead>
+                <TableHead>Muscle Mass (%)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {metricsHistory.map((metric) => (
+                <TableRow key={metric.id}>
+                  <TableCell>{metric.date.toLocaleDateString()}</TableCell>
+                  <TableCell>{metric.weight}</TableCell>
+                  <TableCell>{metric.bodyFat}</TableCell>
+                  <TableCell>{metric.muscleMass}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  )
+}

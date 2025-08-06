@@ -1,18 +1,19 @@
 "use client"
 
 import * as React from "react"
-import { ToastAction as ToastActionPrimitive } from "@radix-ui/react-toast"
-import { cva, type VariantProps } from "class-variance-authority"
+import { type ToastProps, type ToastActionElement } from "@radix-ui/react-toast"
+import { cva } from "class-variance-authority"
+import { X } from 'lucide-react'
 
 import { cn } from "@/lib/utils"
 
-const ToastProvider = ToastActionPrimitive.Provider
+const ToastProvider = Toast.Provider
 
 const ToastViewport = React.forwardRef<
-  React.ElementRef<typeof ToastActionPrimitive.Viewport>,
-  React.ComponentPropsWithoutRef<typeof ToastActionPrimitive.Viewport>
+  React.ElementRef<typeof Toast.Viewport>,
+  React.ComponentPropsWithoutRef<typeof Toast.Viewport>
 >(({ className, ...props }, ref) => (
-  <ToastActionPrimitive.Viewport
+  <Toast.Viewport
     ref={ref}
     className={cn(
       "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
@@ -21,7 +22,7 @@ const ToastViewport = React.forwardRef<
     {...props}
   />
 ))
-ToastViewport.displayName = ToastActionPrimitive.Viewport.displayName
+ToastViewport.displayName = Toast.Viewport.displayName
 
 const toastVariants = cva(
   "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
@@ -39,90 +40,87 @@ const toastVariants = cva(
   }
 )
 
+interface ToastProps extends React.ComponentPropsWithoutRef<typeof Toast.Root>,
+  VariantProps<typeof toastVariants> {
+  action?: ToastActionElement
+}
+
 const Toast = React.forwardRef<
-  React.ElementRef<typeof ToastActionPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ToastActionPrimitive.Root> &
-    VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => {
+  React.ElementRef<typeof Toast.Root>,
+  ToastProps
+>(({ className, variant, children, action, ...props }, ref) => {
   return (
-    <ToastActionPrimitive.Root
+    <Toast.Root
       ref={ref}
       className={cn(toastVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {children}
+      {action}
+      <Toast.Close className="absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100">
+        <X className="h-4 w-4" />
+      </Toast.Close>
+    </Toast.Root>
   )
 })
-Toast.displayName = ToastActionPrimitive.Root.displayName
+Toast.displayName = Toast.Root.displayName
 
 const ToastAction = React.forwardRef<
-  React.ElementRef<typeof ToastActionPrimitive.Action>,
-  React.ComponentPropsWithoutRef<typeof ToastActionPrimitive.Action>
+  React.ElementRef<typeof Toast.Action>,
+  React.ComponentPropsWithoutRef<typeof Toast.Action>
 >(({ className, ...props }, ref) => (
-  <ToastActionPrimitive.Action
+  <Toast.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-ring disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
       className
     )}
     {...props}
   />
 ))
-ToastAction.displayName = ToastActionPrimitive.Action.displayName
-
-const ToastClose = React.forwardRef<
-  React.ElementRef<typeof ToastActionPrimitive.Close>,
-  React.ComponentPropsWithoutRef<typeof ToastActionPrimitive.Close>
->(({ className, ...props }, ref) => (
-  <ToastActionPrimitive.Close
-    ref={ref}
-    className={cn(
-      "absolute right-1 top-1 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-1 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
-      className
-    )}
-    toast-close=""
-    {...props}
-  >
-    <X className="h-4 w-4" />
-  </ToastActionPrimitive.Close>
-))
-ToastClose.displayName = ToastActionPrimitive.Close.displayName
+ToastAction.displayName = Toast.Action.displayName
 
 const ToastTitle = React.forwardRef<
-  React.ElementRef<typeof ToastActionPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof ToastActionPrimitive.Title>
+  React.ElementRef<typeof Toast.Title>,
+  React.ComponentPropsWithoutRef<typeof Toast.Title>
 >(({ className, ...props }, ref) => (
-  <ToastActionPrimitive.Title
+  <Toast.Title
     ref={ref}
-    className={cn("text-sm font-semibold [&+div]:text-xs", className)}
+    className={cn("text-sm font-semibold", className)}
     {...props}
   />
 ))
-ToastTitle.displayName = ToastActionPrimitive.Title.displayName
+ToastTitle.displayName = Toast.Title.displayName
 
 const ToastDescription = React.forwardRef<
-  React.ElementRef<typeof ToastActionPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof ToastActionPrimitive.Description>
+  React.ElementRef<typeof Toast.Description>,
+  React.ComponentPropsWithoutRef<typeof Toast.Description>
 >(({ className, ...props }, ref) => (
-  <ToastActionPrimitive.Description
+  <Toast.Description
     ref={ref}
     className={cn("text-sm opacity-90", className)}
     {...props}
   />
 ))
-ToastDescription.displayName = ToastActionPrimitive.Description.displayName
+ToastDescription.displayName = Toast.Description.displayName
 
-type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
+type Toast = {
+  id: string
+  title?: React.ReactNode
+  description?: React.ReactNode
+  action?: ToastActionElement
+  variant?: "default" | "destructive"
+}
 
-type ToastActionElement = React.ElementRef<typeof ToastAction>
+type ToasterToast = Toast
 
 export {
-  type ToastProps,
-  type ToastActionElement,
+  Toast,
   ToastProvider,
   ToastViewport,
-  Toast,
+  ToastAction,
   ToastTitle,
   ToastDescription,
-  ToastClose,
-  ToastAction,
+  toastVariants,
 }
+export type { ToastProps, ToasterToast }

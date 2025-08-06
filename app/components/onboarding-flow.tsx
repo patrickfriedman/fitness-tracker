@@ -1,193 +1,181 @@
 'use client'
 
 import { useState } from 'react'
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
-import { Loader2 } from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
 
 export default function OnboardingFlow() {
   const [step, setStep] = useState(1)
-  const [name, setName] = useState('')
-  const [goal, setGoal] = useState('')
-  const [weight, setWeight] = useState('')
-  const [height, setHeight] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [formData, setFormData] = useState({
+    goal: '',
+    activityLevel: '',
+    weight: '',
+    height: '',
+    age: '',
+  })
 
   const totalSteps = 4
   const progress = (step / totalSteps) * 100
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
   const handleNext = () => {
-    setError(null)
-    if (step === 1 && !name) {
-      setError('Please enter your name.')
+    // Basic validation for current step before moving on
+    if (step === 1 && !formData.goal) {
+      toast({
+        title: 'Please select a goal.',
+        variant: 'destructive',
+      })
       return
     }
-    if (step === 2 && !goal) {
-      setError('Please select your primary fitness goal.')
+    if (step === 2 && !formData.activityLevel) {
+      toast({
+        title: 'Please select your activity level.',
+        variant: 'destructive',
+      })
       return
     }
-    if (step === 3 && (!weight || !height)) {
-      setError('Please enter your weight and height.')
+    if (step === 3 && (!formData.weight || !formData.height || !formData.age)) {
+      toast({
+        title: 'Please fill in all body metrics.',
+        variant: 'destructive',
+      })
       return
     }
-    setStep((prev) => prev + 1)
+
+    if (step < totalSteps) {
+      setStep((prev) => prev + 1)
+    } else {
+      // Onboarding complete
+      toast({
+        title: 'Onboarding Complete!',
+        description: 'Your fitness profile has been set up.',
+      })
+      console.log('Onboarding Data:', formData)
+      // Here you would typically send data to your backend/Supabase
+    }
   }
 
   const handleBack = () => {
-    setError(null)
-    setStep((prev) => prev - 1)
-  }
-
-  const handleSubmit = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      console.log('Onboarding complete:', { name, goal, weight, height })
-      // In a real app, you'd save this to the database
-      // and then redirect the user to the main dashboard.
-      // For now, we'll just log it and reset.
-      setStep(1) // Reset for demo purposes
-      setName('')
-      setGoal('')
-      setWeight('')
-      setHeight('')
-      alert('Onboarding complete! Welcome to your fitness journey.')
-    } catch (err: any) {
-      setError(err.message || 'Failed to complete onboarding.')
-    } finally {
-      setLoading(false)
+    if (step > 1) {
+      setStep((prev) => prev - 1)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Welcome to Fitness Tracker!</CardTitle>
-          <CardDescription>Let&apos;s get you set up for success.</CardDescription>
-          <Progress value={progress} className="mt-4" />
-        </CardHeader>
-        <CardContent>
-          {step === 1 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Step 1: Your Name</h3>
-              <div>
-                <Label htmlFor="name">What should we call you?</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Step 2: Your Goal</h3>
-              <div>
-                <Label htmlFor="goal">What&apos;s your primary fitness goal?</Label>
-                <Select value={goal} onValueChange={setGoal} required>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a goal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="lose_weight">Lose Weight</SelectItem>
-                    <SelectItem value="gain_muscle">Gain Muscle</SelectItem>
-                    <SelectItem value="improve_endurance">Improve Endurance</SelectItem>
-                    <SelectItem value="general_fitness">General Fitness</SelectItem>
-                    <SelectItem value="stress_reduction">Stress Reduction</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Step 3: Body Metrics</h3>
-              <div>
-                <Label htmlFor="weight">Current Weight (kg)</Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  placeholder="e.g., 70"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="height">Height (cm)</Label>
-                <Input
-                  id="height"
-                  type="number"
-                  placeholder="e.g., 175"
-                  value={height}
-                  onChange={(e) => setHeight(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Step 4: Review & Confirm</h3>
-              <p>
-                <strong>Name:</strong> {name}
-              </p>
-              <p>
-                <strong>Goal:</strong> {goal.replace(/_/g, ' ')}
-              </p>
-              <p>
-                <strong>Weight:</strong> {weight} kg
-              </p>
-              <p>
-                <strong>Height:</strong> {height} cm
-              </p>
-              <Textarea placeholder="Any additional notes or preferences?" className="mt-4" />
-            </div>
-          )}
-
-          {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
-
-          <div className="mt-6 flex justify-between">
-            {step > 1 && (
-              <Button variant="outline" onClick={handleBack} disabled={loading}>
-                Back
-              </Button>
-            )}
-            {step < totalSteps ? (
-              <Button onClick={handleNext} disabled={loading}>
-                Next
-              </Button>
-            ) : (
-              <Button onClick={handleSubmit} disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Finishing...
-                  </>
-                ) : (
-                  'Finish Onboarding'
-                )}
-              </Button>
-            )}
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>Onboarding: Tell Us About Yourself</CardTitle>
+        <Progress value={progress} className="w-full mt-2" />
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {step === 1 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">What is your primary fitness goal?</h3>
+            <Select onValueChange={(value) => handleSelectChange('goal', value)} value={formData.goal}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a goal" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="lose-weight">Lose Weight</SelectItem>
+                <SelectItem value="gain-muscle">Gain Muscle</SelectItem>
+                <SelectItem value="improve-endurance">Improve Endurance</SelectItem>
+                <SelectItem value="maintain-fitness">Maintain Fitness</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">What is your activity level?</h3>
+            <Select onValueChange={(value) => handleSelectChange('activityLevel', value)} value={formData.activityLevel}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select activity level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sedentary">Sedentary (little to no exercise)</SelectItem>
+                <SelectItem value="lightly-active">Lightly Active (light exercise/sports 1-3 days/week)</SelectItem>
+                <SelectItem value="moderately-active">Moderately Active (moderate exercise/sports 3-5 days/week)</SelectItem>
+                <SelectItem value="very-active">Very Active (hard exercise/sports 6-7 days a week)</SelectItem>
+                <SelectItem value="extra-active">Extra Active (very hard exercise/physical job)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Enter your current body metrics:</h3>
+            <div>
+              <Label htmlFor="weight">Weight (kg)</Label>
+              <Input
+                id="weight"
+                name="weight"
+                type="number"
+                placeholder="e.g., 70"
+                value={formData.weight}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="height">Height (cm)</Label>
+              <Input
+                id="height"
+                name="height"
+                type="number"
+                placeholder="e.g., 175"
+                value={formData.height}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="age">Age</Label>
+              <Input
+                id="age"
+                name="age"
+                type="number"
+                placeholder="e.g., 30"
+                value={formData.age}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4 text-center">
+            <h3 className="text-lg font-semibold">Review your information:</h3>
+            <p><strong>Goal:</strong> {formData.goal || 'Not set'}</p>
+            <p><strong>Activity Level:</strong> {formData.activityLevel || 'Not set'}</p>
+            <p><strong>Weight:</strong> {formData.weight ? `${formData.weight} kg` : 'Not set'}</p>
+            <p><strong>Height:</strong> {formData.height ? `${formData.height} cm` : 'Not set'}</p>
+            <p><strong>Age:</strong> {formData.age || 'Not set'}</p>
+            <p className="text-muted-foreground mt-4">You can always update these details later in your profile settings.</p>
+          </div>
+        )}
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button variant="outline" onClick={handleBack} disabled={step === 1}>
+          Back
+        </Button>
+        <Button onClick={handleNext}>
+          {step === totalSteps ? 'Finish' : 'Next'}
+        </Button>
+      </CardFooter>
+    </Card>
   )
 }

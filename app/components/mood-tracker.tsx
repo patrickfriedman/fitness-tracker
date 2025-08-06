@@ -1,141 +1,99 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Smile, Frown, Meh, Loader2 } from 'lucide-react'
-import { useAuth } from '@/contexts/auth-context'
-import { useEffect, useState } from 'react'
-import { getBrowserClient } from '@/lib/supabase'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import { SmileIcon, MehIcon, FrownIcon } from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
 import { MoodLog } from '@/types/fitness'
-import { format } from 'date-fns'
-import { Skeleton } from '@/components/ui/skeleton'
-
-const moodOptions = [
-  { score: 1, icon: <Frown className="h-6 w-6 text-red-500" />, label: 'Bad' },
-  { score: 2, icon: <Meh className="h-6 w-6 text-yellow-500" />, label: 'Okay' },
-  { score: 3, icon: <Smile className="h-6 w-6 text-green-500" />, label: 'Good' },
-]
 
 export default function MoodTracker() {
-  const { user, isDemo } = useAuth()
-  const [currentMood, setCurrentMood] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const supabase = getBrowserClient()
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const [currentMood, setCurrentMood] = useState<MoodLog['mood'] | null>(null)
+  const [moodLogs, setMoodLogs] = useState<MoodLog[]>([])
 
-  const fetchMoodLog = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    if (isDemo) {
-      setCurrentMood(3); // Simulate demo data
-      setLoading(false);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('mood_logs')
-      .select('mood_score')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching mood log:', error.message);
-    } else if (data) {
-      setCurrentMood(data.mood_score);
-    } else {
-      setCurrentMood(null);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchMoodLog();
-  }, [user, isDemo, today]);
-
-  const handleMoodSelect = async (score: number) => {
-    if (!user) return;
-
-    setIsUpdating(true);
-    if (isDemo) {
-      setCurrentMood(score);
-      setIsUpdating(false);
-      return;
-    }
-
-    const { error } = await supabase
-      .from('mood_logs')
-      .upsert(
-        { user_id: user.id, date: today, mood_score: score },
-        { onConflict: 'user_id,date' }
-      );
-
-    if (error) {
-      console.error('Error updating mood log:', error.message);
-    } else {
-      setCurrentMood(score);
-    }
-    setIsUpdating(false);
-  };
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Daily Mood</CardTitle>
-          <Smile className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-8 w-3/4 mb-2" />
-          <Skeleton className="h-4 w-1/2" />
-          <div className="flex justify-between mt-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <Skeleton className="h-12 w-12 rounded-full" />
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const handleMoodSelect = (mood: MoodLog['mood']) => {
+    setCurrentMood(mood)
   }
 
+  const handleSubmitMood = () => {
+    if (currentMood) {
+      const newMoodLog: MoodLog = {
+        id: Date.now().toString(),
+        date: new Date(),
+        mood: currentMood,
+      }
+      setMoodLogs((prev) => [...prev, newMoodLog])
+      toast({
+        title: 'Mood Logged!',
+        description: `You've logged your mood as ${currentMood}.`,
+      })
+      setCurrentMood(null) // Reset for next entry
+    } else {
+      toast({
+        title: 'No Mood Selected',
+        description: 'Please select a mood before logging.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const latestMood = moodLogs.sort((a, b) => b.date.getTime() - a.date.getTime())[0]
+
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Daily Mood</CardTitle>
-        <Smile className="h-4 w-4 text-muted-foreground" />
+        <CardTitle className="text-sm font-medium">Mood Tracker</CardTitle>
+        {latestMood && (
+          <p className="text-xs text-muted-foreground">
+            Last logged: {latestMood.date.toLocaleDateString()}
+          </p>
+        )}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">
-          {currentMood ? moodOptions.find(m => m.score === currentMood)?.label : 'Not logged'}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          How are you feeling today?
-        </p>
-        <div className="flex justify-around gap-2 mt-4">
-          {moodOptions.map((mood) => (
-            <Button
-              key={mood.score}
-              variant={currentMood === mood.score ? 'default' : 'outline'}
-              size="icon"
-              onClick={() => handleMoodSelect(mood.score)}
-              disabled={isUpdating}
-              className="flex flex-col h-auto w-auto p-2"
-            >
-              {isUpdating && currentMood === mood.score ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
-              ) : (
-                mood.icon
-              )}
-              <span className="text-xs mt-1">{mood.label}</span>
-            </Button>
-          ))}
+        <div className="space-y-4">
+          <RadioGroup
+            onValueChange={handleMoodSelect}
+            value={currentMood || ''}
+            className="flex justify-around"
+          >
+            <div className="flex flex-col items-center space-y-1">
+              <RadioGroupItem value="happy" id="happy" className="peer sr-only" />
+              <Label
+                htmlFor="happy"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+              >
+                <SmileIcon className="mb-3 h-6 w-6" />
+                Happy
+              </Label>
+            </div>
+            <div className="flex flex-col items-center space-y-1">
+              <RadioGroupItem value="neutral" id="neutral" className="peer sr-only" />
+              <Label
+                htmlFor="neutral"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+              >
+                <MehIcon className="mb-3 h-6 w-6" />
+                Neutral
+              </Label>
+            </div>
+            <div className="flex flex-col items-center space-y-1">
+              <RadioGroupItem value="sad" id="sad" className="peer sr-only" />
+              <Label
+                htmlFor="sad"
+                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+              >
+                <FrownIcon className="mb-3 h-6 w-6" />
+                Sad
+              </Label>
+            </div>
+          </RadioGroup>
+          <Button onClick={handleSubmitMood} className="w-full" disabled={!currentMood}>
+            Log Mood
+          </Button>
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

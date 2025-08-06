@@ -1,28 +1,22 @@
-CREATE TABLE public.water_logs (
-    id uuid NOT NULL DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL,
-    date date NOT NULL DEFAULT now(),
-    amount_ml numeric NULL,
-    created_at timestamp with time zone NOT NULL DEFAULT now(),
-    CONSTRAINT water_logs_pkey PRIMARY KEY (id),
-    CONSTRAINT water_logs_user_id_date_key UNIQUE (user_id, date),
-    CONSTRAINT water_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+-- Create water_logs table
+create table water_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  created_at timestamp with time zone default now(),
+  amount int not null -- in ml
 );
 
-ALTER TABLE public.water_logs ENABLE ROW LEVEL SECURITY;
+-- Set up Row Level Security (RLS)
+alter table water_logs enable row level security;
 
-CREATE POLICY "Allow authenticated users to read their own water logs"
-ON public.water_logs FOR SELECT
-USING (auth.uid() = user_id);
+create policy "Users can view their own water logs."
+  on water_logs for select using (auth.uid() = user_id);
 
-CREATE POLICY "Allow authenticated users to insert their own water logs"
-ON public.water_logs FOR INSERT
-WITH CHECK (auth.uid() = user_id);
+create policy "Users can insert their own water logs."
+  on water_logs for insert with check (auth.uid() = user_id);
 
-CREATE POLICY "Allow authenticated users to update their own water logs"
-ON public.water_logs FOR UPDATE
-USING (auth.uid() = user_id);
+create policy "Users can update their own water logs."
+  on water_logs for update using (auth.uid() = user_id);
 
-CREATE POLICY "Allow authenticated users to delete their own water logs"
-ON public.water_logs FOR DELETE
-USING (auth.uid() = user_id);
+create policy "Users can delete their own water logs."
+  on water_logs for delete using (auth.uid() = user_id);

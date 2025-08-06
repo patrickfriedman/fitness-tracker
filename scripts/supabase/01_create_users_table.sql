@@ -1,29 +1,19 @@
-CREATE TABLE public.users (
-    id uuid NOT NULL,
-    name text NULL,
-    email text NULL,
-    primary_goal text NULL DEFAULT 'general_fitness'::text,
-    preferences jsonb NULL DEFAULT '{}'::jsonb,
-    created_at timestamp with time zone NOT NULL DEFAULT now(),
-    CONSTRAINT users_pkey PRIMARY KEY (id),
-    CONSTRAINT users_email_key UNIQUE (email),
-    CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+-- Create a table for public profiles
+create table users (
+  id uuid references auth.users on delete cascade not null primary key,
+  username text unique,
+  email text unique,
+  created_at timestamp with time zone default now()
 );
 
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+-- Set up Row Level Security (RLS)
+alter table users enable row level security;
 
-CREATE POLICY "Allow authenticated users to read their own profile"
-ON public.users FOR SELECT
-USING (auth.uid() = id);
+create policy "Public profiles are viewable by everyone."
+  on users for select using (true);
 
-CREATE POLICY "Allow authenticated users to insert their own profile"
-ON public.users FOR INSERT
-WITH CHECK (auth.uid() = id);
+create policy "Users can insert their own profile."
+  on users for insert with check (auth.uid() = id);
 
-CREATE POLICY "Allow authenticated users to update their own profile"
-ON public.users FOR UPDATE
-USING (auth.uid() = id);
-
-CREATE POLICY "Allow authenticated users to delete their own profile"
-ON public.users FOR DELETE
-USING (auth.uid() = id);
+create policy "Users can update their own profile."
+  on users for update using (auth.uid() = id);

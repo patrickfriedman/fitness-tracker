@@ -1,151 +1,113 @@
 'use server'
 
 import { getBrowserClient, getServiceRoleClient } from '@/lib/supabase'
-import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
-import { User } from '@/types/fitness'
+import { z } from 'zod'
 
-export async function signIn(formData: FormData) {
+const loginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(6, 'Password must be at least 6 characters long'),
+})
+
+const signupSchema = z.object({
+  username: z.string().min(3, 'Username must be at least 3 characters long'),
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(6, 'Password must be at least 6 characters long'),
+})
+
+export async function login(prevState: any, formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
-  const supabase = getBrowserClient()
 
+  const validatedFields = loginSchema.safeParse({ email, password })
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: 'Validation Error',
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
+  }
+
+  const supabase = getBrowserClient()
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
-    console.error('Login error:', error.message)
     return { success: false, message: error.message }
   }
 
-  revalidatePath('/', 'layout')
-  redirect('/')
+  redirect('/dashboard')
 }
 
-export async function signUp(formData: FormData) {
+export async function signup(prevState: any, formData: FormData) {
   const username = formData.get('username') as string
   const email = formData.get('email') as string
   const password = formData.get('password') as string
-  const supabase = getBrowserClient()
-  const serviceRoleSupabase = getServiceRoleClient()
 
-  // First, sign up the user with email and password
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  const validatedFields = signupSchema.safeParse({ username, email, password })
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: 'Validation Error',
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
+  }
+
+  const supabase = getBrowserClient()
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
-        username: username, // Store username in auth.users metadata
+        username,
       },
     },
   })
 
-  if (authError) {
-    console.error('Supabase Auth Sign-up error:', authError.message)
-    return { success: false, message: `Sign-up error: ${authError.message}` }
+  if (error) {
+    return { success: false, message: error.message }
   }
 
-  if (authData.user) {
-    // Insert user profile into public.users table using service role client
-    const { error: profileError } = await serviceRoleSupabase
+  // Optionally, insert user into public.users table if needed for additional profile data
+  if (data.user) {
+    const serviceRoleSupabase = getServiceRoleClient();
+    const { error: insertError } = await serviceRoleSupabase
       .from('users')
-      .insert({
-        id: authData.user.id,
-        email: authData.user.email,
-        name: username, // Store username in public.users table
-      })
+      .insert({ id: data.user.id, username, email });
 
-    if (profileError) {
-      console.error('Supabase Profile Insert error:', profileError.message)
-      // If profile insertion fails, you might want to delete the auth user as well
-      await serviceRoleSupabase.auth.admin.deleteUser(authData.user.id)
-      return { success: false, message: `Profile creation error: ${profileError.message}` }
+    if (insertError) {
+      console.error('Error inserting user into public.users:', insertError.message);
+      // You might want to handle this error more gracefully, e.g., log it and still proceed
+      // or return an error to the user if it's critical.
     }
   }
 
-  revalidatePath('/', 'layout')
-  redirect('/')
+  return { success: true, message: 'Sign up successful! Please check your email to confirm your account.' }
 }
 
-export async function signOut() {
+export async function logout() {
   const supabase = getBrowserClient()
   const { error } = await supabase.auth.signOut()
 
   if (error) {
-    console.error('Logout error:', error.message)
-    return { success: false, message: error.message }
+    console.error('Error logging out:', error.message)
   }
 
-  revalidatePath('/', 'layout')
   redirect('/login')
 }
 
-export async function deleteAccount() {
-  const supabase = getServiceRoleClient() // Use service role for deleting user
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    console.error('Failed to get user for deletion:', userError?.message)
-    return { success: false, message: userError?.message || 'User not found.' }
-  }
-
-  const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id)
-
-  if (deleteError) {
-    console.error('Account deletion error:', deleteError.message)
-    return { success: false, message: deleteError.message }
-  }
-
-  // Clear session cookies after deletion
-  cookies().delete('sb-access-token')
-  cookies().delete('sb-refresh-token')
-
-  revalidatePath('/', 'layout')
-  redirect('/login')
+export async function getSession() {
+  const supabase = getBrowserClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  return session
 }
 
-export async function updateUserProfile(userId: string, updates: Partial<User>) {
-  const supabase = getServiceRoleClient()
-
-  const { error } = await supabase
-    .from('users')
-    .update(updates)
-    .eq('id', userId)
-
-  if (error) {
-    console.error('Update profile error:', error.message)
-    return { success: false, error: error.message }
-  }
-
-  return { success: true, error: null }
-}
-
-export async function fetchUserProfile(userId: string): Promise<User | null> {
-  const supabase = getServiceRoleClient()
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', userId)
-    .single()
-
-  if (error) {
-    console.error('Error fetching user profile:', error.message)
-    return null
-  }
-
-  if (!data) {
-    return null
-  }
-
-  // Map database columns to User type
-  return {
-    id: data.id,
-    name: data.name || '',
-    email: data.email || '',
-    primaryGoal: data.primary_goal as User['primaryGoal'],
-    preferences: data.preferences as User['preferences'],
-  }
+export async function getUser() {
+  const supabase = getBrowserClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
 }

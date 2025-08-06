@@ -1,29 +1,23 @@
-CREATE TABLE public.mood_logs (
-    id uuid NOT NULL DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL,
-    date date NOT NULL DEFAULT now(),
-    mood_score integer NULL,
-    notes text NULL,
-    created_at timestamp with time zone NOT NULL DEFAULT now(),
-    CONSTRAINT mood_logs_pkey PRIMARY KEY (id),
-    CONSTRAINT mood_logs_user_id_date_key UNIQUE (user_id, date),
-    CONSTRAINT mood_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+-- Create mood_logs table
+create table mood_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  created_at timestamp with time zone default now(),
+  mood text not null, -- e.g., 'happy', 'neutral', 'sad', 'stressed', 'energetic', 'tired'
+  notes text
 );
 
-ALTER TABLE public.mood_logs ENABLE ROW LEVEL SECURITY;
+-- Set up Row Level Security (RLS)
+alter table mood_logs enable row level security;
 
-CREATE POLICY "Allow authenticated users to read their own mood logs"
-ON public.mood_logs FOR SELECT
-USING (auth.uid() = user_id);
+create policy "Users can view their own mood logs."
+  on mood_logs for select using (auth.uid() = user_id);
 
-CREATE POLICY "Allow authenticated users to insert their own mood logs"
-ON public.mood_logs FOR INSERT
-WITH CHECK (auth.uid() = user_id);
+create policy "Users can insert their own mood logs."
+  on mood_logs for insert with check (auth.uid() = user_id);
 
-CREATE POLICY "Allow authenticated users to update their own mood logs"
-ON public.mood_logs FOR UPDATE
-USING (auth.uid() = user_id);
+create policy "Users can update their own mood logs."
+  on mood_logs for update using (auth.uid() = user_id);
 
-CREATE POLICY "Allow authenticated users to delete their own mood logs"
-ON public.mood_logs FOR DELETE
-USING (auth.uid() = user_id);
+create policy "Users can delete their own mood logs."
+  on mood_logs for delete using (auth.uid() = user_id);
