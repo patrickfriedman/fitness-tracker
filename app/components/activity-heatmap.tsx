@@ -1,131 +1,149 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CalendarHeatmap } from 'recharts-calendar-heatmap'
 import { useAuth } from '@/contexts/auth-context'
 import { getBrowserClient } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
-import { Loader2, Activity } from 'lucide-react'
+import { Loader2, CalendarDays } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
-import { format, subYears, addDays } from 'date-fns'
 
 interface ActivityData {
-  date: string;
+  date: string; // YYYY-MM-DD
   count: number;
 }
 
-export function ActivityHeatmap() {
+export default function ActivityHeatmap() {
   const { user } = useAuth()
-  const supabase = getBrowserClient()
   const [activityData, setActivityData] = useState<ActivityData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const supabase = getBrowserClient()
 
-  useEffect(() => {
-    const fetchActivityData = async () => {
-      if (!user?.id) return
+  const fetchActivityData = async () => {
+    if (!user?.id) return
+    setLoading(true)
 
-      setIsLoading(true)
-      const oneYearAgo = format(subYears(new Date(), 1), 'yyyy-MM-dd')
-      const today = format(new Date(), 'yyyy-MM-dd')
+    // Fetch workout logs for the last year
+    const oneYearAgo = new Date()
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+    const startDate = oneYearAgo.toISOString().split('T')[0]
 
-      // Fetch workout logs
-      const { data: workoutLogs, error: workoutError } = await supabase
-        .from('workout_logs')
-        .select('date')
-        .eq('user_id', user.id)
-        .gte('date', oneYearAgo)
-        .lte('date', today)
+    const { data, error } = await supabase
+      .from('workout_logs')
+      .select('date')
+      .eq('user_id', user.id)
+      .gte('date', startDate)
+      .order('date', { ascending: true })
 
-      if (workoutError) {
-        console.error('Error fetching workout logs for heatmap:', workoutError.message)
-        toast({
-          title: 'Error',
-          description: 'Failed to load workout activity.',
-          variant: 'destructive',
-        })
-        setIsLoading(false)
-        return
-      }
-
-      // Aggregate counts by date
-      const counts: { [key: string]: number } = {}
-      workoutLogs.forEach(log => {
-        counts[log.date] = (counts[log.date] || 0) + 1
+    if (error) {
+      console.error('Error fetching activity data:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load activity heatmap data.',
+        variant: 'destructive',
+      })
+    } else {
+      // Aggregate data by date
+      const aggregatedData: { [key: string]: number } = {}
+      data.forEach(log => {
+        const date = log.date
+        aggregatedData[date] = (aggregatedData[date] || 0) + 1
       })
 
-      // Convert to format for CalendarHeatmap
-      const formattedData: ActivityData[] = Object.keys(counts).map(date => ({
+      const formattedData: ActivityData[] = Object.entries(aggregatedData).map(([date, count]) => ({
         date,
-        count: counts[date],
+        count,
       }))
-
       setActivityData(formattedData)
-      setIsLoading(false)
     }
-
-    fetchActivityData()
-  }, [user?.id, supabase])
-
-  const startDate = subYears(new Date(), 1)
-  const endDate = new Date()
-
-  if (isLoading) {
-    return (
-      <Card className="col-span-1 md:col-span-2 lg:col-span-3">
-        <CardHeader>
-          <CardTitle>Activity Heatmap</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center h-64">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </CardContent>
-      </Card>
-    )
+    setLoading(false)
   }
 
+  useEffect(() => {
+    fetchActivityData()
+  }, [user])
+
+  const getLevel = (count: number) => {
+    if (count === 0) return 'level-0'
+    if (count === 1) return 'level-1'
+    if (count === 2) return 'level-2'
+    if (count >= 3) return 'level-3'
+    return 'level-0'
+  }
+
+  // Generate dates for the last 365 days
+  const generateDates = () => {
+    const dates: string[] = []
+    for (let i = 364; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      dates.push(d.toISOString().split('T')[0])
+    }
+    return dates
+  }
+
+  const allDates = generateDates()
+  const activityMap = new Map(activityData.map(item => [item.date, item.count]))
+
   return (
-    <Card className="col-span-1 md:col-span-2 lg:col-span-3">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Activity Heatmap</CardTitle>
-        <Activity className="h-4 w-4 text-muted-foreground" />
+    <Card className="widget-card col-span-full">
+      <CardHeader className="widget-header">
+        <CardTitle className="widget-title">Activity Heatmap</CardTitle>
       </CardHeader>
-      <CardContent>
-        <p className="text-xs text-muted-foreground mb-4">Workout activity over the last year</p>
-        <div className="w-full overflow-x-auto">
-          <CalendarHeatmap
-            startDate={startDate}
-            endDate={endDate}
-            data={activityData}
-            colorScale={['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39']} // GitHub-like green scale
-            panelColors={{
-              0: '#ebedf0',
-              1: '#9be9a8',
-              2: '#40c463',
-              3: '#30a14e',
-              4: '#216e39',
-            }}
-            tooltipDataAttrs={(value: any) => {
-              if (!value || !value.date) {
-                return { 'data-tip': 'No activity' };
-              }
-              return {
-                'data-tip': `${value.count || 0} workouts on ${format(new Date(value.date), 'PPP')}`,
-              };
-            }}
-            // Adjusting cell size and spacing for better fit
-            rectProps={{
-              rx: 2,
-              ry: 2,
-            }}
-            rectSize={12}
-            gutter={3}
-            showMonthLabels={true}
-            showWeekdayLabels={false}
-            showOutOfRangeDays={false}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground mt-4 text-center">
-          Darker shades indicate more workouts.
-        </p>
+      <CardContent className="widget-content">
+        {loading ? (
+          <div className="flex justify-center items-center h-32">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="flex flex-col items-start">
+            <div className="flex justify-between w-full text-xs text-muted-foreground mb-2 px-1">
+              <span>Jan</span>
+              <span>Mar</span>
+              <span>May</span>
+              <span>Jul</span>
+              <span>Sep</span>
+              <span>Nov</span>
+            </div>
+            <div className="grid grid-flow-col grid-rows-7 gap-1 auto-cols-max">
+              {/* Day labels (Mon, Wed, Fri) - simplified for brevity */}
+              <div className="flex flex-col text-xs text-muted-foreground mr-1">
+                <span className="h-4 flex items-center justify-end">Mon</span>
+                <span className="h-4"></span>
+                <span className="h-4 flex items-center justify-end">Wed</span>
+                <span className="h-4"></span>
+                <span className="h-4 flex items-center justify-end">Fri</span>
+                <span className="h-4"></span>
+                <span className="h-4"></span>
+              </div>
+              {allDates.map((date, index) => {
+                const count = activityMap.get(date) || 0
+                const dayOfWeek = new Date(date).getDay() // 0 = Sunday, 6 = Saturday
+                // Only render cells for Mon-Sun, starting from Monday (day 1)
+                // Adjusting to fit a grid where row 1 is Monday, row 7 is Sunday
+                const gridRow = dayOfWeek === 0 ? 7 : dayOfWeek; // Sunday is last row
+                
+                return (
+                  <div
+                    key={date}
+                    className={`heatmap-cell ${getLevel(count)}`}
+                    title={`${date}: ${count} workouts`}
+                    style={{ gridRow: gridRow }}
+                  />
+                )
+              })}
+            </div>
+            <div className="flex items-center justify-end w-full mt-4 text-xs text-muted-foreground">
+              Less
+              <div className="flex ml-2 space-x-1">
+                <span className="heatmap-cell level-0"></span>
+                <span className="heatmap-cell level-1"></span>
+                <span className="heatmap-cell level-2"></span>
+                <span className="heatmap-cell level-3"></span>
+              </div>
+              More
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

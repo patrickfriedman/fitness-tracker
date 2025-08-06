@@ -74,3 +74,41 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom styles for the fitness tracker */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.widget-card {
+  @apply bg-card text-card-foreground rounded-lg shadow-sm p-4;
+}
+
+.widget-header {
+  @apply flex items-center justify-between mb-4;
+}
+
+.widget-title {
+  @apply text-lg font-semibold;
+}
+
+.widget-content {
+  @apply text-sm;
+}
+
+.chart-container {
+  height: 200px;
+  width: 100%;
+}
+
+.heatmap-cell {
+  @apply w-4 h-4 rounded-sm;
+}
+
+.heatmap-cell.level-0 { @apply bg-gray-200 dark:bg-gray-700; }
+.heatmap-cell.level-1 { @apply bg-green-100 dark:bg-green-900; }
+.heatmap-cell.level-2 { @apply bg-green-300 dark:bg-green-700; }
+.heatmap-cell.level-3 { @apply bg-green-500 dark:bg-green-500; }
+.heatmap-cell.level-4 { @apply bg-green-700 dark:bg-green-300; }

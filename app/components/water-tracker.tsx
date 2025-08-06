@@ -1,153 +1,126 @@
-"use client"
+'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { useState, useEffect } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import { getBrowserClient } from "@/lib/supabase"
-import { WaterLog } from "@/types/fitness"
-import { toast } from "@/components/ui/use-toast"
-import { Droplet, Plus, Minus, Loader2 } from 'lucide-react'
-import { format } from "date-fns"
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { useAuth } from '@/contexts/auth-context'
+import { WaterLog } from '@/types/fitness'
+import { getBrowserClient } from '@/lib/supabase'
+import { Loader2, Plus, Minus } from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
 
-const WATER_GOAL_ML = 2000 // 2 Liters
+const WATER_GOAL_ML = 2000 // Example daily water goal in ml (2 liters)
+const INCREMENT_ML = 250 // Amount to add/subtract per button click
 
-export function WaterTracker() {
+export default function WaterTracker() {
   const { user } = useAuth()
-  const supabase = getBrowserClient()
   const [currentWater, setCurrentWater] = useState(0)
-  const [waterLogId, setWaterLogId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
+  const supabase = getBrowserClient()
 
-  const today = format(new Date(), 'yyyy-MM-dd')
+  const fetchWaterLog = async () => {
+    if (!user?.id) return
+    setLoading(true)
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    const { data, error } = await supabase
+      .from('water_logs')
+      .select('amount_ml')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
+      console.error('Error fetching water log:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load water intake.',
+        variant: 'destructive',
+      })
+    } else if (data) {
+      setCurrentWater(data.amount_ml)
+    } else {
+      setCurrentWater(0)
+    }
+    setLoading(false)
+  }
 
   useEffect(() => {
-    const fetchWaterLog = async () => {
-      if (!user?.id) return
-
-      setIsLoading(true)
-      const { data, error } = await supabase
-        .from('water_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .single()
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-        console.error('Error fetching water log:', error.message)
-        toast({
-          title: 'Error',
-          description: 'Failed to load water intake.',
-          variant: 'destructive',
-        })
-      } else if (data) {
-        setCurrentWater(data.amount_ml)
-        setWaterLogId(data.id)
-      } else {
-        setCurrentWater(0)
-        setWaterLogId(null)
-      }
-      setIsLoading(false)
-    }
-
     fetchWaterLog()
-  }, [user?.id, supabase, today])
+  }, [user])
 
   const updateWaterLog = async (newAmount: number) => {
     if (!user?.id) return
-
     setIsUpdating(true)
-    let error = null
-    let data = null
+    const today = new Date().toISOString().split('T')[0]
 
-    if (waterLogId) {
-      // Update existing log
-      const { data: updateData, error: updateError } = await supabase
-        .from('water_logs')
-        .update({ amount_ml: newAmount })
-        .eq('id', waterLogId)
-        .select()
-        .single()
-      data = updateData
-      error = updateError
-    } else {
-      // Insert new log
-      const { data: insertData, error: insertError } = await supabase
-        .from('water_logs')
-        .insert({ user_id: user.id, date: today, amount_ml: newAmount })
-        .select()
-        .single()
-      data = insertData
-      error = insertError
-    }
+    const { error } = await supabase
+      .from('water_logs')
+      .upsert(
+        {
+          user_id: user.id,
+          date: today,
+          amount_ml: newAmount,
+        },
+        { onConflict: 'user_id,date' }
+      )
 
     if (error) {
-      console.error('Error updating water log:', error.message)
+      console.error('Error updating water log:', error)
       toast({
         title: 'Error',
         description: 'Failed to update water intake.',
         variant: 'destructive',
       })
-    } else if (data) {
-      setCurrentWater(data.amount_ml)
-      setWaterLogId(data.id)
+    } else {
+      setCurrentWater(newAmount)
       toast({
         title: 'Water Updated',
-        description: `You've logged ${data.amount_ml}ml of water today.`,
+        description: `Water intake set to ${newAmount / 1000} L.`,
       })
     }
     setIsUpdating(false)
   }
 
-  const handleAddWater = (amount: number) => {
-    const newAmount = Math.max(0, currentWater + amount)
+  const handleAddWater = () => {
+    const newAmount = currentWater + INCREMENT_ML
     updateWaterLog(newAmount)
   }
 
-  const progress = (currentWater / WATER_GOAL_ML) * 100
-
-  if (isLoading) {
-    return (
-      <Card className="col-span-1">
-        <CardHeader>
-          <CardTitle>Water Intake</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center h-32">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </CardContent>
-      </Card>
-    )
+  const handleSubtractWater = () => {
+    const newAmount = Math.max(0, currentWater - INCREMENT_ML)
+    updateWaterLog(newAmount)
   }
 
+  const progressPercentage = (currentWater / WATER_GOAL_ML) * 100
+
   return (
-    <Card className="col-span-1">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Water Intake</CardTitle>
-        <Droplet className="h-4 w-4 text-muted-foreground" />
+    <Card className="widget-card">
+      <CardHeader className="widget-header">
+        <CardTitle className="widget-title">Water Intake</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">
-          {currentWater / 1000} / {WATER_GOAL_ML / 1000} L
-        </div>
-        <p className="text-xs text-muted-foreground">Goal: {WATER_GOAL_ML / 1000} Liters</p>
-        <Progress value={progress} className="w-full mt-4" />
-        <div className="flex justify-between mt-4 space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => handleAddWater(-250)}
-            disabled={isUpdating || currentWater === 0}
-          >
-            <Minus className="h-4 w-4 mr-2" /> 250ml
-          </Button>
-          <Button
-            onClick={() => handleAddWater(250)}
-            disabled={isUpdating}
-          >
-            <Plus className="h-4 w-4 mr-2" /> 250ml
-          </Button>
-        </div>
+      <CardContent className="widget-content space-y-4">
+        {loading ? (
+          <div className="flex justify-center items-center h-24">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
+            <div className="text-center text-2xl font-bold">
+              {(currentWater / 1000).toFixed(1)} L / {(WATER_GOAL_ML / 1000).toFixed(1)} L
+            </div>
+            <Progress value={progressPercentage} className="w-full" />
+            <div className="flex justify-center gap-2">
+              <Button onClick={handleSubtractWater} disabled={isUpdating || currentWater === 0} variant="outline" size="icon">
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Button onClick={handleAddWater} disabled={isUpdating} size="icon">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   )

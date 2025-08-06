@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { Scale, Target, TrendingUp, TrendingDown, Ruler, Weight, Percent } from 'lucide-react'
+import { Scale, Target, TrendingUp, TrendingDown, Ruler, Weight, Percent, BarChart } from 'lucide-react'
 import type { BodyMetrics } from "../../types/fitness"
 
 interface BodyMetricsCardProps {
@@ -62,109 +62,111 @@ export function BodyMetricsCard({ userId, currentMetrics, onUpdate }: BodyMetric
       : 0
 
   return (
-    <div className="grid grid-cols-2 gap-4">
-      {[
-        { title: "Weight", value: currentMetrics?.weight || "--", unit: "lb", icon: Scale },
-        { title: "Body Fat", value: currentMetrics?.bodyFatPercentage || "--", unit: "%", icon: Ruler },
-        { title: "Goal Weight", value: currentMetrics?.goalWeight || "--", unit: "lb", icon: Weight },
-        { title: "Goal Body Fat", value: currentMetrics?.goalBodyFat || "--", unit: "%", icon: Target },
-      ].map((metric, index) => (
-        <div key={index}>
-          <BodyMetricsCard
-            title={metric.title}
-            value={metric.value}
-            unit={metric.unit}
-            icon={metric.icon}
-          />
-          {isEditing && index < 2 ? (
-            <div className="space-y-4 mt-4">
-              <Label htmlFor={metric.title.toLowerCase()}>{metric.title} ({metric.unit})</Label>
-              <Input
-                id={metric.title.toLowerCase()}
-                type="number"
-                step="0.1"
-                value={formData[metric.title.toLowerCase()]}
-                onChange={(e) => setFormData((prev) => ({ ...prev, [metric.title.toLowerCase()]: e.target.value }))}
-                placeholder={metric.value.toString()}
-              />
-            </div>
-          ) : (
-            <>
-              {index < 2 && (
-                <p className="text-xs text-muted-foreground mt-4">
-                  Last updated: Today
-                </p>
-              )}
-              {index < 2 && (
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-sm font-medium text-gray-600">{metric.title}</span>
-                  <div className="flex items-center space-x-1">
-                    {(metric.title === "Weight" ? weightTrend : bodyFatTrend) !== 0 && (
-                      <>
-                        {(metric.title === "Weight" ? weightTrend : bodyFatTrend) > 0 ? (
-                          <TrendingUp className="h-3 w-3 text-red-500" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3 text-green-500" />
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Body Metrics</CardTitle>
+        <BarChart className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { title: "Weight", value: currentMetrics?.weight || "--", unit: "lb", icon: Scale },
+            { title: "Body Fat", value: currentMetrics?.bodyFatPercentage || "--", unit: "%", icon: Ruler },
+            { title: "Goal Weight", value: currentMetrics?.goalWeight || "--", unit: "lb", icon: Weight },
+            { title: "Goal Body Fat", value: currentMetrics?.goalBodyFat || "--", unit: "%", icon: Target },
+          ].map((metric, index) => (
+            <div key={index}>
+              {isEditing && index < 2 ? (
+                <div className="space-y-4 mt-4">
+                  <Label htmlFor={metric.title.toLowerCase()}>{metric.title} ({metric.unit})</Label>
+                  <Input
+                    id={metric.title.toLowerCase()}
+                    type="number"
+                    step="0.1"
+                    value={formData[metric.title.toLowerCase()]}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, [metric.title.toLowerCase()]: e.target.value }))}
+                    placeholder={metric.value.toString()}
+                  />
+                </div>
+              ) : (
+                <>
+                  {index < 2 && (
+                    <p className="text-xs text-muted-foreground mt-4">
+                      Last updated: Today
+                    </p>
+                  )}
+                  {index < 2 && (
+                    <div className="flex items-center justify-between mt-4">
+                      <span className="text-sm font-medium text-gray-600">{metric.title}</span>
+                      <div className="flex items-center space-x-1">
+                        {(metric.title === "Weight" ? weightTrend : bodyFatTrend) !== 0 && (
+                          <>
+                            {(metric.title === "Weight" ? weightTrend : bodyFatTrend) > 0 ? (
+                              <TrendingUp className="h-3 w-3 text-red-500" />
+                            ) : (
+                              <TrendingDown className="h-3 w-3 text-green-500" />
+                            )}
+                            <span className={`text-xs ${(metric.title === "Weight" ? weightTrend : bodyFatTrend) > 0 ? "text-red-500" : "text-green-500"}`}>
+                              {Math.abs(metric.title === "Weight" ? weightTrend : bodyFatTrend).toFixed(1)} {metric.unit}
+                            </span>
+                          </>
                         )}
-                        <span className={`text-xs ${(metric.title === "Weight" ? weightTrend : bodyFatTrend) > 0 ? "text-red-500" : "text-green-500"}`}>
-                          {Math.abs(metric.title === "Weight" ? weightTrend : bodyFatTrend).toFixed(1)} {metric.unit}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
+                      </div>
+                    </div>
+                  )}
+                  {index >= 2 && (
+                    <div className="flex items-center space-x-2 mt-4">
+                      <Target className="h-3 w-3 text-gray-400" />
+                      <span className="text-xs text-gray-600">Goal: {metric.value} {metric.unit}</span>
+                    </div>
+                  )}
+                </>
               )}
-              {index >= 2 && (
-                <div className="flex items-center space-x-2 mt-4">
-                  <Target className="h-3 w-3 text-gray-400" />
-                  <span className="text-xs text-gray-600">Goal: {metric.value} {metric.unit}</span>
-                </div>
-              )}
-            </>
+            </div>
+          ))}
+          {isEditing && (
+            <Button onClick={handleSave} className="w-full mt-4">
+              Save Metrics
+            </Button>
+          )}
+          {!isEditing && (
+            <div className="h-32 mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={historicalData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(value) => new Date(value).getDate().toString()}
+                  />
+                  <YAxis hide />
+                  <Tooltip
+                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    formatter={(value: number, name: string) => [
+                      `${value}${name === "weight" ? " lb" : "%"}`,
+                      name === "weight" ? "Weight" : "Body Fat",
+                    ]}
+                  />
+                  <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="bodyFat" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+          {!isEditing && (
+            <div className="flex space-x-2 mt-4">
+              <Badge variant="outline" className="text-xs">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
+                Weight
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                <div className="w-2 h-2 bg-amber-500 rounded-full mr-1"></div>
+                Body Fat
+              </Badge>
+            </div>
           )}
         </div>
-      ))}
-      {isEditing && (
-        <Button onClick={handleSave} className="w-full mt-4">
-          Save Metrics
-        </Button>
-      )}
-      {!isEditing && (
-        <div className="h-32 mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={historicalData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 10 }}
-                tickFormatter={(value) => new Date(value).getDate().toString()}
-              />
-              <YAxis hide />
-              <Tooltip
-                labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                formatter={(value: number, name: string) => [
-                  `${value}${name === "weight" ? " lb" : "%"}`,
-                  name === "weight" ? "Weight" : "Body Fat",
-                ]}
-              />
-              <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} />
-              <Line type="monotone" dataKey="bodyFat" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-      {!isEditing && (
-        <div className="flex space-x-2 mt-4">
-          <Badge variant="outline" className="text-xs">
-            <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
-            Weight
-          </Badge>
-          <Badge variant="outline" className="text-xs">
-            <div className="w-2 h-2 bg-amber-500 rounded-full mr-1"></div>
-            Body Fat
-          </Badge>
-        </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

@@ -1,82 +1,99 @@
 export interface User {
   id: string;
-  name: string;
+  name: string | null;
+  username?: string; // Optional, derived from email for now
   email: string;
-  primaryGoal?: 'strength' | 'hypertrophy' | 'general_fitness' | 'weight_loss' | 'endurance';
+  primaryGoal?: 'strength' | 'hypertrophy' | 'fat_loss' | 'endurance' | 'general_fitness';
+  createdAt?: string;
   preferences?: {
-    darkMode?: boolean;
-    notifications?: boolean;
+    theme: 'light' | 'dark';
+    units: 'imperial' | 'metric';
+    todayWidgets: string[]; // e.g., ["metrics", "quick-actions", "mood", "water"]
   };
 }
 
 export interface WorkoutLog {
   id: string;
   userId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   name: string;
-  durationMinutes?: number;
-  exercises: {
-    name: string;
-    sets: number;
-    reps: number;
-    weight?: number;
-    unit?: 'kg' | 'lbs';
-  }[];
+  durationMinutes: number;
+  exercises: Exercise[];
   notes?: string;
   caloriesBurned?: number;
+  createdAt: string;
+}
+
+export interface Exercise {
+  name: string;
+  sets: ExerciseSet[];
+}
+
+export interface ExerciseSet {
+  setNumber: number;
+  reps: number;
+  weight: number;
+  unit: 'kg' | 'lbs';
 }
 
 export interface NutritionLog {
   id: string;
   userId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  foodItems: {
-    name: string;
-    quantity: number;
-    unit?: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  }[];
+  foodItems: FoodItem[];
   totalCalories: number;
   totalProtein: number;
   totalCarbs: number;
   totalFat: number;
+  createdAt: string;
+}
+
+export interface FoodItem {
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  quantity: number;
+  unit: string;
 }
 
 export interface BodyMetric {
   id: string;
   userId: string;
-  date: string; // YYYY-MM-DD
-  weight?: number; // in kg
-  height?: number; // in cm
+  date: string;
+  weight?: number;
+  height?: number;
   bodyFatPercentage?: number;
   muscleMassPercentage?: number;
-  waistCircumference?: number; // in cm
+  waistCircumference?: number;
   notes?: string;
+  createdAt: string;
 }
 
 export interface MoodLog {
   id: string;
   userId: string;
-  date: string; // YYYY-MM-DD
-  moodScore: number; // 1-5 scale, 5 being best
+  date: string;
+  moodScore: number; // e.g., 1-5
   notes?: string;
+  createdAt: string;
 }
 
 export interface WaterLog {
   id: string;
   userId: string;
-  date: string; // YYYY-MM-DD
-  amountMl: number; // in milliliters
+  date: string;
+  amountMl: number;
+  createdAt: string;
 }
 
 export interface PlannedWorkout {
   id: string;
   userId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   name: string;
   notes?: string;
+  createdAt: string;
 }

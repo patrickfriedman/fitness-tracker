@@ -183,12 +183,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(
     async (email: string, password: string) => {
       dispatch({ type: 'LOGIN_START' })
-      const result = await serverSignIn(new FormData(
-        Object.entries({ email, password }).reduce((acc, [key, value]) => {
-          acc.append(key, value);
-          return acc;
-        }, new FormData())
-      ));
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('password', password);
+      const result = await serverSignIn(formData);
 
       if (result.success) {
         // Re-fetch session to update client-side state after server action
@@ -214,12 +212,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(
     async (name: string, email: string, password: string) => {
       dispatch({ type: 'REGISTER_START' })
-      const result = await serverSignUp(new FormData(
-        Object.entries({ name, email, password }).reduce((acc, [key, value]) => {
-          acc.append(key, value);
-          return acc;
-        }, new FormData())
-      ));
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('email', email);
+      formData.append('password', password);
+      const result = await serverSignUp(formData);
 
       if (result.success) {
         // Re-fetch session to update client-side state after server action
