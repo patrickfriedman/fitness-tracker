@@ -26,20 +26,37 @@ export function LoginScreen() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    await login(loginData.email, loginData.password)
-    setIsLoading(false)
+    try {
+      await login(loginData.email, loginData.password)
+    } catch (error) {
+      console.error("Login error:", error)
+      alert(error instanceof Error ? error.message : "Invalid login credentials")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (registerData.password !== registerData.confirmPassword) return
+    if (registerData.password !== registerData.confirmPassword) {
+      alert("Passwords do not match")
+      return
+    }
 
     setIsLoading(true)
-    await register({
-      name: registerData.name,
-      email: registerData.email,
-    })
-    setIsLoading(false)
+    try {
+      await register({
+        name: registerData.name,
+        email: registerData.email,
+        password: registerData.password
+      })
+      alert("Account created successfully!")
+    } catch (error) {
+      console.error("Registration error:", error)
+      alert(error instanceof Error ? error.message : "Failed to create account")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -197,9 +214,20 @@ export function LoginScreen() {
             <Button
               variant="outline"
               className="w-full bg-transparent"
-              onClick={() => login("demo@fittracker.com", "demo")}
+              onClick={async () => {
+                try {
+                  setIsLoading(true)
+                  await login("demo@fittracker.com", "demo123")
+                } catch (error) {
+                  console.error("Demo login error:", error)
+                  alert("Failed to log in with demo account. Please try again later.")
+                } finally {
+                  setIsLoading(false)
+                }
+              }}
+              disabled={isLoading}
             >
-              Try Demo Account
+              {isLoading ? "Logging in..." : "Try Demo Account"}
             </Button>
           </div>
         </CardContent>

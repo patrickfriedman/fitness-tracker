@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Email and password are required')
     }
 
+    // First, create the auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: authData.user.id,
           name: userData.name,
           email: userData.email,
-          primary_goal: userData.primary_goal || 'strength',
+          primary_goal: 'strength',
           created_at: new Date().toISOString(),
           preferences: {
             theme: 'light',
