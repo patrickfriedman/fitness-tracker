@@ -1,25 +1,25 @@
--- Create body_metrics table
-create table body_metrics (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users on delete cascade not null,
-  created_at timestamp with time zone default now(),
-  weight decimal(5,2) not null, -- in kg
-  body_fat decimal(4,2), -- percentage
-  muscle_mass decimal(4,2) -- percentage
-  -- Add other metrics like BMI, measurements if needed
+CREATE TABLE IF NOT EXISTS public.body_metrics (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  user_id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  weight_kg numeric,
+  height_cm numeric,
+  body_fat_percent numeric,
+  log_date date DEFAULT now() NOT NULL,
+  created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
--- Set up Row Level Security (RLS)
-alter table body_metrics enable row level security;
+ALTER TABLE public.body_metrics ENABLE ROW LEVEL SECURITY;
 
-create policy "Users can view their own body metrics."
-  on body_metrics for select using (auth.uid() = user_id);
+CREATE POLICY "Users can view their own body metrics." ON public.body_metrics
+  FOR SELECT USING (auth.uid() = user_id);
 
-create policy "Users can insert their own body metrics."
-  on body_metrics for insert with check (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own body metrics." ON public.body_metrics
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-create policy "Users can update their own body metrics."
-  on body_metrics for update using (auth.uid() = user_id);
+CREATE POLICY "Users can update their own body metrics." ON public.body_metrics
+  FOR UPDATE USING (auth.uid() = user_id);
 
-create policy "Users can delete their own body metrics."
-  on body_metrics for delete using (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own body metrics." ON public.body_metrics
+  FOR DELETE USING (auth.uid() = user_id);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE body_metrics;

@@ -4,236 +4,305 @@ import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Utensils, Plus, Minus, Trash2 } from 'lucide-react'
-import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
-import { Database } from '@/types/supabase'
-import { useToast } from '@/components/ui/use-toast'
-import { Loader2 } from 'lucide-react'
-
-type NutritionLog = Database['public']['Tables']['nutrition_logs']['Row']
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { useToast } from '@/hooks/use-toast'
+import { getDailyNutritionLogs, addNutritionLog, updateNutritionLog, deleteNutritionLog } from '@/app/actions/nutrition-actions' // Assuming these actions exist
+import { NutritionLog } from '@/types/fitness'
+import { useAuth } from '@/contexts/auth-context'
 
 export default function NutritionTracker() {
-  const [calories, setCalories] = useState<number | ''>('')
-  const [protein, setProtein] = useState<number | ''>('')
-  const [carbs, setCarbs] = useState<number | ''>('')
-  const [fat, setFat] = useState<number | ''>('')
-  const [mealType, setMealType] = useState('') // e.g., Breakfast, Lunch, Dinner, Snack
-  const [loading, setLoading] = useState(false)
-  const [nutritionLogs, setNutritionLogs] = useState<NutritionLog[]>([]) // State to display saved logs
+  const { session, isLoading: authLoading } = useAuth();
+  const [nutritionLogs, setNutritionLogs] = useState<NutritionLog[]>([]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [currentLog, setCurrentLog] = useState<Partial<NutritionLog>>({
+    food_item: '',
+    calories: '',
+    protein_g: '',
+    carbs_g: '',
+    fat_g: '',
+    log_date: new Date(),
+  });
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
 
-  const supabase = getSupabaseBrowserClient()
-  const { toast } = useToast()
-
-  // Fetch nutrition logs on component mount
   useEffect(() => {
     const fetchNutritionLogs = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('nutrition_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('log_date', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching nutrition logs:', error);
-      } else {
-        setNutritionLogs(data || []);
+      if (!authLoading && session?.user?.id) {
+        try {
+          const result = await getDailyNutritionLogs(session.user.id);
+          if (result.success && result.logs) {
+            setNutritionLogs(result.logs);
+          }
+        } catch (error) {
+          console.error('Failed to fetch nutrition logs:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load nutrition logs.',
+            variant: 'destructive',
+          });
+        } finally {
+          setLoading(false);
+        }
+      } else if (!authLoading && !session?.user?.id) {
+        setLoading(false);
       }
     };
     fetchNutritionLogs();
-  }, [supabase]);
+  }, [session, authLoading, toast]);
 
-  const handleLogNutrition = async () => {
-    if (!calories || !protein || !carbs || !fat) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill in all nutrition fields.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+  const handleSaveLog = async () => {
+    if (!session?.user?.id) {
       toast({
         title: 'Error',
-        description: 'User not logged in.',
+        description: 'You must be logged in to log nutrition.',
         variant: 'destructive',
-      })
-      setLoading(false)
-      return
+      });
+      return;
     }
 
-    const { error } = await supabase.from('nutrition_logs').insert({
-      user_id: user.id,
-      log_date: new Date().toISOString().split('T')[0],
-      meal_type: mealType || 'General',
-      calories: calories,
-      protein_g: protein,
-      carbs_g: carbs,
-      fat_g: fat,
-    })
-
-    if (error) {
-      console.error('Error logging nutrition:', error)
+    if (!currentLog.food_item || !currentLog.calories) {
       toast({
         title: 'Error',
-        description: 'Failed to log nutrition.',
+        description: 'Food item and calories are required.',
         variant: 'destructive',
-      })
-    } else {
-      toast({
-        title: 'Nutrition Logged!',
-        description: 'Your meal has been successfully recorded.',
-      })
-      // Reset form
-      setCalories('')
-      setProtein('')
-      setCarbs('')
-      setFat('')
-      setMealType('')
-      // Re-fetch or update local state to show the new log
-      const { data, error: fetchError } = await supabase
-        .from('nutrition_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('log_date', { ascending: false });
-      if (!fetchError) {
-        setNutritionLogs(data || []);
+      });
+      return;
+    }
+
+    const logToSave: Partial<NutritionLog> = {
+      user_id: session.user.id,
+      food_item: currentLog.food_item,
+      calories: parseInt(currentLog.calories as string),
+      protein_g: currentLog.protein_g ? parseInt(currentLog.protein_g as string) : undefined,
+      carbs_g: currentLog.carbs_g ? parseInt(currentLog.carbs_g as string) : undefined,
+      fat_g: currentLog.fat_g ? parseInt(currentLog.fat_g as string) : undefined,
+      log_date: currentLog.log_date || new Date(),
+    };
+
+    try {
+      let result;
+      if (currentLog.id) {
+        result = await updateNutritionLog(currentLog.id, logToSave as NutritionLog);
+      } else {
+        result = await addNutritionLog(logToSave as NutritionLog);
       }
+
+      if (result.success && result.log) {
+        if (currentLog.id) {
+          setNutritionLogs((prev) => prev.map((log) => (log.id === result.log!.id ? result.log! : log)));
+        } else {
+          setNutritionLogs((prev) => [...prev, result.log!]);
+        }
+        toast({
+          title: 'Success',
+          description: 'Nutrition logged successfully!',
+        });
+        setShowDialog(false);
+        setCurrentLog({ food_item: '', calories: '', protein_g: '', carbs_g: '', fat_g: '', log_date: new Date() });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message || 'Failed to save nutrition log.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error saving nutrition log:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred while saving your nutrition log.',
+        variant: 'destructive',
+      });
     }
-    setLoading(false)
-  }
+  };
 
-  const handleDeleteNutrition = async (id: string) => {
-    setLoading(true);
-    const { error } = await supabase
-      .from('nutrition_logs')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user?.id); // Ensure user can only delete their own logs
+  const handleEditLog = (log: NutritionLog) => {
+    setCurrentLog(log);
+    setShowDialog(true);
+  };
 
-    if (error) {
+  const handleDeleteLog = async (id: string) => {
+    try {
+      const result = await deleteNutritionLog(id);
+      if (result.success) {
+        setNutritionLogs((prev) => prev.filter((log) => log.id !== id));
+        toast({
+          title: 'Success',
+          description: 'Nutrition log deleted successfully!',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message || 'Failed to delete nutrition log.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
       console.error('Error deleting nutrition log:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete nutrition log.',
+        description: 'An unexpected error occurred while deleting the nutrition log.',
         variant: 'destructive',
       });
-    } else {
-      toast({
-        title: 'Nutrition Log Deleted',
-        description: 'The nutrition log has been removed.',
-      });
-      setNutritionLogs(prev => prev.filter(log => log.id !== id));
     }
-    setLoading(false);
   };
 
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Log Nutrition</CardTitle>
-        <Utensils className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <label htmlFor="mealType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Meal Type (optional)
-          </label>
-          <Input
-            id="mealType"
-            value={mealType}
-            onChange={(e) => setMealType(e.target.value)}
-            placeholder="e.g., Breakfast, Lunch, Snack"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="calories" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Calories (kcal)
-            </label>
-            <Input
-              id="calories"
-              type="number"
-              value={calories}
-              onChange={(e) => setCalories(parseInt(e.target.value) || '')}
-              placeholder="e.g., 500"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="protein" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Protein (g)
-            </label>
-            <Input
-              id="protein"
-              type="number"
-              value={protein}
-              onChange={(e) => setProtein(parseInt(e.target.value) || '')}
-              placeholder="e.g., 30"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="carbs" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Carbs (g)
-            </label>
-            <Input
-              id="carbs"
-              type="number"
-              value={carbs}
-              onChange={(e) => setCarbs(parseInt(e.target.value) || '')}
-              placeholder="e.g., 50"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="fat" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Fat (g)
-            </label>
-            <Input
-              id="fat"
-              type="number"
-              value={fat}
-              onChange={(e) => setFat(parseInt(e.target.value) || '')}
-              placeholder="e.g., 15"
-              required
-            />
-          </div>
-        </div>
-        <Button onClick={handleLogNutrition} className="w-full" disabled={loading}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          Log Meal
-        </Button>
+  const totalCalories = nutritionLogs.reduce((sum, log) => sum + log.calories, 0);
+  const totalProtein = nutritionLogs.reduce((sum, log) => sum + (log.protein_g || 0), 0);
+  const totalCarbs = nutritionLogs.reduce((sum, log) => sum + (log.carbs_g || 0), 0);
+  const totalFat = nutritionLogs.reduce((sum, log) => sum + (log.fat_g || 0), 0);
 
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-2">Recent Meals</h3>
-          {nutritionLogs.length === 0 ? (
-            <p className="text-muted-foreground">No meals logged yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {nutritionLogs.map((log) => (
-                <Card key={log.id} className="p-3">
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm font-medium">{log.meal_type} - {log.calories} kcal</p>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteNutrition(log.id)} disabled={loading}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(log.log_date).toLocaleDateString()} | P:{log.protein_g}g C:{log.carbs_g}g F:{log.fat_g}g
+  if (loading) {
+    return (
+      <div className="grid gap-4">
+        <p>Loading nutrition logs...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid grid-cols-2 gap-4 text-center">
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Calories</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-bold">{totalCalories}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Protein (g)</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-bold">{totalProtein}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Carbs (g)</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-bold">{totalCarbs}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Fat (g)</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-bold">{totalFat}</CardContent>
+        </Card>
+      </div>
+
+      <Button onClick={() => {
+        setCurrentLog({ food_item: '', calories: '', protein_g: '', carbs_g: '', fat_g: '', log_date: new Date() });
+        setShowDialog(true);
+      }}>
+        Log New Food
+      </Button>
+
+      {nutritionLogs.length === 0 ? (
+        <p className="text-muted-foreground">No food logged yet. Start by logging one!</p>
+      ) : (
+        <div className="grid gap-4">
+          {nutritionLogs.map((log) => (
+            <Card key={log.id} className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">{log.food_item}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {log.calories} kcal | P:{log.protein_g || 0}g C:{log.carbs_g || 0}g F:{log.fat_g || 0}g
                   </p>
-                  {log.notes && <p className="text-xs italic mt-1">{log.notes}</p>}
-                </Card>
-              ))}
-            </div>
-          )}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleEditLog(log)}>
+                    Edit
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDeleteLog(log.id!)}>
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
-      </CardContent>
-    </Card>
-  )
+      )}
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{currentLog.id ? 'Edit Nutrition Log' : 'Log New Food Item'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="food-item" className="text-right">
+                Food Item
+              </Label>
+              <Input
+                id="food-item"
+                value={currentLog.food_item || ''}
+                onChange={(e) => setCurrentLog((prev) => ({ ...prev, food_item: e.target.value }))}
+                className="col-span-3"
+                placeholder="e.g., Chicken Breast"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="calories" className="text-right">
+                Calories
+              </Label>
+              <Input
+                id="calories"
+                type="number"
+                value={currentLog.calories || ''}
+                onChange={(e) => setCurrentLog((prev) => ({ ...prev, calories: parseInt(e.target.value) || '' }))}
+                className="col-span-3"
+                placeholder="e.g., 250"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="protein" className="text-right">
+                Protein (g)
+              </Label>
+              <Input
+                id="protein"
+                type="number"
+                value={currentLog.protein_g || ''}
+                onChange={(e) => setCurrentLog((prev) => ({ ...prev, protein_g: parseInt(e.target.value) || '' }))}
+                className="col-span-3"
+                placeholder="e.g., 30"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="carbs" className="text-right">
+                Carbs (g)
+              </Label>
+              <Input
+                id="carbs"
+                type="number"
+                value={currentLog.carbs_g || ''}
+                onChange={(e) => setCurrentLog((prev) => ({ ...prev, carbs_g: parseInt(e.target.value) || '' }))}
+                className="col-span-3"
+                placeholder="e.g., 20"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="fat" className="text-right">
+                Fat (g)
+              </Label>
+              <Input
+                id="fat"
+                type="number"
+                value={currentLog.fat_g || ''}
+                onChange={(e) => setCurrentLog((prev) => ({ ...prev, fat_g: parseInt(e.target.value) || '' }))}
+                className="col-span-3"
+                placeholder="e.g., 10"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveLog}>Save Log</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

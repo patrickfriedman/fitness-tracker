@@ -3,113 +3,208 @@
 import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Smile, Frown, Meh, Laugh, Angry } from 'lucide-react'
-import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
-import { Database } from '@/types/supabase'
-import { useToast } from '@/components/ui/use-toast'
-
-type MoodLog = Database['public']['Tables']['mood_logs']['Row']
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { useToast } from '@/hooks/use-toast'
+import { getDailyMoodLog, addMoodLog, updateMoodLog } from '@/app/actions/mood-actions' // Assuming these actions exist
+import { MoodLog } from '@/types/fitness'
+import { useAuth } from '@/contexts/auth-context'
 
 export default function MoodTracker() {
-  const [currentMood, setCurrentMood] = useState<string | null>(null)
-  const supabase = getSupabaseBrowserClient()
-  const { toast } = useToast()
-
-  const moodOptions = [
-    { value: 'terrible', icon: Frown, label: 'Terrible' },
-    { value: 'bad', icon: Meh, label: 'Bad' },
-    { value: 'neutral', icon: Smile, label: 'Neutral' },
-    { value: 'good', icon: Laugh, label: 'Good' },
-    { value: 'excellent', icon: Laugh, label: 'Excellent' }, // Using Laugh for excellent too, or find another icon
-  ]
+  const { session, isLoading: authLoading } = useAuth();
+  const [latestMood, setLatestMood] = useState<MoodLog | null>(null);
+  const [showDialog, setShowDialog] = useState(false);
+  const [moodScore, setMoodScore] = useState<string>('');
+  const [notes, setNotes] = useState('');
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchMoodLog = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const today = new Date().toISOString().split('T')[0]
-
-      const { data, error } = await supabase
-        .from('mood_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('log_date', today)
-        .single()
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching mood log:', error)
-      } else if (data) {
-        setCurrentMood(data.mood_level)
+      if (!authLoading && session?.user?.id) {
+        try {
+          const result = await getDailyMoodLog(session.user.id);
+          if (result.success && result.log) {
+            setLatestMood(result.log);
+            setMoodScore(result.log.mood_score.toString());
+            setNotes(result.log.notes || '');
+          } else {
+            setLatestMood(null);
+            setMoodScore('');
+            setNotes('');
+          }
+        } catch (error) {
+          console.error('Failed to fetch mood log:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load mood data.',
+            variant: 'destructive',
+          });
+        } finally {
+          setLoading(false);
+        }
+      } else if (!authLoading && !session?.user?.id) {
+        setLoading(false);
       }
-    }
+    };
+    fetchMoodLog();
+  }, [session, authLoading, toast]);
 
-    fetchMoodLog()
-  }, [supabase])
-
-  const handleMoodSelect = async (mood: string) => {
-    setCurrentMood(mood)
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const today = new Date().toISOString().split('T')[0]
-
-    const { error } = await supabase
-      .from('mood_logs')
-      .upsert(
-        {
-          user_id: user.id,
-          log_date: today,
-          mood_level: mood,
-        },
-        { onConflict: 'user_id,log_date' }
-      )
-
-    if (error) {
-      console.error('Error updating mood log:', error)
+  const handleSaveMood = async () => {
+    if (!session?.user?.id) {
       toast({
         title: 'Error',
-        description: 'Failed to log mood.',
+        description: 'You must be logged in to log your mood.',
         variant: 'destructive',
-      })
-    } else {
-      toast({
-        title: 'Mood Logged',
-        description: `Your mood for today (${mood}) has been recorded.`,
-      })
+      });
+      return;
     }
+
+    const score = parseInt(moodScore);
+    if (isNaN(score) || score < 1 || score > 5) {
+      toast({
+        title: 'Invalid Mood Score',
+        description: 'Please select a mood score between 1 and 5.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const newMood: Partial<MoodLog> = {
+      user_id: session.user.id,
+      mood_score: score,
+      notes: notes,
+      log_date: new Date(),
+    };
+
+    try {
+      let result;
+      if (latestMood?.id) {
+        result = await updateMoodLog(latestMood.id, newMood as MoodLog);
+      } else {
+        result = await addMoodLog(newMood as MoodLog);
+      }
+
+      if (result.success && result.log) {
+        setLatestMood(result.log);
+        toast({
+          title: 'Success',
+          description: 'Mood logged successfully!',
+        });
+        setShowDialog(false);
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message || 'Failed to log mood.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error saving mood:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred while saving your mood.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getMoodEmoji = (score: number) => {
+    switch (score) {
+      case 1: return '😞';
+      case 2: return '😐';
+      case 3: return '😊';
+      case 4: return '😁';
+      case 5: return '🤩';
+      default: return '';
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card className="col-span-1">
+        <CardHeader>
+          <CardTitle>Mood Tracker</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Loading...</p>
+        </CardContent>
+      </Card>
+    );
   }
 
-  const SelectedMoodIcon = moodOptions.find(m => m.value === currentMood)?.icon || Smile
-
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">How are you feeling?</CardTitle>
-        <SelectedMoodIcon className="h-4 w-4 text-muted-foreground" />
+    <Card className="col-span-1">
+      <CardHeader>
+        <CardTitle>Mood Tracker</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="flex justify-around gap-2">
-          {moodOptions.map((mood) => (
-            <Button
-              key={mood.value}
-              variant={currentMood === mood.value ? 'default' : 'outline'}
-              size="icon"
-              onClick={() => handleMoodSelect(mood.value)}
-              className="flex flex-col h-auto w-auto p-2"
-            >
-              <mood.icon className="h-6 w-6" />
-              <span className="text-xs mt-1">{mood.label}</span>
-            </Button>
-          ))}
-        </div>
-        {currentMood && (
-          <p className="text-center text-sm text-muted-foreground mt-4">
-            Today's mood: <span className="font-semibold capitalize">{currentMood}</span>
-          </p>
+      <CardContent className="grid gap-2">
+        {latestMood ? (
+          <>
+            <div className="text-center text-4xl">
+              {getMoodEmoji(latestMood.mood_score)}
+            </div>
+            <p className="text-center text-lg font-semibold">
+              Mood Score: {latestMood.mood_score}/5
+            </p>
+            {latestMood.notes && (
+              <p className="text-sm text-muted-foreground text-center">
+                Notes: {latestMood.notes}
+              </p>
+            )}
+            <p className="text-sm text-muted-foreground text-center">
+              Last logged: {new Date(latestMood.log_date).toLocaleDateString()}
+            </p>
+          </>
+        ) : (
+          <p className="text-center">No mood logged today.</p>
         )}
+        <Button onClick={() => setShowDialog(true)} className="mt-4">
+          {latestMood ? 'Update Mood' : 'Log Mood'}
+        </Button>
       </CardContent>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{latestMood ? 'Update Your Mood' : 'Log Your Mood'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>How are you feeling today? (1-5)</Label>
+              <RadioGroup
+                value={moodScore}
+                onValueChange={setMoodScore}
+                className="flex justify-center gap-4"
+              >
+                {[1, 2, 3, 4, 5].map((score) => (
+                  <div key={score} className="flex flex-col items-center space-y-1">
+                    <RadioGroupItem value={score.toString()} id={`mood-${score}`} />
+                    <Label htmlFor={`mood-${score}`}>{getMoodEmoji(score)}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any specific thoughts or reasons for your mood?"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveMood}>Save Mood</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
-  )
+  );
 }

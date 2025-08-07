@@ -1,25 +1,26 @@
-create table workout_logs (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users on delete cascade not null,
-  workout_date date not null default current_date,
-  type text, -- e.g., 'Strength', 'Cardio', 'HIIT'
-  duration_minutes int,
-  calories_burned int,
-  notes text,
-  exercises jsonb, -- Store exercises as JSONB array of objects {name, sets, reps, weight}
-  created_at timestamp with time zone default now()
+CREATE TABLE IF NOT EXISTS public.workout_logs (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  user_id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  workout_name text NOT NULL,
+  duration_minutes integer,
+  calories_burned integer,
+  log_date date DEFAULT now() NOT NULL,
+  created_at timestamp with time zone DEFAULT now() NOT NULL,
+  exercises jsonb -- Stores an array of exercise objects with sets, reps, weight
 );
 
-alter table workout_logs enable row level security;
+ALTER TABLE public.workout_logs ENABLE ROW LEVEL SECURITY;
 
-create policy "Users can view their own workout logs."
-  on workout_logs for select using (auth.uid() = user_id);
+CREATE POLICY "Users can view their own workout logs." ON public.workout_logs
+  FOR SELECT USING (auth.uid() = user_id);
 
-create policy "Users can insert their own workout logs."
-  on workout_logs for insert with check (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own workout logs." ON public.workout_logs
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-create policy "Users can update their own workout logs."
-  on workout_logs for update using (auth.uid() = user_id);
+CREATE POLICY "Users can update their own workout logs." ON public.workout_logs
+  FOR UPDATE USING (auth.uid() = user_id);
 
-create policy "Users can delete their own workout logs."
-  on workout_logs for delete using (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own workout logs." ON public.workout_logs
+  FOR DELETE USING (auth.uid() = user_id);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE workout_logs;

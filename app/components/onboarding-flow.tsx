@@ -1,200 +1,235 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { useAuth } from '@/contexts/auth-context'
-import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
-import { useToast } from '@/components/ui/use-toast'
-import { Loader2 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { useToast } from '@/hooks/use-toast'
+import { updateUserProfile } from '@/app/actions/user-actions' // Assuming this action exists
+import { useRouter } from 'next/navigation'
 
-export default function OnboardingFlow() {
-  const { user, isLoading: isAuthLoading } = useAuth()
-  const supabase = getSupabaseBrowserClient()
-  const { toast } = useToast()
+interface OnboardingFlowProps {
+  userId: string;
+  initialData?: {
+    username?: string;
+    gender?: string;
+    age?: number;
+    height_cm?: number;
+    weight_kg?: number;
+    fitness_goal?: string;
+    activity_level?: string;
+  };
+}
 
-  const [step, setStep] = useState(1)
-  const [gender, setGender] = useState('')
-  const [age, setAge] = useState<number | ''>('')
-  const [height, setHeight] = useState<number | ''>('') // in cm
-  const [weight, setWeight] = useState<number | ''>('') // in kg
-  const [activityLevel, setActivityLevel] = useState('')
-  const [goal, setGoal] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [onboardedStatus, setOnboardedStatus] = useState<boolean | null>(null);
+export default function OnboardingFlow({ userId, initialData }: OnboardingFlowProps) {
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    username: initialData?.username || '',
+    gender: initialData?.gender || '',
+    age: initialData?.age || '',
+    height_cm: initialData?.height_cm || '',
+    weight_kg: initialData?.weight_kg || '',
+    fitness_goal: initialData?.fitness_goal || '',
+    activity_level: initialData?.activity_level || '',
+  });
+  const { toast } = useToast();
+  const router = useRouter();
 
-  const totalSteps = 5
+  const totalSteps = 5;
 
-  useEffect(() => {
-    const fetchOnboardingStatus = async () => {
-      if (!user) {
-        setOnboardedStatus(null);
-        return;
-      }
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('onboarded')
-        .eq('id', user.id)
-        .single();
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-        console.error('Error fetching onboarding status:', error);
-        setOnboardedStatus(false); // Assume not onboarded if error
-      } else if (data) {
-        setOnboardedStatus(data.onboarded);
-      } else {
-        setOnboardedStatus(false); // No profile found, so not onboarded
-      }
-      setLoading(false);
-    };
-
-    if (!isAuthLoading) {
-      fetchOnboardingStatus();
-    }
-  }, [user, isAuthLoading, supabase]);
-
-  // Don't render if still loading auth or onboarding status, or if already onboarded
-  if (isAuthLoading || loading || onboardedStatus === null || onboardedStatus === true) {
-    return null
-  }
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleNext = () => {
-    setStep((prev) => prev + 1)
-  }
+    // Basic validation for current step before proceeding
+    if (step === 1 && !formData.username) {
+      toast({ title: 'Error', description: 'Please enter your username.', variant: 'destructive' });
+      return;
+    }
+    if (step === 2 && (!formData.gender || !formData.age)) {
+      toast({ title: 'Error', description: 'Please select gender and enter age.', variant: 'destructive' });
+      return;
+    }
+    if (step === 3 && (!formData.height_cm || !formData.weight_kg)) {
+      toast({ title: 'Error', description: 'Please enter your height and weight.', variant: 'destructive' });
+      return;
+    }
+    if (step === 4 && !formData.fitness_goal) {
+      toast({ title: 'Error', description: 'Please select your fitness goal.', variant: 'destructive' });
+      return;
+    }
+
+    setStep((prev) => Math.min(prev + 1, totalSteps));
+  };
 
   const handleBack = () => {
-    setStep((prev) => prev - 1)
-  }
+    setStep((prev) => Math.max(prev - 1, 1));
+  };
 
   const handleSubmit = async () => {
-    if (!user) {
-      toast({
-        title: 'Error',
-        description: 'User not logged in.',
-        variant: 'destructive',
-      })
-      return
+    try {
+      const dataToUpdate = {
+        username: formData.username,
+        gender: formData.gender,
+        age: formData.age ? parseInt(formData.age as string) : undefined,
+        height_cm: formData.height_cm ? parseFloat(formData.height_cm as string) : undefined,
+        weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg as string) : undefined,
+        fitness_goal: formData.fitness_goal,
+        activity_level: formData.activity_level,
+      };
+      const result = await updateUserProfile(userId, dataToUpdate);
+      if (result.success) {
+        toast({ title: 'Success', description: 'Onboarding complete! Welcome to your dashboard.' });
+        router.push('/'); // Redirect to dashboard
+      } else {
+        toast({ title: 'Error', description: result.message, variant: 'destructive' });
+      }
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
+  };
 
-    setLoading(true)
-    const { error } = await supabase.from('profiles').upsert(
-      {
-        id: user.id,
-        gender,
-        age,
-        height_cm: height,
-        weight_kg: weight,
-        activity_level: activityLevel,
-        fitness_goal: goal,
-        onboarded: true, // Mark user as onboarded
-      },
-      { onConflict: 'id' }
-    )
+  const progress = (step / totalSteps) * 100;
 
-    if (error) {
-      toast({
-        title: 'Error saving profile',
-        description: error.message,
-        variant: 'destructive',
-      })
-    } else {
-      toast({
-        title: 'Onboarding Complete',
-        description: 'Your fitness profile has been set up successfully!',
-      })
-      // Redirect or close onboarding modal
-      window.location.href = '/' // Redirect to dashboard
-    }
-    setLoading(false)
-  }
-
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return (
-          <>
-            <CardTitle>Step 1: Basic Information</CardTitle>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="gender">Gender</Label>
-                <RadioGroup value={gender} onValueChange={setGender} className="flex space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="male" id="male" />
-                    <Label htmlFor="male">Male</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="female" id="female" />
-                    <Label htmlFor="female">Female</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="other" id="other" />
-                    <Label htmlFor="other">Other</Label>
-                  </div>
-                </RadioGroup>
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-950">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl">Welcome to Fitness Tracker!</CardTitle>
+          <CardDescription>Let's get you set up with a few quick questions.</CardDescription>
+          <Progress value={progress} className="w-full mt-4" />
+          <p className="text-sm text-muted-foreground">{`Step ${step} of ${totalSteps}`}</p>
+        </CardHeader>
+        <CardContent>
+          {step === 1 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Tell us about yourself</h3>
+              <div className="space-y-2">
+                <Label htmlFor="username">What's your username?</Label>
+                <Input
+                  id="username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  placeholder="e.g., FitFanatic23"
+                  required
+                />
               </div>
-              <div className="grid gap-2">
+              <Button onClick={handleNext} className="w-full">
+                Next
+              </Button>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Basic Information</h3>
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select name="gender" value={formData.gender} onValueChange={(value) => handleSelectChange('gender', value)}>
+                  <SelectTrigger id="gender">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="age">Age</Label>
                 <Input
                   id="age"
+                  name="age"
                   type="number"
-                  value={age}
-                  onChange={(e) => setAge(parseInt(e.target.value) || '')}
+                  value={formData.age}
+                  onChange={handleChange}
                   placeholder="e.g., 30"
+                  required
                 />
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-end">
-              <Button onClick={handleNext} disabled={!gender || !age}>Next</Button>
-            </CardFooter>
-          </>
-        )
-      case 2:
-        return (
-          <>
-            <CardTitle>Step 2: Body Measurements</CardTitle>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="height">Height (cm)</Label>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleBack} className="w-full">
+                  Back
+                </Button>
+                <Button onClick={handleNext} className="w-full">
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Physical Attributes</h3>
+              <div className="space-y-2">
+                <Label htmlFor="height_cm">Height (cm)</Label>
                 <Input
-                  id="height"
+                  id="height_cm"
+                  name="height_cm"
                   type="number"
-                  value={height}
-                  onChange={(e) => setHeight(parseFloat(e.target.value) || '')}
+                  value={formData.height_cm}
+                  onChange={handleChange}
                   placeholder="e.g., 175"
+                  required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="weight">Current Weight (kg)</Label>
+              <div className="space-y-2">
+                <Label htmlFor="weight_kg">Current Weight (kg)</Label>
                 <Input
-                  id="weight"
+                  id="weight_kg"
+                  name="weight_kg"
                   type="number"
-                  value={weight}
-                  onChange={(e) => setWeight(parseFloat(e.target.value) || '')}
+                  value={formData.weight_kg}
+                  onChange={handleChange}
                   placeholder="e.g., 70"
+                  required
                 />
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={handleBack}>Back</Button>
-              <Button onClick={handleNext} disabled={!height || !weight}>Next</Button>
-            </CardFooter>
-          </>
-        )
-      case 3:
-        return (
-          <>
-            <CardTitle>Step 3: Activity Level</CardTitle>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="activityLevel">How active are you?</Label>
-                <Select value={activityLevel} onValueChange={setActivityLevel}>
-                  <SelectTrigger id="activityLevel">
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleBack} className="w-full">
+                  Back
+                </Button>
+                <Button onClick={handleNext} className="w-full">
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Your Fitness Journey</h3>
+              <div className="space-y-2">
+                <Label htmlFor="fitness_goal">What's your primary fitness goal?</Label>
+                <Select name="fitness_goal" value={formData.fitness_goal} onValueChange={(value) => handleSelectChange('fitness_goal', value)}>
+                  <SelectTrigger id="fitness_goal">
+                    <SelectValue placeholder="Select a goal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lose_weight">Lose Weight</SelectItem>
+                    <SelectItem value="gain_muscle">Gain Muscle</SelectItem>
+                    <SelectItem value="improve_endurance">Improve Endurance</SelectItem>
+                    <SelectItem value="stay_active">Stay Active</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="activity_level">How active are you currently?</Label>
+                <Select name="activity_level" value={formData.activity_level} onValueChange={(value) => handleSelectChange('activity_level', value)}>
+                  <SelectTrigger id="activity_level">
                     <SelectValue placeholder="Select activity level" />
                   </SelectTrigger>
                   <SelectContent>
@@ -206,77 +241,41 @@ export default function OnboardingFlow() {
                   </SelectContent>
                 </Select>
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={handleBack}>Back</Button>
-              <Button onClick={handleNext} disabled={!activityLevel}>Next</Button>
-            </CardFooter>
-          </>
-        )
-      case 4:
-        return (
-          <>
-            <CardTitle>Step 4: Fitness Goal</CardTitle>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="goal">What is your primary fitness goal?</Label>
-                <Select value={goal} onValueChange={setGoal}>
-                  <SelectTrigger id="goal">
-                    <SelectValue placeholder="Select your goal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="lose_weight">Lose Weight</SelectItem>
-                    <SelectItem value="gain_muscle">Gain Muscle</SelectItem>
-                    <SelectItem value="improve_endurance">Improve Endurance</SelectItem>
-                    <SelectItem value="maintain_fitness">Maintain Fitness</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleBack} className="w-full">
+                  Back
+                </Button>
+                <Button onClick={handleNext} className="w-full">
+                  Next
+                </Button>
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={handleBack}>Back</Button>
-              <Button onClick={handleNext} disabled={!goal}>Next</Button>
-            </CardFooter>
-          </>
-        )
-      case 5:
-        return (
-          <>
-            <CardTitle>Step 5: Review & Submit</CardTitle>
-            <CardContent className="space-y-4">
-              <p>Please review your information:</p>
-              <ul className="list-disc pl-5">
-                <li>Gender: {gender || 'N/A'}</li>
-                <li>Age: {age || 'N/A'}</li>
-                <li>Height: {height ? `${height} cm` : 'N/A'}</li>
-                <li>Weight: {weight ? `${weight} kg` : 'N/A'}</li>
-                <li>Activity Level: {activityLevel.replace(/_/g, ' ') || 'N/A'}</li>
-                <li>Fitness Goal: {goal.replace(/_/g, ' ') || 'N/A'}</li>
-              </ul>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={handleBack}>Back</Button>
-              <Button onClick={handleSubmit} disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Submit
-              </Button>
-            </CardFooter>
-          </>
-        )
-      default:
-        return null
-    }
-  }
+            </div>
+          )}
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <Progress value={(step / totalSteps) * 100} className="mb-4" />
-        </CardHeader>
-        {renderStep()}
+          {step === 5 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Review and Complete</h3>
+              <div className="space-y-2 text-sm">
+                <p><strong>Username:</strong> {formData.username}</p>
+                <p><strong>Gender:</strong> {formData.gender}</p>
+                <p><strong>Age:</strong> {formData.age}</p>
+                <p><strong>Height:</strong> {formData.height_cm} cm</p>
+                <p><strong>Weight:</strong> {formData.weight_kg} kg</p>
+                <p><strong>Fitness Goal:</strong> {formData.fitness_goal}</p>
+                <p><strong>Activity Level:</strong> {formData.activity_level}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleBack} className="w-full">
+                  Back
+                </Button>
+                <Button onClick={handleSubmit} className="w-full">
+                  Complete Onboarding
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
       </Card>
     </div>
-  )
+  );
 }

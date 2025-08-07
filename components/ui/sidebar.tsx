@@ -3,12 +3,14 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronRight, Menu } from 'lucide-react'
+import { ChevronRight, Menu, Home, Dumbbell, Utensils, Scale, Smile, Droplet, CalendarDays, Settings, LogOut } from 'lucide-react'
+import { signOut } from '@/app/actions/auth-actions'
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { TooltipTrigger, TooltipContent, Tooltip, TooltipProvider } from "@/components/ui/tooltip"
 
 // -----------------------------------------------------------------------------
 // Sidebar
@@ -52,11 +54,139 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       <aside
         ref={ref}
         className={cn(
-          "flex h-full flex-col border-r bg-background",
+          "fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex",
           className
         )}
         {...props}
-      />
+      >
+        <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
+          <Link
+            className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
+            href="#"
+          >
+            <Dumbbell className="h-4 w-4 transition-all group-hover:scale-110" />
+            <span className="sr-only">Fitness Tracker</span>
+          </Link>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                  href="/"
+                >
+                  <Home className="h-5 w-5" />
+                  <span className="sr-only">Dashboard</span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Dashboard</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                  href="/workouts"
+                >
+                  <Dumbbell className="h-5 w-5" />
+                  <span className="sr-only">Workouts</span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Workouts</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                  href="/nutrition"
+                >
+                  <Utensils className="h-5 w-5" />
+                  <span className="sr-only">Nutrition</span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Nutrition</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                  href="/metrics"
+                >
+                  <Scale className="h-5 w-5" />
+                  <span className="sr-only">Body Metrics</span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Body Metrics</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                  href="/mood"
+                >
+                  <Smile className="h-5 w-5" />
+                  <span className="sr-only">Mood</span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Mood</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                  href="/water"
+                >
+                  <Droplet className="h-5 w-5" />
+                  <span className="sr-only">Water</span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Water</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                  href="/planner"
+                >
+                  <CalendarDays className="h-5 w-5" />
+                  <span className="sr-only">Planner</span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Planner</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </nav>
+        <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                  href="/settings"
+                >
+                  <Settings className="h-5 w-5" />
+                  <span className="sr-only">Settings</span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Settings</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <form action={signOut}>
+                  <Button
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                    type="submit"
+                    variant="ghost"
+                    size="icon"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    <span className="sr-only">Sign Out</span>
+                  </Button>
+                </form>
+              </TooltipTrigger>
+              <TooltipContent side="right">Sign Out</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </nav>
+      </aside>
     )
   }
 )
@@ -464,8 +594,10 @@ interface SidebarGroupContentProps
 const SidebarGroupContent = React.forwardRef<
   HTMLDivElement,
   SidebarGroupContentProps
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("flex flex-col", className)} {...props} />
+>(({ className, children, ...props }, ref) => (
+  <div ref={ref} className={cn("flex flex-col", className)} {...props}>
+    {children}
+  </div>
 ))
 SidebarGroupContent.displayName = "SidebarGroupContent"
 

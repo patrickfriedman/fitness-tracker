@@ -3,113 +3,174 @@
 import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Droplet, Plus, Minus } from 'lucide-react'
-import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
-import { Database } from '@/types/supabase'
-import { useToast } from '@/components/ui/use-toast'
+import { Progress } from '@/components/ui/progress'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { useToast } from '@/hooks/use-toast'
+import { getDailyWaterLog, addWaterLog, updateWaterLog } from '@/app/actions/water-actions' // Assuming these actions exist
+import { WaterLog } from '@/types/fitness'
+import { useAuth } from '@/contexts/auth-context'
 
-type WaterLog = Database['public']['Tables']['water_logs']['Row']
+const WATER_GOAL_ML = 2000; // Example daily water goal in ml
 
 export default function WaterTracker() {
-  const [waterIntake, setWaterIntake] = useState(0)
-  const [targetIntake, setTargetIntake] = useState(2000) // Default target in ml
-  const supabase = getSupabaseBrowserClient()
-  const { toast } = useToast()
+  const { session, isLoading: authLoading } = useAuth();
+  const [currentWater, setCurrentWater] = useState(0);
+  const [waterLogId, setWaterLogId] = useState<string | null>(null);
+  const [showDialog, setShowDialog] = useState(false);
+  const [addAmount, setAddAmount] = useState('');
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchWaterLog = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-
-      const { data, error } = await supabase
-        .from('water_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('log_date', today)
-        .single()
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching water log:', error)
-      } else if (data) {
-        setWaterIntake(data.amount_ml || 0)
-        setTargetIntake(data.target_ml || 2000)
+      if (!authLoading && session?.user?.id) {
+        try {
+          const result = await getDailyWaterLog(session.user.id);
+          if (result.success && result.log) {
+            setCurrentWater(result.log.amount_ml);
+            setWaterLogId(result.log.id);
+          } else {
+            setCurrentWater(0);
+            setWaterLogId(null);
+          }
+        } catch (error) {
+          console.error('Failed to fetch water log:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load water intake.',
+            variant: 'destructive',
+          });
+        } finally {
+          setLoading(false);
+        }
+      } else if (!authLoading && !session?.user?.id) {
+        setLoading(false);
       }
-    }
+    };
+    fetchWaterLog();
+  }, [session, authLoading, toast]);
 
-    fetchWaterLog()
-  }, [supabase])
-
-  const updateWaterIntake = async (amount: number) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+  const handleAddWater = async () => {
+    if (!session?.user?.id) {
       toast({
         title: 'Error',
-        description: 'Please log in to track water.',
+        description: 'You must be logged in to log water.',
         variant: 'destructive',
-      })
-      return
+      });
+      return;
     }
 
-    const newIntake = Math.max(0, waterIntake + amount)
-    setWaterIntake(newIntake)
+    const amountToAdd = parseInt(addAmount);
+    if (isNaN(amountToAdd) || amountToAdd <= 0) {
+      toast({
+        title: 'Invalid Input',
+        description: 'Please enter a valid positive number for water intake.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    try {
+      let result;
+      if (waterLogId) {
+        // Update existing log
+        result = await updateWaterLog(waterLogId, currentWater + amountToAdd);
+      } else {
+        // Create new log
+        const newLog: Partial<WaterLog> = {
+          user_id: session.user.id,
+          amount_ml: amountToAdd,
+          log_date: new Date(),
+        };
+        result = await addWaterLog(newLog as WaterLog);
+      }
 
-    const { error } = await supabase
-      .from('water_logs')
-      .upsert(
-        {
-          user_id: user.id,
-          log_date: today,
-          amount_ml: newIntake,
-          target_ml: targetIntake,
-        },
-        { onConflict: 'user_id,log_date' } // Update if user_id and date already exist
-      )
-
-    if (error) {
-      console.error('Error updating water log:', error)
+      if (result.success && result.log) {
+        setCurrentWater(result.log.amount_ml);
+        setWaterLogId(result.log.id);
+        toast({
+          title: 'Success',
+          description: `${amountToAdd}ml added to your water intake!`,
+        });
+        setAddAmount('');
+        setShowDialog(false);
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message || 'Failed to log water.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error logging water:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update water intake.',
+        description: 'An unexpected error occurred while logging water.',
         variant: 'destructive',
-      })
-    } else {
-      toast({
-        title: 'Water Intake Updated',
-        description: `You've consumed ${newIntake}ml of water today!`,
-      })
+      });
     }
+  };
+
+  const progress = (currentWater / WATER_GOAL_ML) * 100;
+
+  if (loading) {
+    return (
+      <Card className="col-span-1">
+        <CardHeader>
+          <CardTitle>Water Intake</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Loading...</p>
+        </CardContent>
+      </Card>
+    );
   }
 
-  const progress = (waterIntake / targetIntake) * 100
-
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Water Intake</CardTitle>
-        <Droplet className="h-4 w-4 text-muted-foreground" />
+    <Card className="col-span-1">
+      <CardHeader>
+        <CardTitle>Water Intake</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{waterIntake} ml</div>
-        <p className="text-xs text-muted-foreground">Target: {targetIntake} ml</p>
-        <div className="relative h-4 w-full rounded-full bg-gray-200 dark:bg-gray-700 mt-2">
-          <div
-            className="absolute h-full rounded-full bg-blue-500"
-            style={{ width: `${Math.min(100, progress)}%` }}
-          />
+      <CardContent className="grid gap-2">
+        <div className="text-center text-2xl font-bold">
+          {currentWater} ml / {WATER_GOAL_ML} ml
         </div>
-        <div className="flex justify-between mt-4">
-          <Button variant="outline" size="icon" onClick={() => updateWaterIntake(-250)}>
-            <Minus className="h-4 w-4" />
-          </Button>
-          <Button onClick={() => updateWaterIntake(250)}>
-            <Plus className="mr-2 h-4 w-4" /> Add 250ml
-          </Button>
-        </div>
+        <Progress value={progress} className="w-full" />
+        <Button onClick={() => setShowDialog(true)} className="mt-4">
+          Add Water
+        </Button>
       </CardContent>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Water Intake</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="amount" className="text-right">
+                Amount (ml)
+              </Label>
+              <Input
+                id="amount"
+                type="number"
+                value={addAmount}
+                onChange={(e) => setAddAmount(e.target.value)}
+                className="col-span-3"
+                placeholder="e.g., 500"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddWater}>Add</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
-  )
+  );
 }

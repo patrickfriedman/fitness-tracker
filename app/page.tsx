@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase-server'
+import { getSession } from '@/app/actions/auth-actions'
 import { redirect } from 'next/navigation'
 import {
   Sidebar,
@@ -35,91 +35,82 @@ import NutritionTracker from '@/app/components/nutrition-tracker'
 import ActivityHeatmap from '@/app/components/activity-heatmap'
 import WeeklySummary from '@/app/components/weekly-summary'
 import WorkoutPlanner from '@/app/components/workout-planner'
-import BodyMetricsCard from '@/app/components/body-metrics-card' // Assuming this is a more detailed card
-import { Home, Dumbbell, Utensils, Scale, Droplet, Smile, CalendarDays, BarChartBig, Settings, LogOut } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { logout } from '@/app/actions/auth-actions'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
 
-export default async function HomePage() {
-  const supabase = createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+export default async function DashboardPage() {
+  const session = await getSession()
 
   if (!session) {
     redirect('/login')
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <ResizablePanelGroup direction="horizontal">
-          <ResizablePanel defaultSize={18} minSize={15} maxSize={25}>
-            <Sidebar>
-              <SidebarHeader>
-                <h1 className="text-lg font-semibold">Fitness Tracker</h1>
-              </SidebarHeader>
-              <SidebarMenu>
-                <SidebarMenuLink href="/" active>
-                  <Home className="mr-2 h-4 w-4" /> Dashboard
-                </SidebarMenuLink>
-                <SidebarMenuLink href="/workouts">
-                  <Dumbbell className="mr-2 h-4 w-4" /> Workouts
-                </SidebarMenuLink>
-                <SidebarMenuLink href="/nutrition">
-                  <Utensils className="mr-2 h-4 w-4" /> Nutrition
-                </SidebarMenuLink>
-                <SidebarMenuLink href="/metrics">
-                  <Scale className="mr-2 h-4 w-4" /> Metrics
-                </SidebarMenuLink>
-                <SidebarMenuLink href="/water">
-                  <Droplet className="mr-2 h-4 w-4" /> Water
-                </SidebarMenuLink>
-                <SidebarMenuLink href="/mood">
-                  <Smile className="mr-2 h-4 w-4" /> Mood
-                </SidebarMenuLink>
-                <SidebarMenuLink href="/planner">
-                  <CalendarDays className="mr-2 h-4 w-4" /> Planner
-                </SidebarMenuLink>
-                <SidebarMenuLink href="/summary">
-                  <BarChartBig className="mr-2 h-4 w-4" /> Summary
-                </SidebarMenuLink>
-              </SidebarMenu>
-              <SidebarFooter>
-                <SidebarMenuLink href="/settings">
-                  <Settings className="mr-2 h-4 w-4" /> Settings
-                </SidebarMenuLink>
-                <form action={logout}>
-                  <Button type="submit" variant="ghost" className="w-full justify-start">
-                    <LogOut className="mr-2 h-4 w-4" /> Logout
-                  </Button>
-                </form>
-              </SidebarFooter>
-            </Sidebar>
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={82}>
-            <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6 overflow-auto">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <BodyMetricsWidget />
-                <WaterTracker />
-                <MoodTracker />
+    <div className="flex min-h-screen w-full bg-muted/40">
+      <Sidebar />
+      <ResizablePanelGroup direction="horizontal">
+        <ResizablePanel defaultSize={100}>
+          <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+            <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
+              <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+                  <BodyMetricsWidget />
+                  <WaterTracker />
+                  <MoodTracker />
+                  <MotivationalQuote />
+                </div>
+                <Card className="xl:col-span-2">
+                  <CardHeader className="flex flex-row items-center">
+                    <div className="grid gap-2">
+                      <CardTitle>Workout Log</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <WorkoutLogger />
+                  </CardContent>
+                </Card>
+                <Card className="xl:col-span-2">
+                  <CardHeader className="flex flex-row items-center">
+                    <div className="grid gap-2">
+                      <CardTitle>Nutrition Tracker</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <NutritionTracker />
+                  </CardContent>
+                </Card>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <MotivationalQuote />
-                <WorkoutLogger />
-                <NutritionTracker />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-                <ActivityHeatmap />
-                <WeeklySummary />
-              </div>
-              <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-                <WorkoutPlanner />
-                <BodyMetricsCard /> {/* Using the more detailed card here */}
+              <div className="grid auto-rows-max items-start gap-4 md:gap-8">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Activity Heatmap</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ActivityHeatmap />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Weekly Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <WeeklySummary />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Workout Planner</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <WorkoutPlanner />
+                  </CardContent>
+                </Card>
               </div>
             </main>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </div>
-    </SidebarProvider>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
   )
 }
