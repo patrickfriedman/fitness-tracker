@@ -25,7 +25,7 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group-data-[swipe=cancel]:translate-x-0 group-data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] group-data-[swipe=cancel]:transition-[transform,opacity] group-data-[swipe=cancel]:duration-200 group-data-[swipe=cancel]:ease-out group-data-[hide]:animate-hide data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-swipe-out slide-in-from-bottom-full sm:slide-in-from-top-full group fixed inset-x-4 bottom-6 z-[100] flex w-auto flex-col-reverse items-center justify-between gap-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:transition-[transform,opacity] data-[swipe=cancel]:duration-200 data-[swipe=cancel]:ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-100 data-[state=open]:fade-in-100 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[closed]:slide-out-to-right-full data-[open]:slide-in-from-top-full data-[open]:sm:slide-in-from-bottom-full",
   {
     variants: {
       variant: {
@@ -77,7 +77,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100",
       className
     )}
     toast-close=""
@@ -113,17 +113,16 @@ const ToastDescription = React.forwardRef<
 ToastDescription.displayName = ToastPrimitives.Description.displayName
 
 type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
-
-type ToastActionElement = React.ElementRef<typeof ToastAction>
+type ToastActionElement = React.ReactElement<typeof ToastAction>
 
 export {
-  type ToastProps,
-  type ToastActionElement,
+  Toast,
   ToastProvider,
   ToastViewport,
-  Toast,
+  ToastAction,
+  ToastClose,
   ToastTitle,
   ToastDescription,
-  ToastClose,
-  ToastAction,
+  type ToastProps,
+  type ToastActionElement,
 }
