@@ -41,6 +41,7 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
+    console.error('Sign in error:', error.message)
     return {
       success: false,
       message: error.message,
@@ -82,6 +83,7 @@ export async function signup(formData: FormData) {
   })
 
   if (error) {
+    console.error('Sign up error:', error.message)
     return {
       success: false,
       message: error.message,
