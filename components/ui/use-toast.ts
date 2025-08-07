@@ -1,7 +1,4 @@
 import * as React from "react"
-import { useToast as useToastOriginal } from "@/components/ui/toast"
-import { toast as showToast } from '@/components/ui/use-toast'
-import { ToastAction } from '@/components/ui/toast'
 
 import { type ToastProps } from "@/components/ui/toast"
 
@@ -120,10 +117,45 @@ function dispatch(action: Action) {
   listeners.forEach((listener) => listener(memoryState))
 }
 
-type Toast = typeof showToast
+type Toast = Pick<ToastProps, "id" | "title" | "description" | "variant">
 
-function useToast(): { toast: Toast } {
-  return { toast: showToast }
+function useToast() {
+  const [state, setState] = React.useState<State>(memoryState)
+
+  React.useEffect(() => {
+    listeners.push(setState)
+    return () => {
+      const index = listeners.indexOf(setState)
+      if (index > -1) {
+        listeners.splice(index, 1)
+      }
+    }
+  }, [state])
+
+  return {
+    ...state,
+    toast: React.useCallback((props: Toast) => {
+      const id = props.id || crypto.randomUUID()
+
+      dispatch({
+        type: "ADD_TOAST",
+        toast: {
+          ...props,
+          id,
+          open: true,
+          onOpenChange: (open) => {
+            if (!open) {
+              dispatch({ type: "DISMISS_TOAST", toastId: id })
+            }
+          },
+        },
+      })
+
+      return {
+        id: id,
+      }
+    }, []),
+  }
 }
 
-export { useToast, reducer as toastReducer, ToastAction }
+export { useToast, reducer as toastReducer }
