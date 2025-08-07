@@ -1,107 +1,112 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { signIn, signUp, demoLogin } from '@/app/actions/auth-actions'
-import { useToast } from '@/components/ui/use-toast' // Corrected import path
-import { Loader2 } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast' // Correct import for useToast
 
 export default function LoginScreen() {
-  const [isLogin, setIsLogin] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast() // Corrected usage
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast() // Destructure toast from useToast()
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setIsLoading(true)
+    setLoading(true)
     const formData = new FormData(event.currentTarget)
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
 
-    if (!email || !password) {
-      toast({
-        title: 'Error',
-        description: 'Please enter both email and password.',
-        variant: 'destructive',
-      })
-      setIsLoading(false)
-      return
+    let result
+    if (isSignUp) {
+      result = await signUp(formData)
+    } else {
+      result = await signIn(formData)
     }
 
-    try {
-      let result
-      if (isLogin) {
-        result = await signIn(formData)
-      } else {
-        result = await signUp(formData)
-      }
-
-      if (result?.error) {
-        toast({
-          title: 'Authentication Error',
-          description: result.error,
-          variant: 'destructive',
-        })
-      } else {
-        toast({
-          title: 'Success',
-          description: isLogin ? 'Logged in successfully!' : 'Signed up successfully! Please check your email for confirmation.',
-          variant: 'default',
-        })
-      }
-    } catch (error) {
-      console.error('Auth action failed:', error)
+    if (result?.error) {
       toast({
         title: 'Error',
-        description: 'An unexpected error occurred. Please try again.',
+        description: result.error,
         variant: 'destructive',
       })
-    } finally {
-      setIsLoading(false)
+    } else if (result?.success) {
+      toast({
+        title: 'Success',
+        description: result.message,
+      })
     }
+    setLoading(false)
+  }
+
+  const handleDemoLogin = async () => {
+    setLoading(true)
+    const result = await demoLogin()
+    if (result?.error) {
+      toast({
+        title: 'Error',
+        description: result.error,
+        variant: 'destructive',
+      })
+    }
+    setLoading(false)
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">
-            {isLogin ? 'Login' : 'Sign Up'}
+          <CardTitle className="text-2xl">
+            {isSignUp ? 'Create an account' : 'Log in to your account'}
           </CardTitle>
           <CardDescription>
-            {isLogin ? 'Enter your credentials to access your account' : 'Create an account to get started'}
+            {isSignUp ? 'Enter your details below to create your account' : 'Enter your email below to log in'}
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div>
+                <Label htmlFor="username">Username</Label>
+                <Input id="username" name="username" type="text" required />
+              </div>
+            )}
+            <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="m@example.com" required />
+              <Input id="email" name="email" type="email" required />
             </div>
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="password">Password</Label>
               <Input id="password" name="password" type="password" required />
             </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isLogin ? 'Logging in...' : 'Signing up...'}
-                </>
-              ) : (
-                isLogin ? 'Login' : 'Sign Up'
-              )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
             </Button>
-            <Button variant="link" className="w-full" onClick={() => setIsLogin(!isLogin)} type="button">
-              {isLogin ? 'Need an account? Sign Up' : 'Already have an account? Login'}
+          </form>
+          <div className="mt-4 text-center text-sm">
+            {isSignUp ? (
+              <>
+                Already have an account?{' '}
+                <Button variant="link" onClick={() => setIsSignUp(false)} className="p-0 h-auto">
+                  Sign In
+                </Button>
+              </>
+            ) : (
+              <>
+                Don't have an account?{' '}
+                <Button variant="link" onClick={() => setIsSignUp(true)} className="p-0 h-auto">
+                  Sign Up
+                </Button>
+              </>
+            )}
+          </div>
+          <div className="mt-4">
+            <Button variant="outline" className="w-full" onClick={handleDemoLogin} disabled={loading}>
+              {loading ? 'Loading...' : 'Continue with Demo Account'}
             </Button>
-          </CardFooter>
-        </form>
+          </div>
+        </CardContent>
       </Card>
     </div>
   )

@@ -1,6 +1,7 @@
 import * as React from "react"
-
 import { type ToastProps } from "@/components/ui/toast"
+import { ToastAction } from "@/components/ui/toast"
+import { toast as showToast } from "@/components/ui/use-toast"
 
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
@@ -124,42 +125,24 @@ dispatch = updateState; // Assign updateState to dispatch
 type Toast = Pick<ToastProps, "id" | "title" | "description" | "variant">
 
 export function useToast() {
-  const [state, setState] = React.useState<State>(memoryState)
-
-  React.useEffect(() => {
-    listeners.push(setState)
-    return () => {
-      const index = listeners.indexOf(setState)
-      if (index > -1) {
-        listeners.splice(index, 1)
-      }
-    }
-  }, [state])
-
-  return {
-    ...state,
-    toast: React.useCallback((props: Toast) => {
-      const id = props.id || crypto.randomUUID()
-
-      dispatch({
-        type: "ADD_TOAST",
-        toast: {
-          ...props,
-          id,
-          open: true,
-          onOpenChange: (open) => {
-            if (!open) {
-              dispatch({ type: "DISMISS_TOAST", toastId: id })
-            }
-          },
-        },
+  const toast = React.useCallback(
+    ({
+      title,
+      description,
+      action,
+      ...props
+    }: Parameters<typeof showToast>[0]) => {
+      return showToast({
+        title,
+        description,
+        action: action ? <ToastAction {...action} /> : undefined,
+        ...props,
       })
+    },
+    []
+  )
 
-      return {
-        id: id,
-      }
-    }, []),
-  }
+  return { toast }
 }
 
 export { reducer as toastReducer }
