@@ -1,8 +1,8 @@
 'use server'
 
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
-import { AuthError } from '@supabase/supabase-js'
+import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 
 export async function signIn(formData: FormData) {
   const email = formData.get('email') as string
@@ -16,10 +16,10 @@ export async function signIn(formData: FormData) {
 
   if (error) {
     console.error('Sign-in error:', error.message)
-    // You can return the error message to the client or handle it as needed
-    return { success: false, message: error.message }
+    return { error: error.message }
   }
 
+  revalidatePath('/', 'layout')
   redirect('/')
 }
 
@@ -31,14 +31,18 @@ export async function signUp(formData: FormData) {
   const { error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    },
   })
 
   if (error) {
     console.error('Sign-up error:', error.message)
-    return { success: false, message: error.message }
+    return { error: error.message }
   }
 
-  redirect('/')
+  revalidatePath('/', 'layout')
+  redirect('/login?message=Check email to verify account')
 }
 
 export async function signOut() {
@@ -47,14 +51,15 @@ export async function signOut() {
 
   if (error) {
     console.error('Sign-out error:', error.message)
-    return { success: false, message: error.message }
+    return { error: error.message }
   }
 
+  revalidatePath('/', 'layout')
   redirect('/login')
 }
 
 export async function getSession() {
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  return session
 }

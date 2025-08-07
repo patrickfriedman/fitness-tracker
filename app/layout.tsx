@@ -4,13 +4,13 @@ import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { getSession } from '@/app/actions/auth-actions'
-import { redirect } from 'next/navigation'
+import { AuthProvider } from '@/contexts/auth-context'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Fitness Tracker',
-  description: 'Track your fitness journey with ease.',
+  description: 'Your personal fitness companion',
     generator: 'v0.dev'
 }
 
@@ -19,12 +19,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const session = await getSession();
-
-  // Redirect to login if no session and not already on login page
-  if (!session && !['/login', '/signup'].includes(window.location.pathname)) {
-    redirect('/login');
-  }
+  const session = await getSession()
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -35,7 +30,9 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AuthProvider initialSession={session}>
+            {children}
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>
