@@ -1,61 +1,46 @@
-'use client'
+"use client"
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { login, signup, demoLogin } from '@/app/actions/auth-actions' // Corrected import
-import { useFormStatus } from 'react-dom'
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
+import { signInWithEmail, signUpWithEmail } from '@/app/actions/auth-actions'
 import { useToast } from '@/hooks/use-toast'
-
-function SubmitButton({ text }: { text: string }) {
-  const { pending } = useFormStatus()
-  return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? 'Loading...' : text}
-    </Button>
-  )
-}
+import Link from 'next/link'
 
 export default function LoginScreen() {
-  const [isRegistering, setIsRegistering] = useState(false)
+  const [isLogin, setIsLogin] = useState(true)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
-  const handleSignIn = async (formData: FormData) => {
-    const result = await login(formData) // Corrected function call
-    if (result?.message) {
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setLoading(true)
+
+    let result
+    if (isLogin) {
+      result = await signInWithEmail(new FormData(event.target as HTMLFormElement))
+    } else {
+      result = await signUpWithEmail(new FormData(event.target as HTMLFormElement))
+    }
+
+    if (result.success) {
       toast({
-        title: 'Sign In Failed',
+        title: 'Success',
+        description: result.message,
+      })
+      // Redirection handled by server action
+    } else {
+      toast({
+        title: 'Error',
         description: result.message,
         variant: 'destructive',
       })
     }
-  }
-
-  const handleSignUp = async (formData: FormData) => {
-    const result = await signup(formData) // Corrected function call
-    if (result?.message) {
-      toast({
-        title: result.success ? 'Sign Up Successful' : 'Sign Up Failed',
-        description: result.message,
-        variant: result.success ? 'default' : 'destructive',
-      })
-      if (result.success) {
-        setIsRegistering(false) // Switch back to login after successful registration
-      }
-    }
-  }
-
-  const handleDemoLogin = async () => {
-    const result = await demoLogin()
-    if (result?.message) {
-      toast({
-        title: 'Demo Login Failed',
-        description: result.message,
-        variant: 'destructive',
-      })
-    }
+    setLoading(false)
   }
 
   return (
@@ -63,55 +48,50 @@ export default function LoginScreen() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl">
-            {isRegistering ? 'Register' : 'Login'}
+            {isLogin ? 'Login to Fitness Tracker' : 'Sign Up for Fitness Tracker'}
           </CardTitle>
-          <CardDescription>
-            {isRegistering
-              ? 'Enter your details to create an account'
-              : 'Enter your email and password to sign in'}
-          </CardDescription>
+          <p className="text-sm text-muted-foreground">
+            {isLogin ? 'Enter your credentials below' : 'Create your account'}
+          </p>
         </CardHeader>
-        <CardContent>
-          <form action={isRegistering ? handleSignUp : handleSignIn} className="space-y-4">
-            {isRegistering && (
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input id="username" name="username" type="text" placeholder="johndoe" required />
-              </div>
-            )}
-            <div className="space-y-2">
+        <CardContent className="grid gap-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="m@example.com" required />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="m@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
-            <SubmitButton text={isRegistering ? 'Register' : 'Sign In'} />
-          </form>
-          <div className="mt-4 text-center text-sm">
-            {isRegistering ? (
-              <>
-                Already have an account?{' '}
-                <Button variant="link" onClick={() => setIsRegistering(false)} className="p-0 h-auto">
-                  Sign In
-                </Button>
-              </>
-            ) : (
-              <>
-                Don&apos;t have an account?{' '}
-                <Button variant="link" onClick={() => setIsRegistering(true)} className="p-0 h-auto">
-                  Register
-                </Button>
-              </>
-            )}
-          </div>
-          <div className="mt-4">
-            <Button variant="outline" className="w-full" onClick={handleDemoLogin}>
-              Demo Login
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (isLogin ? 'Logging in...' : 'Signing up...') : isLogin ? 'Login' : 'Sign Up'}
             </Button>
-          </div>
+          </form>
         </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+          <Button variant="link" className="w-full" onClick={() => setIsLogin(!isLogin)}>
+            {isLogin ? 'Need an account? Sign Up' : 'Already have an account? Login'}
+          </Button>
+          <Link href="/" className="text-sm text-muted-foreground hover:underline">
+            Continue as Guest (No Auth)
+          </Link>
+        </CardFooter>
       </Card>
     </div>
   )

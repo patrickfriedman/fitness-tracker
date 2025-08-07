@@ -14,13 +14,18 @@ import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
 import { Database } from '@/types/supabase'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2 } from 'lucide-react'
+import { BodyMetric } from '@/types/fitness'
 
-type BodyMetric = Database['public']['Tables']['body_metrics']['Row']
+interface BodyMetricsCardProps {
+  metric: BodyMetric;
+}
 
-export default function BodyMetricsCard() {
-  const [weight, setWeight] = useState<number | ''>('')
-  const [height, setHeight] = useState<number | ''>('')
-  const [logDate, setLogDate] = useState<Date | undefined>(new Date())
+export default function BodyMetricsCard({ metric }: BodyMetricsCardProps) {
+  const [weight, setWeight] = useState<number | ''>(metric.weight_kg || '')
+  const [height, setHeight] = useState<number | ''>(metric.height_cm || '')
+  const [bodyFat, setBodyFat] = useState<number | ''>(metric.body_fat_percent || '')
+  const [muscleMass, setMuscleMass] = useState<number | ''>(metric.muscle_mass_kg || '')
+  const [logDate, setLogDate] = useState<Date | undefined>(metric.log_date ? new Date(metric.log_date) : new Date())
   const [loading, setLoading] = useState(false)
   const supabase = getSupabaseBrowserClient()
   const { toast } = useToast()
@@ -43,6 +48,8 @@ export default function BodyMetricsCard() {
       } else if (data) {
         setWeight(data.weight_kg || '')
         setHeight(data.height_cm || '')
+        setBodyFat(data.body_fat_percent || '')
+        setMuscleMass(data.muscle_mass_kg || '')
         setLogDate(data.log_date ? new Date(data.log_date) : new Date())
       }
     }
@@ -78,6 +85,8 @@ export default function BodyMetricsCard() {
         log_date: logDate.toISOString().split('T')[0],
         weight_kg: weight,
         height_cm: height,
+        body_fat_percent: bodyFat,
+        muscle_mass_kg: muscleMass,
       },
       { onConflict: 'user_id,log_date' } // Update if entry for this user and date already exists
     )
@@ -124,6 +133,26 @@ export default function BodyMetricsCard() {
             onChange={(e) => setHeight(parseFloat(e.target.value) || '')}
             placeholder="e.g., 175"
             required
+          />
+        </div>
+        <div>
+          <Label htmlFor="bodyFat">Body Fat (%)</Label>
+          <Input
+            id="bodyFat"
+            type="number"
+            value={bodyFat}
+            onChange={(e) => setBodyFat(parseFloat(e.target.value) || '')}
+            placeholder="e.g., 25"
+          />
+        </div>
+        <div>
+          <Label htmlFor="muscleMass">Muscle Mass (kg)</Label>
+          <Input
+            id="muscleMass"
+            type="number"
+            value={muscleMass}
+            onChange={(e) => setMuscleMass(parseFloat(e.target.value) || '')}
+            placeholder="e.g., 50"
           />
         </div>
         <div>

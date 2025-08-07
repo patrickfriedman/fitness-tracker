@@ -1,9 +1,9 @@
 CREATE TABLE IF NOT EXISTS public.water_logs (
-  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  log_date date NOT NULL DEFAULT CURRENT_DATE,
   amount_ml integer NOT NULL,
-  log_date date DEFAULT now() NOT NULL,
-  created_at timestamp with time zone DEFAULT now() NOT NULL
+  created_at timestamp with time zone DEFAULT NOW()
 );
 
 ALTER TABLE public.water_logs ENABLE ROW LEVEL SECURITY;

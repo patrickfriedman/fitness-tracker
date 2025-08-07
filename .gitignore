@@ -17,12 +17,11 @@
 # misc
 .DS_Store
 *.pem
-
-# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.turbo/
 
 # local env files
 .env*.local
@@ -33,6 +32,7 @@ yarn-error.log*
 .vercel/cache
 
 # supabase
+.supabase/
 supabase/.temp
 supabase/db/wal
 supabase/db/data
@@ -193,15 +193,9 @@ supabase/db/pg_tle_extensions_extensions_extensions_extensions_extensions_extens
 supabase/db/pg_vector_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions
 supabase/db/pg_http_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions
 supabase/db/pg_jsonschema_extensions_extensions_extensions_extensions_extensions_extensions_extensions
-supabase/db/pg_graphql_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions
-supabase/db/pg_net_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions
-supabase/db/pg_tle_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions
-supabase/db/pg_vector_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions
-supabase/db/pg_http_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions_extensions
-supabase/db/pg_jsonschema_extensions_extensions_extensions_extensions_extensions_extensions_extensions
 # Next.js
 .next/
-out/
+/out/
 
 # Node.js
 node_modules/
@@ -247,6 +241,7 @@ logs/
 *.sqlite-journal
 
 # Supabase
+.supabase/
 supabase/.temp/
 supabase/db/
 supabase/functions/

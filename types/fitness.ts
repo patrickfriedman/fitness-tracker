@@ -1,31 +1,26 @@
-// This file defines the types for your fitness application data.
-// These types should align with your Supabase database schema.
-
-// Example types (adjust based on your actual schema)
-
 export interface UserProfile {
   id: string;
-  username: string;
-  avatar_url?: string;
-  website?: string;
-  gender?: string;
-  age?: number;
-  height_cm?: number;
-  weight_kg?: number;
-  activity_level?: string;
-  fitness_goal?: string;
-  onboarded?: boolean;
+  username: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  full_name: string | null;
+  updated_at: string | null;
+  gender?: 'male' | 'female' | 'other' | null;
+  age?: number | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  fitness_goal?: string | null;
+  activity_level?: string | null;
 }
 
 export interface WorkoutLog {
   id: string;
   user_id: string;
-  workout_date: string; // YYYY-MM-DD
-  type?: string; // e.g., 'Strength', 'Cardio'
-  duration_minutes?: number;
-  calories_burned?: number;
-  notes?: string;
-  exercises?: Array<{ name: string; sets: number; reps: number; weight?: number }>;
+  log_date: string; // YYYY-MM-DD
+  workout_name: string;
+  duration_minutes: number | null;
+  calories_burned: number | null;
+  notes: string | null;
   created_at: string;
 }
 
@@ -33,12 +28,12 @@ export interface NutritionLog {
   id: string;
   user_id: string;
   log_date: string; // YYYY-MM-DD
-  meal_type?: string; // e.g., 'Breakfast', 'Lunch'
-  calories?: number;
-  protein_g?: number;
-  carbs_g?: number;
-  fat_g?: number;
-  notes?: string;
+  meal_type: string; // e.g., 'breakfast', 'lunch', 'dinner', 'snack'
+  food_item: string;
+  calories: number;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
   created_at: string;
 }
 
@@ -46,10 +41,10 @@ export interface BodyMetric {
   id: string;
   user_id: string;
   log_date: string; // YYYY-MM-DD
-  weight_kg?: number;
-  height_cm?: number;
-  body_fat?: number;
-  muscle_mass?: number;
+  weight_kg: number | null;
+  height_cm: number | null;
+  body_fat_percent: number | null;
+  muscle_mass_kg: number | null;
   created_at: string;
 }
 
@@ -57,8 +52,8 @@ export interface MoodLog {
   id: string;
   user_id: string;
   log_date: string; // YYYY-MM-DD
-  mood_level: string; // e.g., 'happy', 'neutral', 'sad'
-  notes?: string;
+  mood_rating: number; // 1-5 scale
+  notes: string | null;
   created_at: string;
 }
 
@@ -67,25 +62,20 @@ export interface WaterLog {
   user_id: string;
   log_date: string; // YYYY-MM-DD
   amount_ml: number;
-  target_ml?: number;
   created_at: string;
 }
 
 export interface PlannedWorkout {
   id: string;
   user_id: string;
-  log_date: string; // YYYY-MM-DD
-  name: string;
-  exercises?: Array<{ name: string; sets: number; reps: number; weight?: number }>;
-  notes?: string;
+  workout_date: string; // YYYY-MM-DD
+  workout_name: string;
+  exercises: {
+    name: string;
+    sets: number;
+    reps: number;
+    weight: number;
+  }[] | null;
+  notes: string | null;
   created_at: string;
-}
-
-// Combined type for BodyMetricsWidget (if you want to pass a single object)
-export interface BodyMetrics {
-  weight?: number;
-  height?: number;
-  bmi?: number;
-  bodyFat?: number;
-  muscleMass?: number;
 }

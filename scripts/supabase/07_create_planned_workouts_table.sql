@@ -1,11 +1,11 @@
 CREATE TABLE IF NOT EXISTS public.planned_workouts (
-  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL,
-  workout_name text NOT NULL,
   workout_date date NOT NULL,
-  exercises jsonb, -- Stores an array of exercise objects
+  workout_name text NOT NULL,
+  exercises jsonb, -- Stores an array of exercise objects with sets, reps, weight
   notes text,
-  created_at timestamp with time zone DEFAULT now() NOT NULL
+  created_at timestamp with time zone DEFAULT NOW()
 );
 
 ALTER TABLE public.planned_workouts ENABLE ROW LEVEL SECURITY;

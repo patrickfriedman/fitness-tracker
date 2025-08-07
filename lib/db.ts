@@ -99,5 +99,4 @@ export const db = {
   },
 };
 
-// This file is intentionally left empty as per previous instructions.
-// If database interactions beyond Supabase are needed, they would be implemented here.
+// This file is intentionally left minimal as Supabase client handles most DB operations.

@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -9,255 +9,295 @@ import { Textarea } from '@/components/ui/textarea'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { format } from 'date-fns'
-import { CalendarIcon, PlusCircle, Trash2 } from 'lucide-react'
+import { CalendarIcon, PlusIcon, TrashIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PlannedWorkout, Exercise } from '@/types/fitness'
-import { createPlannedWorkout, updatePlannedWorkout, deletePlannedWorkout } from '@/app/actions/workout-actions' // Assuming these actions exist
+import { PlannedWorkout } from '@/types/fitness'
+import { addPlannedWorkout, updatePlannedWorkout, deletePlannedWorkout } from '@/app/actions/workout-actions'
 import { useToast } from '@/hooks/use-toast'
 
-interface WorkoutPlannerProps {
-  initialWorkouts?: PlannedWorkout[];
+interface Exercise {
+  name: string;
+  sets: number;
+  reps: number;
+  weight: number;
 }
 
-export default function WorkoutPlanner({ initialWorkouts = [] }: WorkoutPlannerProps) {
-  const [workouts, setWorkouts] = useState<PlannedWorkout[]>(initialWorkouts);
-  const [newWorkout, setNewWorkout] = useState<Partial<PlannedWorkout>>({
-    workout_name: '',
-    workout_date: new Date(),
-    exercises: [],
-    notes: '',
-  });
-  const { toast } = useToast();
+export default function WorkoutPlanner({ initialWorkouts }: { initialWorkouts: PlannedWorkout[] }) {
+  const [workoutDate, setWorkoutDate] = useState<Date | undefined>(new Date())
+  const [workoutName, setWorkoutName] = useState('')
+  const [exercises, setExercises] = useState<Exercise[]>([])
+  const [notes, setNotes] = useState('')
+  const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null)
+  const { toast } = useToast()
 
   const handleAddExercise = () => {
-    setNewWorkout((prev) => ({
-      ...prev,
-      exercises: [...(prev.exercises || []), { name: '', sets: 0, reps: 0, weight: 0, unit: 'kg' }],
-    }));
-  };
-
-  const handleRemoveExercise = (index: number) => {
-    setNewWorkout((prev) => ({
-      ...prev,
-      exercises: (prev.exercises || []).filter((_, i) => i !== index),
-    }));
-  };
+    setExercises([...exercises, { name: '', sets: 0, reps: 0, weight: 0 }])
+  }
 
   const handleExerciseChange = (index: number, field: keyof Exercise, value: string | number) => {
-    setNewWorkout((prev) => {
-      const updatedExercises = [...(prev.exercises || [])];
-      updatedExercises[index] = { ...updatedExercises[index], [field]: value };
-      return { ...prev, exercises: updatedExercises };
-    });
-  };
+    const newExercises = [...exercises]
+    // Ensure numeric fields are parsed as numbers
+    if (field === 'sets' || field === 'reps' || field === 'weight') {
+      newExercises[index][field] = Number(value)
+    } else {
+      newExercises[index][field] = value as string
+    }
+    setExercises(newExercises)
+  }
+
+  const handleRemoveExercise = (index: number) => {
+    const newExercises = exercises.filter((_, i) => i !== index)
+    setExercises(newExercises)
+  }
 
   const handleSaveWorkout = async () => {
-    if (!newWorkout.workout_name || !newWorkout.workout_date) {
+    if (!workoutDate || !workoutName) {
       toast({
         title: 'Error',
-        description: 'Workout name and date are required.',
+        description: 'Workout date and name are required.',
         variant: 'destructive',
-      });
-      return;
+      })
+      return
     }
 
-    try {
-      if (newWorkout.id) {
-        // Update existing workout
-        const result = await updatePlannedWorkout(newWorkout.id, newWorkout as PlannedWorkout);
-        if (result.success) {
-          setWorkouts((prev) =>
-            prev.map((w) => (w.id === newWorkout.id ? (newWorkout as PlannedWorkout) : w))
-          );
-          toast({ title: 'Success', description: 'Workout updated successfully.' });
-        } else {
-          toast({ title: 'Error', description: result.message, variant: 'destructive' });
-        }
-      } else {
-        // Create new workout
-        const result = await createPlannedWorkout(newWorkout as PlannedWorkout);
-        if (result.success && result.workout) {
-          setWorkouts((prev) => [...prev, result.workout!]);
-          toast({ title: 'Success', description: 'Workout planned successfully.' });
-        } else {
-          toast({ title: 'Error', description: result.message, variant: 'destructive' });
-        }
-      }
-      setNewWorkout({ workout_name: '', workout_date: new Date(), exercises: [], notes: '' });
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    const workoutData: Omit<PlannedWorkout, 'id' | 'created_at' | 'user_id'> = {
+      workout_date: workoutDate.toISOString().split('T')[0],
+      workout_name: workoutName,
+      exercises: exercises.length > 0 ? exercises : null,
+      notes: notes || null,
     }
-  };
+
+    if (editingWorkoutId) {
+      const { success, message } = await updatePlannedWorkout(editingWorkoutId, workoutData)
+      if (success) {
+        toast({
+          title: 'Success',
+          description: message,
+        })
+        setEditingWorkoutId(null)
+      } else {
+        toast({
+          title: 'Error',
+          description: message,
+          variant: 'destructive',
+        })
+      }
+    } else {
+      const { success, message } = await addPlannedWorkout(workoutData)
+      if (success) {
+        toast({
+          title: 'Success',
+          description: message,
+        })
+      } else {
+        toast({
+          title: 'Error',
+          description: message,
+          variant: 'destructive',
+        })
+      }
+    }
+    resetForm()
+  }
 
   const handleEditWorkout = (workout: PlannedWorkout) => {
-    setNewWorkout(workout);
-  };
+    setEditingWorkoutId(workout.id)
+    setWorkoutDate(new Date(workout.workout_date))
+    setWorkoutName(workout.workout_name)
+    setExercises(workout.exercises || [])
+    setNotes(workout.notes || '')
+  }
 
   const handleDeleteWorkout = async (id: string) => {
-    try {
-      const result = await deletePlannedWorkout(id);
-      if (result.success) {
-        setWorkouts((prev) => prev.filter((w) => w.id !== id));
-        toast({ title: 'Success', description: 'Workout deleted successfully.' });
-      } else {
-        toast({ title: 'Error', description: result.message, variant: 'destructive' });
-      }
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    const { success, message } = await deletePlannedWorkout(id)
+    if (success) {
+      toast({
+        title: 'Success',
+        description: message,
+      })
+    } else {
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      })
     }
-  };
+  }
+
+  const resetForm = () => {
+    setWorkoutDate(new Date())
+    setWorkoutName('')
+    setExercises([])
+    setNotes('')
+    setEditingWorkoutId(null)
+  }
 
   return (
-    <div className="grid gap-6 p-4 md:p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{newWorkout.id ? 'Edit Planned Workout' : 'Plan New Workout'}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="workout-name">Workout Name</Label>
-            <Input
-              id="workout-name"
-              value={newWorkout.workout_name || ''}
-              onChange={(e) => setNewWorkout((prev) => ({ ...prev, workout_name: e.target.value }))}
-              placeholder="e.g., Full Body Strength"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="workout-date">Date</Label>
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>{editingWorkoutId ? 'Edit Planned Workout' : 'Plan Your Workout'}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="workoutDate">Workout Date</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={'outline'}
                   className={cn(
-                    'w-[280px] justify-start text-left font-normal',
-                    !newWorkout.workout_date && 'text-muted-foreground'
+                    'w-full justify-start text-left font-normal',
+                    !workoutDate && 'text-muted-foreground'
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {newWorkout.workout_date ? (
-                    format(newWorkout.workout_date, 'PPP')
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
+                  {workoutDate ? format(workoutDate, 'PPP') : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
-                  selected={newWorkout.workout_date}
-                  onSelect={(date) => setNewWorkout((prev) => ({ ...prev, workout_date: date || new Date() }))}
+                  selected={workoutDate}
+                  onSelect={setWorkoutDate}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
           </div>
-          <div className="grid gap-2">
-            <Label>Exercises</Label>
-            {newWorkout.exercises?.map((exercise, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Input
-                  placeholder="Exercise Name"
-                  value={exercise.name}
-                  onChange={(e) => handleExerciseChange(index, 'name', e.target.value)}
-                />
-                <Input
-                  type="number"
-                  placeholder="Sets"
-                  value={exercise.sets || ''}
-                  onChange={(e) => handleExerciseChange(index, 'sets', parseInt(e.target.value) || 0)}
-                  className="w-20"
-                />
-                <Input
-                  type="number"
-                  placeholder="Reps"
-                  value={exercise.reps || ''}
-                  onChange={(e) => handleExerciseChange(index, 'reps', parseInt(e.target.value) || 0)}
-                  className="w-20"
-                />
-                <Input
-                  type="number"
-                  placeholder="Weight"
-                  value={exercise.weight || ''}
-                  onChange={(e) => handleExerciseChange(index, 'weight', parseFloat(e.target.value) || 0)}
-                  className="w-24"
-                />
-                <Input
-                  placeholder="Unit (kg/lbs)"
-                  value={exercise.unit || ''}
-                  onChange={(e) => handleExerciseChange(index, 'unit', e.target.value)}
-                  className="w-24"
-                />
-                <Button variant="ghost" size="icon" onClick={() => handleRemoveExercise(index)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <Button variant="outline" onClick={handleAddExercise}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Exercise
-            </Button>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={newWorkout.notes || ''}
-              onChange={(e) => setNewWorkout((prev) => ({ ...prev, notes: e.target.value }))}
-              placeholder="Any specific instructions or thoughts for this workout?"
+          <div className="space-y-2">
+            <Label htmlFor="workoutName">Workout Name</Label>
+            <Input
+              id="workoutName"
+              value={workoutName}
+              onChange={(e) => setWorkoutName(e.target.value)}
+              placeholder="e.g., Chest & Triceps, Leg Day"
             />
           </div>
-          <Button onClick={handleSaveWorkout}>
-            {newWorkout.id ? 'Update Workout' : 'Plan Workout'}
-          </Button>
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>My Planned Workouts</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {workouts.length === 0 ? (
-            <p className="text-muted-foreground">No workouts planned yet. Start by planning one above!</p>
-          ) : (
-            workouts.map((workout) => (
+        <div className="space-y-2">
+          <Label>Exercises</Label>
+          {exercises.map((exercise, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                placeholder="Exercise Name"
+                value={exercise.name}
+                onChange={(e) => handleExerciseChange(index, 'name', e.target.value)}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                placeholder="Sets"
+                value={exercise.sets === 0 ? '' : exercise.sets}
+                onChange={(e) => handleExerciseChange(index, 'sets', e.target.value)}
+                className="w-20"
+              />
+              <Input
+                type="number"
+                placeholder="Reps"
+                value={exercise.reps === 0 ? '' : exercise.reps}
+                onChange={(e) => handleExerciseChange(index, 'reps', e.target.value)}
+                className="w-20"
+              />
+              <Input
+                type="number"
+                placeholder="Weight (kg)"
+                value={exercise.weight === 0 ? '' : exercise.weight}
+                onChange={(e) => handleExerciseChange(index, 'weight', e.target.value)}
+                className="w-24"
+              />
+              <Button variant="ghost" size="icon" onClick={() => handleRemoveExercise(index)}>
+                <TrashIcon className="h-4 w-4 text-red-500" />
+              </Button>
+            </div>
+          ))}
+          <Button variant="outline" onClick={handleAddExercise} className="w-full">
+            <PlusIcon className="mr-2 h-4 w-4" /> Add Exercise
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="notes">Notes</Label>
+          <Textarea
+            id="notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Any additional notes for this workout..."
+            rows={3}
+          />
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={resetForm}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveWorkout}>
+            {editingWorkoutId ? 'Update Workout' : 'Save Workout'}
+          </Button>
+        </div>
+
+        <Separator className="my-6" />
+
+        <h3 className="text-lg font-semibold">Planned Workouts</h3>
+        {initialWorkouts.length === 0 ? (
+          <p className="text-muted-foreground">No planned workouts yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {initialWorkouts.map((workout) => (
               <Card key={workout.id} className="p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-semibold">{workout.workout_name}</h3>
                     <p className="text-sm text-muted-foreground">
                       {format(new Date(workout.workout_date), 'PPP')}
                     </p>
+                    <h4 className="font-semibold text-lg">{workout.workout_name}</h4>
+                    {workout.exercises && workout.exercises.length > 0 && (
+                      <ul className="list-disc list-inside text-sm text-muted-foreground mt-1">
+                        {workout.exercises.map((ex, idx) => (
+                          <li key={idx}>
+                            {ex.name} - {ex.sets}x{ex.reps} @ {ex.weight}kg
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {workout.notes && (
+                      <p className="text-sm text-muted-foreground mt-1">Notes: {workout.notes}</p>
+                    )}
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEditWorkout(workout)}>
-                      Edit
+                    <Button variant="ghost" size="icon" onClick={() => handleEditWorkout(workout)}>
+                      <PencilIcon className="h-4 w-4" />
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDeleteWorkout(workout.id!)}>
-                      Delete
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteWorkout(workout.id)}>
+                      <TrashIcon className="h-4 w-4 text-red-500" />
                     </Button>
                   </div>
                 </div>
-                {workout.exercises && workout.exercises.length > 0 && (
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    <p className="font-medium">Exercises:</p>
-                    <ul className="list-disc pl-5">
-                      {workout.exercises.map((ex, idx) => (
-                        <li key={idx}>
-                          {ex.name} - {ex.sets} sets of {ex.reps} reps at {ex.weight} {ex.unit}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {workout.notes && (
-                  <p className="mt-2 text-sm text-muted-foreground">Notes: {workout.notes}</p>
-                )}
               </Card>
-            ))
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function PencilIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      <path d="M15 5l4 4" />
+    </svg>
+  )
 }

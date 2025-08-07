@@ -1,13 +1,14 @@
 CREATE TABLE IF NOT EXISTS public.nutrition_logs (
-  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  log_date date NOT NULL DEFAULT CURRENT_DATE,
+  meal_type text NOT NULL,
   food_item text NOT NULL,
   calories integer NOT NULL,
-  protein_g integer,
-  carbs_g integer,
-  fat_g integer,
-  log_date date DEFAULT now() NOT NULL,
-  created_at timestamp with time zone DEFAULT now() NOT NULL
+  protein_g numeric,
+  carbs_g numeric,
+  fat_g numeric,
+  created_at timestamp with time zone DEFAULT NOW()
 );
 
 ALTER TABLE public.nutrition_logs ENABLE ROW LEVEL SECURITY;

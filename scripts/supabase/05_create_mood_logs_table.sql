@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS public.mood_logs (
-  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL,
-  mood_score integer NOT NULL CHECK (mood_score >= 1 AND mood_score <= 5),
+  log_date date NOT NULL DEFAULT CURRENT_DATE,
+  mood_rating integer NOT NULL CHECK (mood_rating >= 1 AND mood_rating <= 5),
   notes text,
-  log_date date DEFAULT now() NOT NULL,
-  created_at timestamp with time zone DEFAULT now() NOT NULL
+  created_at timestamp with time zone DEFAULT NOW()
 );
 
 ALTER TABLE public.mood_logs ENABLE ROW LEVEL SECURITY;
