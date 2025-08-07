@@ -1,29 +1,30 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase-server' // Use server client for middleware
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name: string) => req.cookies.get(name)?.value,
-        set: (name: string, value: string, options: any) => {
-          req.cookies.set({ name, value, ...options })
-          res.cookies.set({ name, value, ...options })
-        },
-        remove: (name: string, options: any) => {
-          req.cookies.set({ name, value: '', ...options })
-          res.cookies.set({ name, value: '', ...options })
-        },
-      },
+export async function middleware(request: NextRequest) {
+  const supabase = createClient()
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  const { pathname } = request.nextUrl
+
+  // Allow access to login page without session
+  if (pathname.startsWith('/login')) {
+    if (session) {
+      // If logged in, redirect from login to home
+      return NextResponse.redirect(new URL('/', request.url))
     }
-  )
+    return NextResponse.next()
+  }
 
-  await supabase.auth.getSession()
+  // Protect other routes: redirect to login if no session
+  if (!session) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 
-  return res
+  return NextResponse.next()
 }
 
 export const config = {
@@ -33,7 +34,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - any other files in the public folder
+     * - public folder (e.g. /public/images)
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

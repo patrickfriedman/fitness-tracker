@@ -4,24 +4,20 @@ import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/contexts/auth-context'
-import { getBrowserClient } from '@/lib/supabase-browser'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Fitness Tracker',
-  description: 'Track your fitness journey with ease.',
+  description: 'Track your fitness journey',
     generator: 'v0.dev'
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const supabase = getBrowserClient()
-  const { data: { session } } = await supabase.auth.getSession()
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -31,7 +27,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider initialSession={session}>
+          <AuthProvider>
             {children}
           </AuthProvider>
           <Toaster />

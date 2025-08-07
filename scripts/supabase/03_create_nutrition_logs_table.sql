@@ -1,27 +1,27 @@
--- Create nutrition_logs table
-create table nutrition_logs (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users on delete cascade not null,
-  created_at timestamp with time zone default now(),
-  meal_type text not null, -- e.g., 'Breakfast', 'Lunch', 'Dinner', 'Snack'
-  food_items text not null, -- description of food eaten
-  calories int not null,
-  protein int, -- in grams
-  carbs int, -- in grams
-  fat int -- in grams
+CREATE TABLE nutrition_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  log_date DATE NOT NULL,
+  meal_type TEXT NOT NULL,
+  calories INT NOT NULL,
+  protein_g NUMERIC,
+  carbs_g NUMERIC,
+  fat_g NUMERIC,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Set up Row Level Security (RLS)
-alter table nutrition_logs enable row level security;
+ALTER TABLE nutrition_logs ENABLE ROW LEVEL SECURITY;
 
-create policy "Users can view their own nutrition logs."
-  on nutrition_logs for select using (auth.uid() = user_id);
+CREATE POLICY "Users can view their own nutrition logs." ON nutrition_logs
+  FOR SELECT USING (auth.uid() = user_id);
 
-create policy "Users can insert their own nutrition logs."
-  on nutrition_logs for insert with check (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own nutrition logs." ON nutrition_logs
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-create policy "Users can update their own nutrition logs."
-  on nutrition_logs for update using (auth.uid() = user_id);
+CREATE POLICY "Users can update their own nutrition logs." ON nutrition_logs
+  FOR UPDATE USING (auth.uid() = user_id);
 
-create policy "Users can delete their own nutrition logs."
-  on nutrition_logs for delete using (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own nutrition logs." ON nutrition_logs
+  FOR DELETE USING (auth.uid() = user_id);

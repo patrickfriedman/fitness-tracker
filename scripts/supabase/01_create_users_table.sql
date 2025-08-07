@@ -1,19 +1,30 @@
 -- Create a table for public profiles
-create table users (
-  id uuid references auth.users on delete cascade not null primary key,
-  username text unique,
-  email text unique,
-  created_at timestamp with time zone default now()
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  username TEXT UNIQUE,
+  email TEXT UNIQUE,
+  gender TEXT,
+  age INT,
+  height_cm NUMERIC,
+  weight_kg NUMERIC,
+  activity_level TEXT,
+  fitness_goal TEXT,
+  avatar_url TEXT,
+  onboarded BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Set up Row Level Security (RLS)
-alter table users enable row level security;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
-create policy "Public profiles are viewable by everyone."
-  on users for select using (true);
+CREATE POLICY "Public profiles are viewable by everyone." ON profiles
+  FOR SELECT USING (TRUE);
 
-create policy "Users can insert their own profile."
-  on users for insert with check (auth.uid() = id);
+CREATE POLICY "Users can insert their own profile." ON profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
 
-create policy "Users can update their own profile."
-  on users for update using (auth.uid() = id);
+CREATE POLICY "Users can update their own profile." ON profiles
+  FOR UPDATE USING (auth.uid() = id);

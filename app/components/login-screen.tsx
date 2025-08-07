@@ -5,134 +5,173 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { useFormStatus } from 'react-dom'
-import { useFormState } from 'react-dom'
-import { login, signup } from '@/app/actions/auth-actions'
-import { useAuth } from '@/contexts/auth-context'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { signIn, signUp } from '@/app/actions/auth-actions'
+import { useToast } from '@/components/ui/use-toast'
 import { Loader2 } from 'lucide-react'
-import { toast } from '@/components/ui/use-toast'
-
-function SubmitButton({ text }: { text: string }) {
-  const { pending } = useFormStatus()
-  return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      {text}
-    </Button>
-  )
-}
 
 export default function LoginScreen() {
-  const [isLogin, setIsLogin] = useState(true)
-  const { loginDemoUser } = useAuth()
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [registerUsername, setRegisterUsername] = useState('')
+  const [registerEmail, setRegisterEmail] = useState('')
+  const [registerPassword, setRegisterPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
 
-  const [loginState, loginAction] = useFormState(login, {
-    success: false,
-    message: '',
-    errors: {},
-  })
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    const formData = new FormData()
+    formData.append('email', loginEmail)
+    formData.append('password', loginPassword)
 
-  const [signupState, signupAction] = useFormState(signup, {
-    success: false,
-    message: '',
-    errors: {},
-  })
-
-  // Show toast messages for login/signup results
-  if (loginState.message && !loginState.errors) {
-    toast({
-      title: loginState.success ? 'Login Successful' : 'Login Failed',
-      description: loginState.message,
-      variant: loginState.success ? 'default' : 'destructive',
-    })
-    loginState.message = '' // Clear message after showing toast
+    const result = await signIn(formData)
+    if (result?.error) {
+      toast({
+        title: 'Login Failed',
+        description: result.error,
+        variant: 'destructive',
+      })
+    }
+    setLoading(false)
   }
 
-  if (signupState.message && !signupState.errors) {
-    toast({
-      title: signupState.success ? 'Sign Up Successful' : 'Sign Up Failed',
-      description: signupState.message,
-      variant: signupState.success ? 'default' : 'destructive',
-    })
-    signupState.message = '' // Clear message after showing toast
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    const formData = new FormData()
+    formData.append('username', registerUsername)
+    formData.append('email', registerEmail)
+    formData.append('password', registerPassword)
+
+    const result = await signUp(formData)
+    if (result?.error) {
+      toast({
+        title: 'Registration Failed',
+        description: result.error,
+        variant: 'destructive',
+      })
+    } else if (result?.success) {
+      toast({
+        title: 'Registration Successful',
+        description: result.message,
+      })
+      // Optionally clear form or redirect
+      setRegisterUsername('')
+      setRegisterEmail('')
+      setRegisterPassword('')
+    }
+    setLoading(false)
+  }
+
+  const handleDemoLogin = async () => {
+    setLoading(true)
+    const formData = new FormData()
+    formData.append('email', 'demo@example.com')
+    formData.append('password', 'demopassword') // Use a secure demo password
+    const result = await signIn(formData)
+    if (result?.error) {
+      toast({
+        title: 'Demo Login Failed',
+        description: result.error,
+        variant: 'destructive',
+      })
+    }
+    setLoading(false)
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl">
-            {isLogin ? 'Login' : 'Sign Up'}
-          </CardTitle>
-          <CardDescription>
-            {isLogin
-              ? 'Enter your credentials to access your fitness dashboard.'
-              : 'Create an account to start your fitness journey.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={isLogin ? loginAction : signupAction} className="space-y-4">
-            {!isLogin && (
-              <div>
-                <Label htmlFor="username">Username</Label>
-                <Input id="username" name="username" type="text" placeholder="john_doe" required />
-                {signupState.errors?.username && (
-                  <p className="text-red-500 text-sm mt-1">{signupState.errors.username}</p>
-                )}
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl text-center">Welcome to Fitness Tracker</CardTitle>
+        <CardDescription className="text-center">
+          Login or create an account to get started.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <Tabs defaultValue="login" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="register">Register</TabsTrigger>
+          </TabsList>
+          <TabsContent value="login" className="mt-4">
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="login-email">Email</Label>
+                <Input
+                  id="login-email"
+                  type="email"
+                  placeholder="m@example.com"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  required
+                />
               </div>
-            )}
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="m@example.com" required />
-              {isLogin && loginState.errors?.email && (
-                <p className="text-red-500 text-sm mt-1">{loginState.errors.email}</p>
-              )}
-              {!isLogin && signupState.errors?.email && (
-                <p className="text-red-500 text-sm mt-1">{signupState.errors.email}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required />
-              {isLogin && loginState.errors?.password && (
-                <p className="text-red-500 text-sm mt-1">{loginState.errors.password}</p>
-              )}
-              {!isLogin && signupState.errors?.password && (
-                <p className="text-red-500 text-sm mt-1">{signupState.errors.password}</p>
-              )}
-            </div>
-            {isLogin && loginState.message && !loginState.errors && (
-              <p className="text-red-500 text-sm text-center">{loginState.message}</p>
-            )}
-            {!isLogin && signupState.message && !signupState.errors && (
-              <p className="text-green-500 text-sm text-center">{signupState.message}</p>
-            )}
-            <SubmitButton text={isLogin ? 'Login' : 'Sign Up'} />
-          </form>
-          <div className="mt-4 text-center text-sm">
-            {isLogin ? (
-              <>
-                Don't have an account?{' '}
-                <Button variant="link" onClick={() => setIsLogin(false)} className="p-0 h-auto">
-                  Sign up
-                </Button>
-              </>
-            ) : (
-              <>
-                Already have an account?{' '}
-                <Button variant="link" onClick={() => setIsLogin(true)} className="p-0 h-auto">
-                  Login
-                </Button>
-              </>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button variant="outline" className="w-full" onClick={loginDemoUser}>
-            Continue with Demo Account
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
+              <div className="grid gap-2">
+                <Label htmlFor="login-password">Password</Label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Login
+              </Button>
+            </form>
+          </TabsContent>
+          <TabsContent value="register" className="mt-4">
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="register-username">Username</Label>
+                <Input
+                  id="register-username"
+                  type="text"
+                  placeholder="john_doe"
+                  value={registerUsername}
+                  onChange={(e) => setRegisterUsername(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="register-email">Email</Label>
+                <Input
+                  id="register-email"
+                  type="email"
+                  placeholder="m@example.com"
+                  value={registerEmail}
+                  onChange={(e) => setRegisterEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="register-password">Password</Label>
+                <Input
+                  id="register-password"
+                  type="password"
+                  value={registerPassword}
+                  onChange={(e) => setRegisterPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Register
+              </Button>
+            </form>
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+      <CardFooter>
+        <Button variant="outline" className="w-full" onClick={handleDemoLogin} disabled={loading}>
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          Demo Login
+        </Button>
+      </CardFooter>
+    </Card>
   )
 }

@@ -12,35 +12,39 @@ export type Database = {
       body_metrics: {
         Row: {
           body_fat: number | null
-          created_at: string | null
-          height: number | null
+          created_at: string
+          height_cm: number | null
           id: string
+          log_date: string
           muscle_mass: number | null
           user_id: string
-          weight: number | null
+          weight_kg: number | null
         }
         Insert: {
           body_fat?: number | null
-          created_at?: string | null
-          height?: number | null
+          created_at?: string
+          height_cm?: number | null
           id?: string
+          log_date?: string
           muscle_mass?: number | null
           user_id: string
-          weight?: number | null
+          weight_kg?: number | null
         }
         Update: {
           body_fat?: number | null
-          created_at?: string | null
-          height?: number | null
+          created_at?: string
+          height_cm?: number | null
           id?: string
+          log_date?: string
           muscle_mass?: number | null
           user_id?: string
-          weight?: number | null
+          weight_kg?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "body_metrics_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -48,26 +52,26 @@ export type Database = {
       }
       mood_logs: {
         Row: {
-          created_at: string | null
-          date: string
+          created_at: string
           id: string
-          mood: string
+          log_date: string
+          mood_level: string
           notes: string | null
           user_id: string
         }
         Insert: {
-          created_at?: string | null
-          date: string
+          created_at?: string
           id?: string
-          mood: string
+          log_date?: string
+          mood_level: string
           notes?: string | null
           user_id: string
         }
         Update: {
-          created_at?: string | null
-          date?: string
+          created_at?: string
           id?: string
-          mood?: string
+          log_date?: string
+          mood_level?: string
           notes?: string | null
           user_id?: string
         }
@@ -75,6 +79,7 @@ export type Database = {
           {
             foreignKeyName: "mood_logs_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -82,42 +87,46 @@ export type Database = {
       }
       nutrition_logs: {
         Row: {
-          calories: number
-          carbs: number | null
-          created_at: string | null
-          fat: number | null
+          calories: number | null
+          carbs_g: number | null
+          created_at: string
+          fat_g: number | null
           id: string
-          meal_type: string
+          log_date: string
+          meal_type: string | null
           notes: string | null
-          protein: number | null
+          protein_g: number | null
           user_id: string
         }
         Insert: {
-          calories: number
-          carbs?: number | null
-          created_at?: string | null
-          fat?: number | null
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          fat_g?: number | null
           id?: string
-          meal_type: string
+          log_date?: string
+          meal_type?: string | null
           notes?: string | null
-          protein?: number | null
+          protein_g?: number | null
           user_id: string
         }
         Update: {
-          calories?: number
-          carbs?: number | null
-          created_at?: string | null
-          fat?: number | null
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          fat_g?: number | null
           id?: string
-          meal_type?: string
+          log_date?: string
+          meal_type?: string | null
           notes?: string | null
-          protein?: number | null
+          protein_g?: number | null
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "nutrition_logs_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -125,61 +134,87 @@ export type Database = {
       }
       planned_workouts: {
         Row: {
-          created_at: string | null
-          date: string
+          created_at: string
           exercises: Json | null
           id: string
+          log_date: string
           name: string
+          notes: string | null
           user_id: string
         }
         Insert: {
-          created_at?: string | null
-          date: string
+          created_at?: string
           exercises?: Json | null
           id?: string
+          log_date: string
           name: string
+          notes?: string | null
           user_id: string
         }
         Update: {
-          created_at?: string | null
-          date?: string
+          created_at?: string
           exercises?: Json | null
           id?: string
+          log_date?: string
           name?: string
+          notes?: string | null
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "planned_workouts_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
-      users: {
+      profiles: {
         Row: {
-          created_at: string | null
-          email: string | null
+          activity_level: string | null
+          age: number | null
+          avatar_url: string | null
+          fitness_goal: string | null
+          gender: string | null
+          height_cm: number | null
           id: string
+          onboarded: boolean | null
           username: string | null
+          website: string | null
+          weight_kg: number | null
         }
         Insert: {
-          created_at?: string | null
-          email?: string | null
+          activity_level?: string | null
+          age?: number | null
+          avatar_url?: string | null
+          fitness_goal?: string | null
+          gender?: string | null
+          height_cm?: number | null
           id: string
+          onboarded?: boolean | null
           username?: string | null
+          website?: string | null
+          weight_kg?: number | null
         }
         Update: {
-          created_at?: string | null
-          email?: string | null
+          activity_level?: string | null
+          age?: number | null
+          avatar_url?: string | null
+          fitness_goal?: string | null
+          gender?: string | null
+          height_cm?: number | null
           id?: string
+          onboarded?: boolean | null
           username?: string | null
+          website?: string | null
+          weight_kg?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "users_id_fkey"
+            foreignKeyName: "profiles_id_fkey"
             columns: ["id"]
+            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -187,30 +222,34 @@ export type Database = {
       }
       water_logs: {
         Row: {
-          amount: number
-          created_at: string | null
-          date: string
+          amount_ml: number
+          created_at: string
           id: string
+          log_date: string
+          target_ml: number
           user_id: string
         }
         Insert: {
-          amount: number
-          created_at?: string | null
-          date: string
+          amount_ml?: number
+          created_at?: string
           id?: string
+          log_date?: string
+          target_ml?: number
           user_id: string
         }
         Update: {
-          amount?: number
-          created_at?: string | null
-          date?: string
+          amount_ml?: number
+          created_at?: string
           id?: string
+          log_date?: string
+          target_ml?: number
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "water_logs_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -219,38 +258,42 @@ export type Database = {
       workout_logs: {
         Row: {
           calories_burned: number | null
-          created_at: string | null
-          duration: number
+          created_at: string
+          duration_minutes: number | null
           exercises: Json | null
           id: string
           notes: string | null
-          type: string
+          type: string | null
           user_id: string
+          workout_date: string
         }
         Insert: {
           calories_burned?: number | null
-          created_at?: string | null
-          duration: number
+          created_at?: string
+          duration_minutes?: number | null
           exercises?: Json | null
           id?: string
           notes?: string | null
-          type: string
+          type?: string | null
           user_id: string
+          workout_date?: string
         }
         Update: {
           calories_burned?: number | null
-          created_at?: string | null
-          duration?: number
+          created_at?: string
+          duration_minutes?: number | null
           exercises?: Json | null
           id?: string
           notes?: string | null
-          type?: string
+          type?: string | null
           user_id?: string
+          workout_date?: string
         }
         Relationships: [
           {
             foreignKeyName: "workout_logs_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -261,7 +304,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      handle_new_user: {
+        Args: Record<PropertyKey, never>
+        Returns: Record<string, unknown>
+      }
     }
     Enums: {
       [_ in never]: never

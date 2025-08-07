@@ -1,33 +1,43 @@
 'use client'
 
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Quote } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
-export default function MotivationalQuote() {
-  const [quote, setQuote] = useState({ text: '', author: '' })
+const quotes = [
+  "The only bad workout is the one that didn't happen.",
+  "Believe you can and you're halfway there.",
+  "Strength does not come from physical capacity. It comes from an indomitable will.",
+  "The body achieves what the mind believes.",
+  "Success is what comes after you stop making excuses.",
+  "Train insane or remain the same.",
+  "Your body can stand almost anything. It's your mind that you have to convince.",
+  "Push yourself because no one else is going to do it for you.",
+  "The pain you feel today will be the strength you feel tomorrow.",
+  "Don't wish for it, work for it.",
+]
 
-  const quotes = [
-    { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
-    { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
-    { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
-    { text: "It always seems impossible until it's done.", author: "Nelson Mandela" },
-    { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
-  ]
+export default function MotivationalQuote() {
+  const [currentQuote, setCurrentQuote] = useState('')
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * quotes.length)
-    setQuote(quotes[randomIndex])
+    setCurrentQuote(quotes[randomIndex])
   }, [])
 
   return (
-    <Card className="col-span-full md:col-span-2 lg:col-span-1 xl:col-span-2">
-      <CardContent className="flex flex-col items-center justify-center p-6 text-center">
-        <Quote className="h-8 w-8 text-primary mb-4" />
-        <p className="text-lg font-semibold italic mb-2">
-          &quot;{quote.text}&quot;
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Motivational Quote</CardTitle>
+        <Quote className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <blockquote className="text-lg font-semibold leading-snug">
+          &ldquo;{currentQuote}&rdquo;
+        </blockquote>
+        <p className="text-sm text-muted-foreground mt-2">
+          &mdash; Fitness Inspiration
         </p>
-        <p className="text-sm text-muted-foreground">- {quote.author}</p>
       </CardContent>
     </Card>
   )

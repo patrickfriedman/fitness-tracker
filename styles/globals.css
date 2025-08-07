@@ -125,3 +125,5 @@ body {
 [role="dialog"] .micro-text {
   font-size: var(--modal-micro);
 }
+
+/* This file is intentionally left empty. All global CSS is handled in app/globals.css */

@@ -1,17 +1,19 @@
-# Fitness Tracker Application
+# Fitness Tracker
 
 This is a fitness tracking application built with Next.js, React, and Supabase.
 
 ## Features
 
-- User authentication (Sign up, Login, Demo Login)
-- Track daily water intake
-- Log your mood
-- Plan and log workouts with exercises
-- Track nutrition with meal details and macros
+- User authentication (Login, Register, Demo Login)
+- Onboarding flow for new users to set up their profile
+- Track body metrics (weight, height, body fat, muscle mass)
+- Log daily water intake
+- Track daily mood
+- Log workouts with details (type, duration, calories, exercises)
+- Log nutrition with macro details (calories, protein, carbs, fat)
+- Plan upcoming workouts with exercises
 - Visualize activity with a heatmap
 - View weekly summary of workouts and calories
-- Monitor body metrics history
 
 ## Getting Started
 
@@ -27,63 +29,52 @@ cd fitness-tracker
 \`\`\`bash
 npm install
 # or
-yarn install
-# or
 pnpm install
+# or
+yarn install
 \`\`\`
 
 ### 3. Set up Supabase
 
-This project uses Supabase for authentication and database.
+1.  **Create a new Supabase project:** Go to [Supabase Dashboard](https://app.supabase.com/) and create a new project.
+2.  **Get your API keys:** Navigate to `Project Settings` > `API` to find your `Project URL` and `anon public` key.
+3.  **Set up environment variables:** Create a `.env.local` file in the root of your project and add the following:
 
-#### Create a new Supabase project
+    \`\`\`
+    NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+    SUPABASE_URL=YOUR_SUPABASE_URL
+    SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+    SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY # Found under Project Settings -> API Keys -> service_role key
+    \`\`\`
+    **Note:** `NEXT_PUBLIC_` variables are accessible on the client-side. `SUPABASE_SERVICE_ROLE_KEY` should only be used on the server-side (e.g., in Server Actions or API Routes) for privileged operations.
 
-Go to [Supabase](https://supabase.com/) and create a new project.
+4.  **Run SQL scripts:** Use the Supabase SQL Editor in your dashboard to run the SQL scripts located in the `scripts/supabase/` directory. Run them in order:
+    *   `01_create_users_table.sql`
+    *   `02_create_workout_logs_table.sql`
+    *   `03_create_nutrition_logs_table.sql`
+    *   `04_create_body_metrics_table.sql`
+    *   `05_create_mood_logs_table.sql`
+    *   `06_create_water_logs_table.sql`
+    *   `07_create_planned_workouts_table.sql`
 
-#### Configure Environment Variables
+    These scripts will create the necessary tables and set up Row Level Security (RLS).
 
-Copy the `.env.example` file to `.env.local` and fill in your Supabase project details:
-
-\`\`\`
-NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
-\`\`\`
-
-You can find these keys in your Supabase project settings under `API`. The `SUPABASE_SERVICE_ROLE_KEY` is found under `Project Settings > API > Project API keys > service_role (Secret)`.
-
-#### Run SQL Migration Scripts
-
-The database schema is defined in the `scripts/supabase/` folder. You can run these scripts in your Supabase SQL Editor to set up your tables:
-
-1.  **01_create_users_table.sql**: Creates a `users` table to store additional user profile information.
-2.  **02_create_workout_logs_table.sql**: Creates a `workout_logs` table to store workout details.
-3.  **03_create_nutrition_logs_table.sql**: Creates a `nutrition_logs` table for meal tracking.
-4.  **04_create_body_metrics_table.sql**: Creates a `body_metrics` table for physical measurements.
-5.  **05_create_mood_logs_table.sql**: Creates a `mood_logs` table for daily mood tracking.
-6.  **06_create_water_logs_table.sql**: Creates a `water_logs` table for water intake.
-7.  **07_create_planned_workouts_table.sql**: Creates a `planned_workouts` table for future workout plans.
-
-**Important:** Ensure Row Level Security (RLS) is enabled for your tables in Supabase, and create appropriate policies to control data access.
-
-#### Generate Supabase Types
-
-To ensure type safety with your Supabase database, generate types using the Supabase CLI:
-
-\`\`\`bash
-npx supabase gen types typescript --project-id "YOUR_SUPABASE_PROJECT_REF" --schema public > types/supabase.ts
-\`\`\`
-
-Replace `"YOUR_SUPABASE_PROJECT_REF"` with your actual Supabase project reference (found in your project URL or settings).
+5.  **Generate Supabase types (optional but recommended):**
+    If you have the Supabase CLI installed, you can generate TypeScript types for your database schema:
+    \`\`\`bash
+    npx supabase gen types typescript --project-id "YOUR_SUPABASE_PROJECT_ID" --schema public > types/supabase.ts
+    \`\`\`
+    Replace `YOUR_SUPABASE_PROJECT_ID` with your actual project ID (found in your Supabase project URL).
 
 ### 4. Run the development server
 
 \`\`\`bash
 npm run dev
 # or
-yarn dev
-# or
 pnpm dev
+# or
+yarn dev
 \`\`\`
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
@@ -91,11 +82,15 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Project Structure
 
 -   `app/`: Next.js App Router pages and components.
--   `components/`: Reusable UI components (shadcn/ui).
--   `contexts/`: React Contexts for global state (e.g., AuthContext).
+-   `app/actions/`: Server Actions for authentication.
+-   `app/components/`: Main application components (e.g., `WorkoutLogger`, `NutritionTracker`).
+-   `components/ui/`: Shadcn/ui components.
+-   `contexts/`: React Contexts (e.g., `AuthContext`).
+-   `hooks/`: Custom React hooks (e.g., `useToast`).
 -   `lib/`: Utility functions and Supabase client setup.
--   `scripts/supabase/`: SQL schema migration scripts for Supabase.
--   `types/`: TypeScript type definitions.
+-   `public/`: Static assets.
+-   `scripts/supabase/`: SQL scripts for database setup.
+-   `types/`: TypeScript type definitions, including `supabase.ts` for database types.
 
 ## Learn More
 

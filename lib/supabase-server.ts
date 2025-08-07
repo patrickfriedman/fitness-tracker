@@ -1,20 +1,34 @@
-import { createClient as createServiceRoleClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { Database } from '@/types/supabase'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+export function createClient() {
+  const cookieStore = cookies()
 
-// Server-side Supabase client (for Server Actions/Route Handlers that need service role)
-export function getServiceRoleClient() {
-  // This client is for server-side operations that require service role access
-  // It should NEVER be exposed to the client-side.
-  return createServiceRoleClient<Database>(
-    supabaseUrl,
-    supabaseServiceKey,
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch (error) {
+            // The `cookies().set()` method can only be called from a Server Component or Server Action.
+            // This error is typically not a problem if you're only reading cookies on the client.
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch (error) {
+            // The `cookies().set()` method can only be called from a Server Component or Server Action.
+            // This error is typically not a problem if you're only reading cookies on the client.
+          }
+        },
       },
     }
   )
