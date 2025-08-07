@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { signIn, signUp, demoLogin } from '@/app/actions/auth-actions'
+import { login, signup, demoLogin } from '@/app/actions/auth-actions'
 import { useFormStatus } from 'react-dom'
 import { useToast } from '@/hooks/use-toast'
 
@@ -23,7 +23,7 @@ export default function LoginScreen() {
   const { toast } = useToast()
 
   const handleSignIn = async (formData: FormData) => {
-    const result = await signIn(formData)
+    const result = await login(formData)
     if (result?.message) {
       toast({
         title: 'Sign In Failed',
@@ -34,7 +34,7 @@ export default function LoginScreen() {
   }
 
   const handleSignUp = async (formData: FormData) => {
-    const result = await signUp(formData)
+    const result = await signup(formData)
     if (result?.message) {
       toast({
         title: result.success ? 'Sign Up Successful' : 'Sign Up Failed',
