@@ -5,7 +5,7 @@ import { type Session } from '@supabase/supabase-js'
 import { useState, useEffect } from 'react'
 import { Database } from '@/types/supabase'
 
-export function createClient() {
+export function createSupabaseBrowserClient() {
   return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -14,11 +14,11 @@ export function createClient() {
 
 // This is a singleton pattern for the client-side Supabase client
 // to prevent multiple instances and potential issues.
-let supabaseBrowserClient: ReturnType<typeof createClient> | undefined
+let supabaseBrowserClient: ReturnType<typeof createSupabaseBrowserClient> | undefined
 
 export function getSupabaseBrowserClient() {
   if (!supabaseBrowserClient) {
-    supabaseBrowserClient = createClient()
+    supabaseBrowserClient = createSupabaseBrowserClient()
   }
   return supabaseBrowserClient
 }

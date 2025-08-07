@@ -1,57 +1,47 @@
 import { getSession } from '@/app/actions/auth-actions'
 import { redirect } from 'next/navigation'
-import { getPlannedWorkouts } from '@/app/actions/workout-actions'
-import WorkoutPlanner from '@/app/components/workout-planner'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import WorkoutLogger from '@/app/components/workout-logger'
 import NutritionTracker from '@/app/components/nutrition-tracker'
 import WaterTracker from '@/app/components/water-tracker'
 import MoodTracker from '@/app/components/mood-tracker'
 import BodyMetricsWidget from '@/app/components/body-metrics-widget'
-import MotivationalQuote from '@/app/components/motivational-quote'
+import WorkoutPlanner from '@/app/components/workout-planner'
 import ActivityHeatmap from '@/app/components/activity-heatmap'
 import WeeklySummary from '@/app/components/weekly-summary'
-import { getNutritionLogs } from '@/app/actions/nutrition-actions'
-import { getWaterLogs } from '@/app/actions/water-actions'
-import { getMoodLogs } from '@/app/actions/mood-actions'
-import { getBodyMetrics } from '@/app/actions/body-metrics-actions'
-import { getWorkoutLogs } from '@/app/actions/workout-actions'
+import MotivationalQuote from '@/app/components/motivational-quote'
+import OnboardingFlow from '@/app/components/onboarding-flow'
 
 export default async function Home() {
-  const session = await getSession()
+  const { data: { session, user }, error } = await getSession()
 
-  if (!session) {
+  if (error || !session) {
     redirect('/login')
   }
 
-  const userId = session.user.id
+  // Placeholder for checking if onboarding is complete
+  // In a real app, you'd fetch user metadata from your DB
+  const isNewUser = false // Assume user is not new for now
 
-  // Fetch data for all components
-  const plannedWorkouts = await getPlannedWorkouts(userId)
-  const nutritionLogs = await getNutritionLogs(userId)
-  const waterLogs = await getWaterLogs(userId)
-  const moodLogs = await getMoodLogs(userId)
-  const bodyMetrics = await getBodyMetrics(userId)
-  const workoutLogs = await getWorkoutLogs(userId)
+  if (isNewUser) {
+    return <OnboardingFlow />
+  }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-10">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <main className="flex min-h-screen flex-col items-center p-4 md:p-8 lg:p-12 bg-gray-50 dark:bg-gray-950">
+      <div className="grid w-full max-w-6xl gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="lg:col-span-2">
           <MotivationalQuote />
-          <BodyMetricsWidget initialMetrics={bodyMetrics} />
-          <WaterTracker initialWaterLogs={waterLogs} />
-          <MoodTracker initialMoodLogs={moodLogs} />
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <WorkoutPlanner initialWorkouts={plannedWorkouts} />
-          <WorkoutLogger initialWorkoutLogs={workoutLogs} />
-          <NutritionTracker initialNutritionLogs={nutritionLogs} />
-        </div>
-        <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
-          <ActivityHeatmap initialWorkoutLogs={workoutLogs} />
-          <WeeklySummary initialWorkoutLogs={workoutLogs} initialNutritionLogs={nutritionLogs} />
-        </div>
-      </main>
-    </div>
+        <WorkoutLogger />
+        <NutritionTracker />
+        <WaterTracker />
+        <MoodTracker />
+        <BodyMetricsWidget />
+        <WorkoutPlanner />
+        <ActivityHeatmap />
+        <WeeklySummary />
+      </div>
+    </main>
   )
 }

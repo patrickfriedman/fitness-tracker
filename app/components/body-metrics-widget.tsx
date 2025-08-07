@@ -1,132 +1,72 @@
-"use client"
+'use client'
 
-import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { useEffect, useState } from 'react'
+import { getLatestBodyMetric } from '@/app/actions/body-metrics-actions'
 import { BodyMetric } from '@/types/fitness'
-import { addBodyMetric } from '@/app/actions/body-metrics-actions'
-import { useToast } from '@/hooks/use-toast'
 
-export default function BodyMetricsWidget({ initialMetrics }: { initialMetrics: BodyMetric[] }) {
-  const [weight, setWeight] = useState<number | ''>('')
-  const [height, setHeight] = useState<number | ''>('')
-  const [bodyFat, setBodyFat] = useState<number | ''>('')
-  const [muscleMass, setMuscleMass] = useState<number | ''>('')
-  const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
+export default function BodyMetricsWidget() {
+  const [latestMetrics, setLatestMetrics] = useState<BodyMetric | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const latestMetric = initialMetrics.length > 0 ? initialMetrics[0] : null
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    if (!weight && !height && !bodyFat && !muscleMass) {
-      toast({
-        title: 'Input Error',
-        description: 'Please enter at least one body metric to log.',
-        variant: 'destructive',
-      })
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      setLoading(true)
+      const result = await getLatestBodyMetric()
+      if (result.success && result.data) {
+        setLatestMetrics(result.data)
+      } else {
+        setLatestMetrics(null)
+      }
       setLoading(false)
-      return
     }
+    fetchMetrics()
+  }, [])
 
-    const newMetric: Omit<BodyMetric, 'id' | 'user_id' | 'log_date' | 'created_at'> = {
-      weight_kg: weight === '' ? null : Number(weight),
-      height_cm: height === '' ? null : Number(height),
-      body_fat_percent: bodyFat === '' ? null : Number(bodyFat),
-      muscle_mass_kg: muscleMass === '' ? null : Number(muscleMass),
-    }
-
-    const { success, message } = await addBodyMetric(newMetric)
-
-    if (success) {
-      toast({
-        title: 'Success',
-        description: message,
-      })
-      setWeight('')
-      setHeight('')
-      setBodyFat('')
-      setMuscleMass('')
-    } else {
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      })
-    }
-    setLoading(false)
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Body Metrics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Loading latest metrics...</p>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
-    <Card className="col-span-1">
+    <Card>
       <CardHeader>
-        <CardTitle>Body Metrics</CardTitle>
+        <CardTitle>Latest Body Metrics</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {latestMetric && (
-          <div className="text-sm text-muted-foreground">
-            <p>Last logged: {new Date(latestMetric.log_date).toLocaleDateString()}</p>
-            {latestMetric.weight_kg && <p>Weight: {latestMetric.weight_kg} kg</p>}
-            {latestMetric.height_cm && <p>Height: {latestMetric.height_cm} cm</p>}
-            {latestMetric.body_fat_percent && <p>Body Fat: {latestMetric.body_fat_percent}%</p>}
-            {latestMetric.muscle_mass_kg && <p>Muscle Mass: {latestMetric.muscle_mass_kg} kg</p>}
-          </div>
+        {latestMetrics ? (
+          <>
+            <div>
+              <p className="text-sm font-medium">Weight:</p>
+              <p className="text-2xl font-bold">{latestMetrics.weight_kg || 'N/A'} kg</p>
+              <Progress value={latestMetrics.weight_kg ? (latestMetrics.weight_kg / 100) * 100 : 0} className="w-full" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Body Fat:</p>
+              <p className="text-2xl font-bold">{latestMetrics.body_fat_percent || 'N/A'} %</p>
+              <Progress value={latestMetrics.body_fat_percent || 0} className="w-full" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Muscle Mass:</p>
+              <p className="text-2xl font-bold">{latestMetrics.muscle_mass_kg || 'N/A'} kg</p>
+              <Progress value={latestMetrics.muscle_mass_kg ? (latestMetrics.muscle_mass_kg / 100) * 100 : 0} className="w-full" />
+            </div>
+            <p className="text-sm text-gray-500">
+              Last updated: {new Date(latestMetrics.log_date).toLocaleDateString()}
+            </p>
+          </>
+        ) : (
+          <p>No body metrics recorded yet. Add your first entry!</p>
         )}
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="weight">Weight (kg)</Label>
-              <Input
-                id="weight"
-                type="number"
-                step="0.1"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                placeholder="e.g., 75.5"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="height">Height (cm)</Label>
-              <Input
-                id="height"
-                type="number"
-                step="0.1"
-                value={height}
-                onChange={(e) => setHeight(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                placeholder="e.g., 170"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bodyFat">Body Fat (%)</Label>
-              <Input
-                id="bodyFat"
-                type="number"
-                step="0.1"
-                value={bodyFat}
-                onChange={(e) => setBodyFat(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                placeholder="e.g., 15.2"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="muscleMass">Muscle Mass (kg)</Label>
-              <Input
-                id="muscleMass"
-                type="number"
-                step="0.1"
-                value={muscleMass}
-                onChange={(e) => setMuscleMass(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                placeholder="e.g., 60.1"
-              />
-            </div>
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Logging...' : 'Log Metrics'}
-          </Button>
-        </form>
       </CardContent>
     </Card>
   )

@@ -1,51 +1,46 @@
-"use client"
+'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { Session } from '@supabase/supabase-js'
-import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { User } from '@supabase/supabase-js'
+import { getSession } from '@/app/actions/auth-actions'
 
 interface AuthContextType {
-  session: Session | null;
-  isLoading: boolean;
+  user: User | null
+  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children, initialSession }: { children: ReactNode; initialSession: Session | null }) {
-  const [session, setSession] = useState<Session | null>(initialSession)
-  const [isLoading, setIsLoading] = useState(true)
-  const supabase = getSupabaseBrowserClient()
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-      setIsLoading(false)
-    })
-
-    // Initial check if session is already set from SSR
-    if (initialSession) {
-      setIsLoading(false)
-    } else {
-      // If not set from SSR, fetch it on client side
-      supabase.auth.getSession().then(({ data: { session: fetchedSession } }) => {
-        setSession(fetchedSession)
-        setIsLoading(false)
-      })
+    const fetchUser = async () => {
+      const { data: { user }, error } = await getSession()
+      if (error) {
+        console.error('Error fetching session:', error)
+        setUser(null)
+      } else {
+        setUser(user)
+      }
+      setLoading(false)
     }
 
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [supabase, initialSession])
+    fetchUser()
+
+    // In a real application, you might also listen to auth state changes
+    // from the client-side Supabase client here.
+  }, [])
 
   return (
-    <AuthContext.Provider value={{ session, isLoading }}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext)
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')

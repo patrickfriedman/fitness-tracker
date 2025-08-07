@@ -1,94 +1,94 @@
 'use server'
 
-import { createClient } from '@/lib/supabase-server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NutritionLog } from '@/types/fitness'
-import { revalidatePath } from 'next/cache'
+import { Database } from '@/types/supabase'
 
-export async function addNutritionLog(log: Omit<NutritionLog, 'id' | 'user_id' | 'log_date' | 'created_at'>) {
-  const supabase = createClient()
+export async function createNutritionLog(log: Omit<NutritionLog, 'id' | 'user_id' | 'created_at' | 'log_date'>) {
+  const cookieStore = cookies()
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options })
+        },
+        remove(name: string, options: any) {
+          cookieStore.set({ name, value: '', ...options })
+        },
+      },
+    }
+  )
+
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return { success: false, message: 'User not authenticated.' }
+    return { success: false, error: 'User not authenticated.' }
   }
 
   const { data, error } = await supabase
     .from('nutrition_logs')
     .insert({
       user_id: user.id,
-      log_date: new Date().toISOString().split('T')[0], // Current date
-      ...log,
+      food_item: log.food_item,
+      calories: log.calories,
+      protein_g: log.protein_g,
+      carbs_g: log.carbs_g,
+      fat_g: log.fat_g,
+      log_date: new Date().toISOString().split('T')[0], // Set current date
     })
     .select()
+    .single()
 
   if (error) {
-    console.error('Error adding nutrition log:', error.message)
-    return { success: false, message: error.message }
+    console.error('Error creating nutrition log:', error)
+    return { success: false, error: error.message }
   }
 
-  revalidatePath('/')
-  return { success: true, message: 'Nutrition log added successfully!' }
+  return { success: true, data }
 }
 
-export async function getNutritionLogs(userId: string): Promise<NutritionLog[]> {
-  const supabase = createClient()
+export async function getNutritionLogs() {
+  const cookieStore = cookies()
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options })
+        },
+        remove(name: string, options: any) {
+          cookieStore.set({ name, value: '', ...options })
+        },
+      },
+    }
+  )
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: 'User not authenticated.' }
+  }
+
   const { data, error } = await supabase
     .from('nutrition_logs')
     .select('*')
-    .eq('user_id', userId)
+    .eq('user_id', user.id)
     .order('log_date', { ascending: false })
-    .order('created_at', { ascending: false }) // Order by creation time for logs on the same day
 
   if (error) {
-    console.error('Error fetching nutrition logs:', error.message)
-    return []
+    console.error('Error fetching nutrition logs:', error)
+    return { success: false, error: error.message }
   }
 
-  return data as NutritionLog[]
-}
-
-export async function updateNutritionLog(id: string, updates: Partial<Omit<NutritionLog, 'id' | 'user_id' | 'created_at'>>) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { success: false, message: 'User not authenticated.' }
-  }
-
-  const { error } = await supabase
-    .from('nutrition_logs')
-    .update(updates)
-    .eq('id', id)
-    .eq('user_id', user.id) // Ensure user can only update their own logs
-
-  if (error) {
-    console.error('Error updating nutrition log:', error.message)
-    return { success: false, message: error.message }
-  }
-
-  revalidatePath('/')
-  return { success: true, message: 'Nutrition log updated successfully!' }
-}
-
-export async function deleteNutritionLog(id: string) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { success: false, message: 'User not authenticated.' }
-  }
-
-  const { error } = await supabase
-    .from('nutrition_logs')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id) // Ensure user can only delete their own logs
-
-  if (error) {
-    console.error('Error deleting nutrition log:', error.message)
-    return { success: false, message: error.message }
-  }
-
-  revalidatePath('/')
-  return { success: true, message: 'Nutrition log deleted successfully!' }
+  return { success: true, data }
 }

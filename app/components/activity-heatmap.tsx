@@ -1,68 +1,63 @@
-"use client"
+'use client'
 
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { WorkoutLog } from '@/types/fitness'
-import { format, eachDayOfInterval, startOfWeek, endOfWeek, isSameDay, addDays } from 'date-fns'
-import { cn } from '@/lib/utils'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Calendar } from '@/components/ui/calendar'
+import { useState } from 'react'
 
-interface ActivityHeatmapProps {
-  initialWorkoutLogs: WorkoutLog[];
-}
+export default function ActivityHeatmap() {
+  const [date, setDate] = useState<Date | undefined>(new Date())
 
-export default function ActivityHeatmap({ initialWorkoutLogs }: ActivityHeatmapProps) {
-  const today = new Date();
-  const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-  const endOfCurrentWeek = endOfWeek(today, { weekStartsOn: 1 }); // Sunday
+  // This is a placeholder for actual activity data
+  const activityData = {
+    '2024-07-01': 5,
+    '2024-07-05': 10,
+    '2024-07-10': 8,
+    '2024-07-15': 12,
+    '2024-07-20': 7,
+    '2024-07-25': 15,
+  }
 
-  const weekDays = eachDayOfInterval({
-    start: startOfCurrentWeek,
-    end: endOfCurrentWeek,
-  });
-
-  const getWorkoutIntensity = (date: Date) => {
-    const logsOnDate = initialWorkoutLogs.filter(log =>
-      isSameDay(new Date(log.log_date), date)
-    );
-    if (logsOnDate.length === 0) return 'none';
-    if (logsOnDate.length === 1) return 'light';
-    if (logsOnDate.length <= 3) return 'medium';
-    return 'heavy';
-  };
+  const getDayClass = (day: Date) => {
+    const dateString = day.toISOString().split('T')[0]
+    const intensity = activityData[dateString as keyof typeof activityData]
+    if (intensity) {
+      if (intensity > 10) return 'bg-green-600 text-white'
+      if (intensity > 5) return 'bg-green-400 text-white'
+      return 'bg-green-200'
+    }
+    return ''
+  }
 
   return (
-    <Card className="col-span-1 lg:col-span-1">
+    <Card>
       <CardHeader>
-        <CardTitle>Weekly Activity Heatmap</CardTitle>
+        <CardTitle>Activity Heatmap</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-7 gap-2 text-center">
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-            <div key={day} className="text-sm font-medium text-muted-foreground">
-              {day}
-            </div>
-          ))}
-          {weekDays.map((date, index) => {
-            const intensity = getWorkoutIntensity(date);
-            return (
-              <div
-                key={index}
-                className={cn(
-                  'relative flex h-10 w-10 items-center justify-center rounded-md text-sm font-semibold',
-                  {
-                    'bg-gray-200 dark:bg-gray-700': intensity === 'none',
-                    'bg-green-200 dark:bg-green-700': intensity === 'light',
-                    'bg-green-400 dark:bg-green-600': intensity === 'medium',
-                    'bg-green-600 dark:bg-green-500': intensity === 'heavy',
-                  }
-                )}
-                title={`${format(date, 'PPP')}: ${intensity === 'none' ? 'No workouts' : `${initialWorkoutLogs.filter(log => isSameDay(new Date(log.log_date), date)).length} workouts`}`}
-              >
-                {format(date, 'd')}
-              </div>
-            );
-          })}
-        </div>
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={setDate}
+          className="rounded-md border"
+          modifiers={{
+            activity: (day) => {
+              const dateString = day.toISOString().split('T')[0]
+              return !!activityData[dateString as keyof typeof activityData]
+            },
+          }}
+          modifiersStyles={{
+            activity: {
+              backgroundColor: 'var(--activity-color)', // Custom property for dynamic color
+            },
+          }}
+          classNames={{
+            day: ({ date: day }) => getDayClass(day),
+          }}
+        />
+        <p className="mt-4 text-sm text-gray-500">
+          Intensity of activity on selected days.
+        </p>
       </CardContent>
     </Card>
-  );
+  )
 }

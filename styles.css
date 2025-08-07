@@ -1,1 +1,8 @@
-/* This file is intentionally left blank as app/globals.css is used. */
+/* You can add global styles to this file, and also import other style files */
+/* For example, if you have a base.css, you can import it like this: */
+/* @import './base.css'; */
+
+/* Or add direct CSS rules */
+body {
+  font-family: 'Inter', sans-serif;
+}

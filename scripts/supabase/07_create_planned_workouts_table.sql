@@ -1,10 +1,9 @@
 CREATE TABLE IF NOT EXISTS public.planned_workouts (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL,
-  workout_date date NOT NULL,
+  planned_date date NOT NULL,
   workout_name text NOT NULL,
-  exercises jsonb, -- Stores an array of exercise objects with sets, reps, weight
-  notes text,
+  duration_minutes integer,
   created_at timestamp with time zone DEFAULT NOW()
 );
 

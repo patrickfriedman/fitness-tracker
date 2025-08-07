@@ -4,7 +4,32 @@ import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/contexts/auth-context'
-import { getSession } from '@/app/actions/auth-actions'
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInput,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger
+} from '@/components/ui/sidebar'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -14,13 +39,11 @@ export const metadata: Metadata = {
     generator: 'v0.dev'
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
-  const session = await getSession();
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -30,10 +53,21 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider initialSession={session}>
-            {children}
+          <AuthProvider>
+            <ResizablePanelGroup
+              direction="horizontal"
+              className="min-h-screen items-stretch"
+            >
+              <ResizablePanel defaultSize={15} minSize={10} maxSize={20}>
+                <Sidebar isCollapsed={false} />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={85}>
+                {children}
+              </ResizablePanel>
+            </ResizablePanelGroup>
+            <Toaster />
           </AuthProvider>
-          <Toaster />
         </ThemeProvider>
       </body>
     </html>

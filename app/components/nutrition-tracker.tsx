@@ -1,60 +1,43 @@
-"use client"
+'use client'
 
-import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { NutritionLog } from '@/types/fitness'
-import { addNutritionLog } from '@/app/actions/nutrition-actions'
+import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
+import { createNutritionLog } from '@/app/actions/nutrition-actions'
 
-export default function NutritionTracker({ initialNutritionLogs }: { initialNutritionLogs: NutritionLog[] }) {
-  const [mealType, setMealType] = useState('')
+export default function NutritionTracker() {
   const [foodItem, setFoodItem] = useState('')
-  const [calories, setCalories] = useState<number | ''>('')
-  const [protein, setProtein] = useState<number | ''>('')
-  const [carbs, setCarbs] = useState<number | ''>('')
-  const [fat, setFat] = useState<number | ''>('')
-  const [loading, setLoading] = useState(false)
+  const [calories, setCalories] = useState('')
+  const [protein, setProtein] = useState('')
+  const [carbs, setCarbs] = useState('')
+  const [fat, setFat] = useState('')
   const { toast } = useToast()
 
-  const today = new Date().toISOString().split('T')[0]
-  const todayLogs = initialNutritionLogs.filter(log => log.log_date === today)
-  const totalCaloriesToday = todayLogs.reduce((sum, log) => sum + log.calories, 0)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    if (!mealType || !foodItem || calories === '') {
+  const handleSubmit = async () => {
+    if (!foodItem || !calories) {
       toast({
-        title: 'Input Error',
-        description: 'Meal type, food item, and calories are required.',
+        title: 'Error!',
+        description: 'Food item and calories are required.',
         variant: 'destructive',
       })
-      setLoading(false)
       return
     }
 
-    const newLog: Omit<NutritionLog, 'id' | 'user_id' | 'log_date' | 'created_at'> = {
-      meal_type: mealType,
+    const result = await createNutritionLog({
       food_item: foodItem,
-      calories: Number(calories),
-      protein_g: protein === '' ? null : Number(protein),
-      carbs_g: carbs === '' ? null : Number(carbs),
-      fat_g: fat === '' ? null : Number(fat),
-    }
+      calories: parseInt(calories),
+      protein_g: protein ? parseFloat(protein) : undefined,
+      carbs_g: carbs ? parseFloat(carbs) : undefined,
+      fat_g: fat ? parseFloat(fat) : undefined,
+    })
 
-    const { success, message } = await addNutritionLog(newLog)
-
-    if (success) {
+    if (result.success) {
       toast({
-        title: 'Success',
-        description: message,
+        title: 'Success!',
+        description: 'Nutrition logged successfully.',
       })
-      setMealType('')
       setFoodItem('')
       setCalories('')
       setProtein('')
@@ -62,103 +45,82 @@ export default function NutritionTracker({ initialNutritionLogs }: { initialNutr
       setFat('')
     } else {
       toast({
-        title: 'Error',
-        description: message,
+        title: 'Error!',
+        description: result.error || 'Failed to log nutrition.',
         variant: 'destructive',
       })
     }
-    setLoading(false)
   }
 
   return (
-    <Card className="col-span-1 lg:col-span-1">
+    <Card>
       <CardHeader>
-        <CardTitle>Nutrition Tracker</CardTitle>
+        <CardTitle>Track Your Nutrition</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="text-lg font-semibold">
-          Total Calories Today: {totalCaloriesToday} kcal
+        <div>
+          <label htmlFor="foodItem" className="block text-sm font-medium text-gray-700">
+            Food Item
+          </label>
+          <Input
+            id="foodItem"
+            type="text"
+            value={foodItem}
+            onChange={(e) => setFoodItem(e.target.value)}
+            placeholder="e.g., Chicken Breast"
+          />
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="mealType">Meal Type</Label>
-            <Select value={mealType} onValueChange={setMealType} disabled={loading}>
-              <SelectTrigger id="mealType">
-                <SelectValue placeholder="Select meal type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="breakfast">Breakfast</SelectItem>
-                <SelectItem value="lunch">Lunch</SelectItem>
-                <SelectItem value="dinner">Dinner</SelectItem>
-                <SelectItem value="snack">Snack</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="foodItem">Food Item</Label>
-            <Input
-              id="foodItem"
-              value={foodItem}
-              onChange={(e) => setFoodItem(e.target.value)}
-              placeholder="e.g., Chicken Breast, Apple"
-              required
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="calories">Calories (kcal)</Label>
-            <Input
-              id="calories"
-              type="number"
-              value={calories}
-              onChange={(e) => setCalories(e.target.value === '' ? '' : parseInt(e.target.value))}
-              placeholder="e.g., 300"
-              required
-              disabled={loading}
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="protein">Protein (g)</Label>
-              <Input
-                id="protein"
-                type="number"
-                step="0.1"
-                value={protein}
-                onChange={(e) => setProtein(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                placeholder="e.g., 25"
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="carbs">Carbs (g)</Label>
-              <Input
-                id="carbs"
-                type="number"
-                step="0.1"
-                value={carbs}
-                onChange={(e) => setCarbs(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                placeholder="e.g., 30"
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fat">Fat (g)</Label>
-              <Input
-                id="fat"
-                type="number"
-                step="0.1"
-                value={fat}
-                onChange={(e) => setFat(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                placeholder="e.g., 10"
-                disabled={loading}
-              />
-            </div>
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Logging...' : 'Log Meal'}
-          </Button>
-        </form>
+        <div>
+          <label htmlFor="calories" className="block text-sm font-medium text-gray-700">
+            Calories
+          </label>
+          <Input
+            id="calories"
+            type="number"
+            value={calories}
+            onChange={(e) => setCalories(e.target.value)}
+            placeholder="e.g., 200"
+          />
+        </div>
+        <div>
+          <label htmlFor="protein" className="block text-sm font-medium text-gray-700">
+            Protein (g)
+          </label>
+          <Input
+            id="protein"
+            type="number"
+            value={protein}
+            onChange={(e) => setProtein(e.target.value)}
+            placeholder="e.g., 30"
+          />
+        </div>
+        <div>
+          <label htmlFor="carbs" className="block text-sm font-medium text-gray-700">
+            Carbs (g)
+          </label>
+          <Input
+            id="carbs"
+            type="number"
+            value={carbs}
+            onChange={(e) => setCarbs(e.target.value)}
+            placeholder="e.g., 10"
+          />
+        </div>
+        <div>
+          <label htmlFor="fat" className="block text-sm font-medium text-gray-700">
+            Fat (g)
+          </label>
+          <Input
+            id="fat"
+            type="number"
+            value={fat}
+            onChange={(e) => setFat(e.target.value)}
+            placeholder="e.g., 5"
+          />
+        </div>
+        <Button onClick={handleSubmit} className="w-full">
+          Log Nutrition
+        </Button>
       </CardContent>
     </Card>
   )

@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS public.water_logs (
   user_id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL,
   log_date date NOT NULL DEFAULT CURRENT_DATE,
   amount_ml integer NOT NULL,
+  goal_ml integer,
   created_at timestamp with time zone DEFAULT NOW()
 );
 

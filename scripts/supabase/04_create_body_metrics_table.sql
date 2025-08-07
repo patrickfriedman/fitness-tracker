@@ -1,11 +1,12 @@
 CREATE TABLE IF NOT EXISTS public.body_metrics (
-  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  log_date date NOT NULL DEFAULT CURRENT_DATE,
   weight_kg numeric,
   height_cm numeric,
   body_fat_percent numeric,
-  log_date date DEFAULT now() NOT NULL,
-  created_at timestamp with time zone DEFAULT now() NOT NULL
+  muscle_mass_kg numeric,
+  created_at timestamp with time zone DEFAULT NOW()
 );
 
 ALTER TABLE public.body_metrics ENABLE ROW LEVEL SECURITY;

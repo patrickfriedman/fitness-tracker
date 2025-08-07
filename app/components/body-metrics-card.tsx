@@ -1,192 +1,103 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { CalendarIcon, Scale, Ruler } from 'lucide-react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
-import { format } from 'date-fns'
-import { cn } from '@/lib/utils'
-import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
-import { Database } from '@/types/supabase'
-import { useToast } from '@/components/ui/use-toast'
-import { Loader2 } from 'lucide-react'
-import { BodyMetric } from '@/types/fitness'
+import { Button } from '@/components/ui/button'
+import { useState } from 'react'
+import { useToast } from '@/hooks/use-toast'
+import { createBodyMetric } from '@/app/actions/body-metrics-actions'
 
-interface BodyMetricsCardProps {
-  metric: BodyMetric;
-}
-
-export default function BodyMetricsCard({ metric }: BodyMetricsCardProps) {
-  const [weight, setWeight] = useState<number | ''>(metric.weight_kg || '')
-  const [height, setHeight] = useState<number | ''>(metric.height_cm || '')
-  const [bodyFat, setBodyFat] = useState<number | ''>(metric.body_fat_percent || '')
-  const [muscleMass, setMuscleMass] = useState<number | ''>(metric.muscle_mass_kg || '')
-  const [logDate, setLogDate] = useState<Date | undefined>(metric.log_date ? new Date(metric.log_date) : new Date())
-  const [loading, setLoading] = useState(false)
-  const supabase = getSupabaseBrowserClient()
+export default function BodyMetricsCard() {
+  const [weight, setWeight] = useState<string>('')
+  const [height, setHeight] = useState<string>('')
+  const [bodyFat, setBodyFat] = useState<string>('')
+  const [muscleMass, setMuscleMass] = useState<string>('')
   const { toast } = useToast()
 
-  useEffect(() => {
-    const fetchLatestMetrics = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+  const handleSubmit = async () => {
+    const result = await createBodyMetric({
+      weight_kg: weight ? parseFloat(weight) : undefined,
+      height_cm: height ? parseFloat(height) : undefined,
+      body_fat_percent: bodyFat ? parseFloat(bodyFat) : undefined,
+      muscle_mass_kg: muscleMass ? parseFloat(muscleMass) : undefined,
+    })
 
-      const { data, error } = await supabase
-        .from('body_metrics')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('log_date', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching body metrics:', error)
-      } else if (data) {
-        setWeight(data.weight_kg || '')
-        setHeight(data.height_cm || '')
-        setBodyFat(data.body_fat_percent || '')
-        setMuscleMass(data.muscle_mass_kg || '')
-        setLogDate(data.log_date ? new Date(data.log_date) : new Date())
-      }
-    }
-
-    fetchLatestMetrics()
-  }, [supabase])
-
-  const handleSaveMetrics = async () => {
-    if (!weight || !height || !logDate) {
+    if (result.success) {
       toast({
-        title: 'Missing Information',
-        description: 'Please enter your weight, height, and select a date.',
-        variant: 'destructive',
+        title: 'Success!',
+        description: 'Body metrics saved successfully.',
       })
-      return
-    }
-
-    setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      toast({
-        title: 'Error',
-        description: 'User not logged in.',
-        variant: 'destructive',
-      })
-      setLoading(false)
-      return
-    }
-
-    const { error } = await supabase.from('body_metrics').upsert(
-      {
-        user_id: user.id,
-        log_date: logDate.toISOString().split('T')[0],
-        weight_kg: weight,
-        height_cm: height,
-        body_fat_percent: bodyFat,
-        muscle_mass_kg: muscleMass,
-      },
-      { onConflict: 'user_id,log_date' } // Update if entry for this user and date already exists
-    )
-
-    if (error) {
-      console.error('Error saving body metrics:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to save body metrics.',
-        variant: 'destructive',
-      })
+      setWeight('')
+      setHeight('')
+      setBodyFat('')
+      setMuscleMass('')
     } else {
       toast({
-        title: 'Body Metrics Saved!',
-        description: 'Your body measurements have been updated.',
+        title: 'Error!',
+        description: result.error || 'Failed to save body metrics.',
+        variant: 'destructive',
       })
     }
-    setLoading(false)
   }
 
   return (
-    <Card className="w-full">
+    <Card>
       <CardHeader>
-        <CardTitle>Log Body Metrics</CardTitle>
+        <CardTitle>Body Metrics</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <Label htmlFor="weight">Weight (kg)</Label>
+          <label htmlFor="weight" className="block text-sm font-medium text-gray-700">
+            Weight (kg)
+          </label>
           <Input
             id="weight"
             type="number"
             value={weight}
-            onChange={(e) => setWeight(parseFloat(e.target.value) || '')}
+            onChange={(e) => setWeight(e.target.value)}
             placeholder="e.g., 70.5"
-            required
           />
         </div>
         <div>
-          <Label htmlFor="height">Height (cm)</Label>
+          <label htmlFor="height" className="block text-sm font-medium text-gray-700">
+            Height (cm)
+          </label>
           <Input
             id="height"
             type="number"
             value={height}
-            onChange={(e) => setHeight(parseFloat(e.target.value) || '')}
+            onChange={(e) => setHeight(e.target.value)}
             placeholder="e.g., 175"
-            required
           />
         </div>
         <div>
-          <Label htmlFor="bodyFat">Body Fat (%)</Label>
+          <label htmlFor="bodyFat" className="block text-sm font-medium text-gray-700">
+            Body Fat (%)
+          </label>
           <Input
             id="bodyFat"
             type="number"
             value={bodyFat}
-            onChange={(e) => setBodyFat(parseFloat(e.target.value) || '')}
-            placeholder="e.g., 25"
+            onChange={(e) => setBodyFat(e.target.value)}
+            placeholder="e.g., 15.2"
           />
         </div>
         <div>
-          <Label htmlFor="muscleMass">Muscle Mass (kg)</Label>
+          <label htmlFor="muscleMass" className="block text-sm font-medium text-gray-700">
+            Muscle Mass (kg)
+          </label>
           <Input
             id="muscleMass"
             type="number"
             value={muscleMass}
-            onChange={(e) => setMuscleMass(parseFloat(e.target.value) || '')}
-            placeholder="e.g., 50"
+            onChange={(e) => setMuscleMass(e.target.value)}
+            placeholder="e.g., 55.0"
           />
         </div>
-        <div>
-          <Label htmlFor="logDate">Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={'outline'}
-                className={cn(
-                  'w-full justify-start text-left font-normal',
-                  !logDate && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {logDate ? format(logDate, 'PPP') : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={logDate}
-                onSelect={setLogDate}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button onClick={handleSaveMetrics} className="w-full" disabled={loading}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+        <Button onClick={handleSubmit} className="w-full">
           Save Metrics
         </Button>
-      </CardFooter>
+      </CardContent>
     </Card>
   )
 }

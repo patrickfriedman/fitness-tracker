@@ -1,103 +1,76 @@
-"use client"
+'use client'
 
-import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { WaterLog } from '@/types/fitness'
-import { addWaterLog } from '@/app/actions/water-actions'
+import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
-import { PlusIcon, MinusIcon } from 'lucide-react'
+import { getWaterLog, logWater } from '@/app/actions/water-actions'
+import { WaterLog } from '@/types/fitness'
 
-const WATER_INCREMENT_ML = 250 // Amount of water to add/subtract per button click
-
-export default function WaterTracker({ initialWaterLogs }: { initialWaterLogs: WaterLog[] }) {
-  const [currentWaterAmount, setCurrentWaterAmount] = useState(() => {
-    const today = new Date().toISOString().split('T')[0]
-    const todayLog = initialWaterLogs.find(log => log.log_date === today)
-    return todayLog ? todayLog.amount_ml : 0
-  })
-  const [loading, setLoading] = useState(false)
+export default function WaterTracker() {
+  const [waterAmount, setWaterAmount] = useState(0)
+  const [goal, setGoal] = useState(2000) // Example goal in ml
   const { toast } = useToast()
 
-  const waterGoal = 2000 // Example goal: 2000ml
+  useEffect(() => {
+    const fetchWaterLog = async () => {
+      const result = await getWaterLog()
+      if (result.success && result.data) {
+        setWaterAmount(result.data.amount_ml)
+        setGoal(result.data.goal_ml || 2000) // Use logged goal or default
+      }
+    }
+    fetchWaterLog()
+  }, [])
 
-  const handleAddWater = async (amount: number) => {
-    setLoading(true)
-    const newAmount = currentWaterAmount + amount
-    setCurrentWaterAmount(newAmount)
+  const handleLogWater = async (amount: number) => {
+    const newAmount = waterAmount + amount
+    const result = await logWater(newAmount, goal)
 
-    const { success, message } = await addWaterLog(newAmount)
-
-    if (success) {
+    if (result.success) {
+      setWaterAmount(newAmount)
       toast({
-        title: 'Success',
-        description: message,
+        title: 'Success!',
+        description: `Logged ${amount}ml of water.`,
       })
     } else {
       toast({
-        title: 'Error',
-        description: message,
+        title: 'Error!',
+        description: result.error || 'Failed to log water.',
         variant: 'destructive',
       })
-      setCurrentWaterAmount(currentWaterAmount - amount) // Revert on error
     }
-    setLoading(false)
   }
 
-  const handleSubtractWater = async (amount: number) => {
-    setLoading(true)
-    const newAmount = Math.max(0, currentWaterAmount - amount)
-    setCurrentWaterAmount(newAmount)
-
-    const { success, message } = await addWaterLog(newAmount)
-
-    if (success) {
-      toast({
-        title: 'Success',
-        description: message,
-      })
-    } else {
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      })
-      setCurrentWaterAmount(currentWaterAmount + amount) // Revert on error
-    }
-    setLoading(false)
-  }
-
-  const progressPercentage = (currentWaterAmount / waterGoal) * 100
+  const progress = (waterAmount / goal) * 100
 
   return (
-    <Card className="col-span-1">
+    <Card>
       <CardHeader>
         <CardTitle>Water Intake</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-col items-center gap-2">
-          <div className="text-4xl font-bold">
-            {currentWaterAmount} <span className="text-lg text-muted-foreground">ml</span>
-          </div>
-          <div className="text-sm text-muted-foreground">Goal: {waterGoal} ml</div>
-          <Progress value={progressPercentage} className="w-full" />
+        <div className="text-center">
+          <p className="text-sm text-gray-500">Today's Intake</p>
+          <p className="text-4xl font-bold">{waterAmount} ml</p>
+          <p className="text-sm text-gray-500">Goal: {goal} ml</p>
         </div>
+        <Progress value={progress} className="w-full" />
         <div className="flex justify-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => handleSubtractWater(WATER_INCREMENT_ML)}
-            disabled={loading || currentWaterAmount === 0}
-          >
-            <MinusIcon className="h-4 w-4" />
+          <Button onClick={() => handleLogWater(250)} variant="outline">
+            +250ml
           </Button>
-          <Button
-            onClick={() => handleAddWater(WATER_INCREMENT_ML)}
-            disabled={loading}
-          >
-            <PlusIcon className="h-4 w-4" /> Add {WATER_INCREMENT_ML}ml
+          <Button onClick={() => handleLogWater(500)} variant="outline">
+            +500ml
+          </Button>
+          <Button onClick={() => handleLogWater(1000)} variant="outline">
+            +1000ml
           </Button>
         </div>
+        <Button onClick={() => handleLogWater(-waterAmount)} variant="destructive" className="w-full">
+          Reset Daily Intake
+        </Button>
       </CardContent>
     </Card>
   )

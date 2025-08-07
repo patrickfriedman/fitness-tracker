@@ -2,8 +2,7 @@ CREATE TABLE IF NOT EXISTS public.mood_logs (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid REFERENCES auth.users ON DELETE CASCADE NOT NULL,
   log_date date NOT NULL DEFAULT CURRENT_DATE,
-  mood_rating integer NOT NULL CHECK (mood_rating >= 1 AND mood_rating <= 5),
-  notes text,
+  mood_level text NOT NULL, -- e.g., 'great', 'good', 'neutral', 'bad', 'terrible'
   created_at timestamp with time zone DEFAULT NOW()
 );
 

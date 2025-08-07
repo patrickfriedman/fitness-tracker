@@ -2,7 +2,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-  const { supabase, response } = createServerClient(
+  // Create an initial response object
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
+  // Create the Supabase client, passing the response object's cookie methods
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -11,35 +19,23 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: any) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          // Set cookie on the request for immediate use in subsequent middleware/handlers
+          request.cookies.set({ name, value, ...options })
+          // Set cookie on the response to be sent back to the client
+          response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: any) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          // Remove cookie from the request
+          request.cookies.set({ name, value: '', ...options })
+          // Remove cookie from the response
+          response.cookies.set({ name, value: '', ...options })
         },
       },
     }
   )
 
-  // Refresh session if expired - required for Server Components
-  // and Route Handlers
+  // Refresh session if expired - required for Server Components and Route Handlers
+  // This call will use the supabase client configured with the cookie handlers
   await supabase.auth.getSession()
 
   return response

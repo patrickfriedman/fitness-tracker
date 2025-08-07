@@ -1,66 +1,63 @@
-"use client"
+'use client'
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
-import { signInWithEmail, signUpWithEmail } from '@/app/actions/auth-actions'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { login, signup } from '@/app/actions/auth-actions'
 import { useToast } from '@/hooks/use-toast'
-import Link from 'next/link'
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    setLoading(true)
-
     let result
+
     if (isLogin) {
-      result = await signInWithEmail(new FormData(event.target as HTMLFormElement))
+      result = await login(email, password)
     } else {
-      result = await signUpWithEmail(new FormData(event.target as HTMLFormElement))
+      result = await signup(email, password)
     }
 
     if (result.success) {
       toast({
-        title: 'Success',
+        title: 'Success!',
         description: result.message,
       })
-      // Redirection handled by server action
+      // Optionally redirect or update UI on successful login/signup
     } else {
       toast({
-        title: 'Error',
-        description: result.message,
+        title: 'Error!',
+        description: result.error,
         variant: 'destructive',
       })
     }
-    setLoading(false)
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-950">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl">
-            {isLogin ? 'Login to Fitness Tracker' : 'Sign Up for Fitness Tracker'}
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">
+            {isLogin ? 'Login' : 'Sign Up'}
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {isLogin ? 'Enter your credentials below' : 'Create your account'}
-          </p>
+          <CardDescription className="text-center">
+            {isLogin
+              ? 'Enter your email and password to access your account.'
+              : 'Create an account to get started.'}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-2">
+            <div>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
                 placeholder="m@example.com"
                 required
@@ -68,30 +65,27 @@ export default function LoginScreen() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="grid gap-2">
+            <div>
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
-                name="password"
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (isLogin ? 'Logging in...' : 'Signing up...') : isLogin ? 'Login' : 'Sign Up'}
+            <Button type="submit" className="w-full">
+              {isLogin ? 'Login' : 'Sign Up'}
             </Button>
           </form>
+          <div className="mt-4 text-center text-sm">
+            {isLogin ? "Don't have an account?" : 'Already have an account?'}
+            <Button variant="link" onClick={() => setIsLogin(!isLogin)} className="px-1">
+              {isLogin ? 'Sign Up' : 'Login'}
+            </Button>
+          </div>
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button variant="link" className="w-full" onClick={() => setIsLogin(!isLogin)}>
-            {isLogin ? 'Need an account? Sign Up' : 'Already have an account? Login'}
-          </Button>
-          <Link href="/" className="text-sm text-muted-foreground hover:underline">
-            Continue as Guest (No Auth)
-          </Link>
-        </CardFooter>
       </Card>
     </div>
   )

@@ -1,121 +1,80 @@
-"use client"
+'use client'
 
-import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
-import { MoodLog } from '@/types/fitness'
-import { addMoodLog } from '@/app/actions/mood-actions'
+import { Button } from '@/components/ui/button'
+import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
-import { Smile, Meh, Frown, Angry, Laugh } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { createMoodLog } from '@/app/actions/mood-actions'
 
-const moodOptions = [
-  { rating: 1, icon: Frown, label: 'Awful', color: 'text-red-500' },
-  { rating: 2, icon: Meh, label: 'Bad', color: 'text-orange-500' },
-  { rating: 3, icon: Smile, label: 'Okay', color: 'text-yellow-500' },
-  { rating: 4, icon: Laugh, label: 'Good', color: 'text-green-500' },
-  { rating: 5, icon: Laugh, label: 'Great', color: 'text-blue-500' }, // Using Laugh for Great too, or could add another icon
-]
-
-export default function MoodTracker({ initialMoodLogs }: { initialMoodLogs: MoodLog[] }) {
-  const [moodRating, setMoodRating] = useState<number | null>(null)
-  const [notes, setNotes] = useState('')
-  const [loading, setLoading] = useState(false)
+export default function MoodTracker() {
+  const [mood, setMood] = useState<string>('')
   const { toast } = useToast()
 
-  const latestMood = initialMoodLogs.length > 0 ? initialMoodLogs[0] : null
+  const handleMoodChange = (value: string) => {
+    setMood(value)
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    if (moodRating === null) {
+  const handleSubmit = async () => {
+    if (!mood) {
       toast({
-        title: 'Input Error',
-        description: 'Please select your mood rating.',
+        title: 'Error!',
+        description: 'Please select a mood before saving.',
         variant: 'destructive',
       })
-      setLoading(false)
       return
     }
 
-    const newMoodLog: Omit<MoodLog, 'id' | 'user_id' | 'log_date' | 'created_at'> = {
-      mood_rating: moodRating,
-      notes: notes || null,
-    }
+    const result = await createMoodLog(mood)
 
-    const { success, message } = await addMoodLog(newMoodLog)
-
-    if (success) {
+    if (result.success) {
       toast({
-        title: 'Success',
-        description: message,
+        title: 'Success!',
+        description: 'Mood logged successfully.',
       })
-      setMoodRating(null)
-      setNotes('')
+      setMood('') // Reset mood after successful submission
     } else {
       toast({
-        title: 'Error',
-        description: message,
+        title: 'Error!',
+        description: result.error || 'Failed to log mood.',
         variant: 'destructive',
       })
     }
-    setLoading(false)
   }
 
   return (
-    <Card className="col-span-1">
+    <Card>
       <CardHeader>
         <CardTitle>Mood Tracker</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {latestMood && (
-          <div className="text-sm text-muted-foreground">
-            <p>Last logged: {new Date(latestMood.log_date).toLocaleDateString()}</p>
-            <p>Mood: {moodOptions.find(m => m.rating === latestMood.mood_rating)?.label}</p>
-            {latestMood.notes && <p>Notes: {latestMood.notes}</p>}
+        <p className="text-sm text-gray-500">How are you feeling today?</p>
+        <RadioGroup onValueChange={handleMoodChange} value={mood} className="flex flex-wrap gap-4">
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="great" id="mood-great" />
+            <Label htmlFor="mood-great">😊 Great</Label>
           </div>
-        )}
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="space-y-2">
-            <Label>How are you feeling today?</Label>
-            <div className="flex justify-around gap-2">
-              {moodOptions.map((mood) => (
-                <Button
-                  key={mood.rating}
-                  type="button"
-                  variant={moodRating === mood.rating ? 'default' : 'outline'}
-                  size="icon"
-                  className={cn(
-                    'flex flex-col h-auto w-auto p-2',
-                    moodRating === mood.rating ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground'
-                  )}
-                  onClick={() => setMoodRating(mood.rating)}
-                  disabled={loading}
-                >
-                  <mood.icon className={cn('h-6 w-6', mood.color)} />
-                  <span className="text-xs mt-1">{mood.label}</span>
-                </Button>
-              ))}
-            </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="good" id="mood-good" />
+            <Label htmlFor="mood-good">🙂 Good</Label>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="moodNotes">Notes (optional)</Label>
-            <Textarea
-              id="moodNotes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any thoughts or reasons for your mood?"
-              rows={3}
-              disabled={loading}
-            />
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="neutral" id="mood-neutral" />
+            <Label htmlFor="mood-neutral">😐 Neutral</Label>
           </div>
-          <Button type="submit" className="w-full" disabled={loading || moodRating === null}>
-            {loading ? 'Logging...' : 'Log Mood'}
-          </Button>
-        </form>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="bad" id="mood-bad" />
+            <Label htmlFor="mood-bad">🙁 Bad</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="terrible" id="mood-terrible" />
+            <Label htmlFor="mood-terrible">😞 Terrible</Label>
+          </div>
+        </RadioGroup>
+        <Button onClick={handleSubmit} className="w-full">
+          Log Mood
+        </Button>
       </CardContent>
     </Card>
   )

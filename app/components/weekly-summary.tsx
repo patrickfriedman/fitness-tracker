@@ -1,76 +1,42 @@
-"use client"
+'use client'
 
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { WorkoutLog, NutritionLog } from '@/types/fitness'
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
-interface WeeklySummaryProps {
-  initialWorkoutLogs: WorkoutLog[];
-  initialNutritionLogs: NutritionLog[];
-}
-
-export default function WeeklySummary({ initialWorkoutLogs, initialNutritionLogs }: WeeklySummaryProps) {
-  const today = new Date();
-  const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-  const endOfCurrentWeek = endOfWeek(today, { weekStartsOn: 1 }); // Sunday
-
-  const weekDays = eachDayOfInterval({
-    start: startOfCurrentWeek,
-    end: endOfCurrentWeek,
-  });
-
-  const summaryData = weekDays.map(date => {
-    const dateString = format(date, 'yyyy-MM-dd');
-    const workoutsToday = initialWorkoutLogs.filter(log => isSameDay(new Date(log.log_date), date));
-    const nutritionToday = initialNutritionLogs.filter(log => isSameDay(new Date(log.log_date), date));
-
-    const totalWorkoutDuration = workoutsToday.reduce((sum, log) => sum + (log.duration_minutes || 0), 0);
-    const totalCaloriesConsumed = nutritionToday.reduce((sum, log) => sum + log.calories, 0);
-
-    return {
-      name: format(date, 'EEE'), // Mon, Tue, etc.
-      date: dateString,
-      workouts: workoutsToday.length,
-      duration: totalWorkoutDuration,
-      calories: totalCaloriesConsumed,
-    };
-  });
+export default function WeeklySummary() {
+  // Placeholder data for weekly summary
+  const data = [
+    { name: 'Mon', workouts: 1, calories: 500 },
+    { name: 'Tue', workouts: 2, calories: 800 },
+    { name: 'Wed', workouts: 1, calories: 600 },
+    { name: 'Thu', workouts: 0, calories: 0 },
+    { name: 'Fri', workouts: 2, calories: 900 },
+    { name: 'Sat', workouts: 1, calories: 700 },
+    { name: 'Sun', workouts: 0, calories: 0 },
+  ]
 
   return (
-    <Card className="col-span-1 lg:col-span-1">
+    <Card>
       <CardHeader>
         <CardTitle>Weekly Summary</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="h-[200px]">
+      <CardContent>
+        <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={summaryData}>
+            <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
-              <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
-              <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+              <YAxis />
               <Tooltip />
-              <Bar yAxisId="left" dataKey="duration" fill="#8884d8" name="Workout Duration (min)" />
-              <Bar yAxisId="right" dataKey="calories" fill="#82ca9d" name="Calories Consumed (kcal)" />
+              <Bar dataKey="workouts" fill="#8884d8" name="Workouts" />
+              <Bar dataKey="calories" fill="#82ca9d" name="Calories Burned" />
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <h4 className="font-semibold">Workouts:</h4>
-            {summaryData.map((day, index) => (
-              <p key={index}>{day.name}: {day.workouts} workouts ({day.duration} min)</p>
-            ))}
-          </div>
-          <div>
-            <h4 className="font-semibold">Nutrition:</h4>
-            {summaryData.map((day, index) => (
-              <p key={index}>{day.name}: {day.calories} kcal</p>
-            ))}
-          </div>
-        </div>
+        <p className="mt-4 text-sm text-gray-500">
+          Overview of your workouts and calories burned this week.
+        </p>
       </CardContent>
     </Card>
-  );
+  )
 }

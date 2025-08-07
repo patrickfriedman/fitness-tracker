@@ -1,38 +1,50 @@
-"use client"
+'use client'
 
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { useEffect, useState } from 'react'
 
 const quotes = [
-  "The only bad workout is the one that didn't happen.",
-  "Believe you can and you're halfway there.",
-  "Success is what comes after you stop making excuses.",
-  "The body achieves what the mind believes.",
-  "Strive for progress, not perfection.",
-  "Your health is an investment, not an expense.",
-  "Push yourself because no one else is going to do it for you.",
-  "Today's actions are tomorrow's results.",
-  "Discipline is choosing between what you want now and what you want most.",
-  "The pain you feel today will be the strength you feel tomorrow.",
+  {
+    text: 'The only way to do great work is to love what you do.',
+    author: 'Steve Jobs',
+  },
+  {
+    text: 'Believe you can and you\'re halfway there.',
+    author: 'Theodore Roosevelt',
+  },
+  {
+    text: 'The future belongs to those who believe in the beauty of their dreams.',
+    author: 'Eleanor Roosevelt',
+  },
+  {
+    text: 'It does not matter how slowly you go as long as you do not stop.',
+    author: 'Confucius',
+  },
+  {
+    text: 'Success is not final, failure is not fatal: it is the courage to continue that counts.',
+    author: 'Winston Churchill',
+  },
 ]
 
 export default function MotivationalQuote() {
-  const [quote, setQuote] = useState('')
+  const [currentQuote, setCurrentQuote] = useState(
+    quotes[Math.floor(Math.random() * quotes.length)]
+  )
 
   useEffect(() => {
-    const randomIndex = Math.floor(Math.random() * quotes.length)
-    setQuote(quotes[randomIndex])
+    const interval = setInterval(() => {
+      setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)])
+    }, 10000) // Change quote every 10 seconds
+    return () => clearInterval(interval)
   }, [])
 
   return (
-    <Card className="col-span-1 md:col-span-2 lg:col-span-1">
-      <CardHeader>
-        <CardTitle>Daily Motivation</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <Card className="bg-gradient-to-r from-green-400 to-blue-500 text-white">
+      <CardContent className="flex flex-col items-center justify-center p-6 text-center">
         <blockquote className="text-lg font-semibold italic">
-          &ldquo;{quote}&rdquo;
+          &ldquo;{currentQuote.text}&rdquo;
         </blockquote>
+        <p className="mt-2 text-sm font-medium">- {currentQuote.author}</p>
       </CardContent>
     </Card>
   )

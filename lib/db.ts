@@ -6,6 +6,16 @@ import type { WorkoutLog, NutritionLog, BodyMetrics } from '@/types/fitness'
 // For now, it can remain empty or contain basic setup if needed later.
 // The Supabase client is primarily managed in lib/supabase-browser.ts and lib/supabase-server.ts
 
+// Example placeholder for a direct database connection if you were using a different DB
+// import { Pool } from 'pg';
+// const pool = new Pool({
+//   connectionString: process.env.DATABASE_URL,
+// });
+// export default pool;
+
+// Since we are using Supabase, this file might not be strictly necessary for direct DB calls
+// but could be used for other data-related utilities.
+
 export const db = {
   getRecentWorkouts: async (userId: string, limit = 5) => {
     const { data, error } = await supabase
