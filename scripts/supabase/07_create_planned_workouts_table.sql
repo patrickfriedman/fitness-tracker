@@ -1,23 +1,24 @@
-CREATE TABLE planned_workouts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  date DATE NOT NULL,
-  name TEXT NOT NULL,
-  exercises JSONB, -- Store array of exercise objects
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Create planned_workouts table
+create table planned_workouts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  created_at timestamp with time zone default now(),
+  title text not null,
+  description text,
+  exercises jsonb -- Store array of exercise objects: [{name: 'Push-ups', sets: '3', reps: '10', weight: 'bodyweight'}]
 );
 
-ALTER TABLE planned_workouts ENABLE ROW LEVEL SECURITY;
+-- Set up Row Level Security (RLS)
+alter table planned_workouts enable row level security;
 
-CREATE POLICY "Users can view their own planned workouts." ON planned_workouts
-  FOR SELECT USING (auth.uid() = user_id);
+create policy "Users can view their own planned workouts."
+  on planned_workouts for select using (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own planned workouts." ON planned_workouts
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+create policy "Users can insert their own planned workouts."
+  on planned_workouts for insert with check (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own planned workouts." ON planned_workouts
-  FOR UPDATE USING (auth.uid() = user_id);
+create policy "Users can update their own planned workouts."
+  on planned_workouts for update using (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete their own planned workouts." ON planned_workouts
-  FOR DELETE USING (auth.uid() = user_id);
+create policy "Users can delete their own planned workouts."
+  on planned_workouts for delete using (auth.uid() = user_id);

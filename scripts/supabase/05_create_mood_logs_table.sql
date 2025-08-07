@@ -1,24 +1,23 @@
-CREATE TABLE mood_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  log_date DATE NOT NULL,
-  mood_level TEXT NOT NULL, -- e.g., 'happy', 'neutral', 'sad'
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE (user_id, log_date) -- Ensure only one entry per user per day
+-- Create mood_logs table
+create table mood_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  created_at timestamp with time zone default now(),
+  mood text not null, -- e.g., 'happy', 'neutral', 'sad', 'stressed', 'energetic', 'tired'
+  notes text
 );
 
-ALTER TABLE mood_logs ENABLE ROW LEVEL SECURITY;
+-- Set up Row Level Security (RLS)
+alter table mood_logs enable row level security;
 
-CREATE POLICY "Users can view their own mood logs." ON mood_logs
-  FOR SELECT USING (auth.uid() = user_id);
+create policy "Users can view their own mood logs."
+  on mood_logs for select using (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own mood logs." ON mood_logs
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+create policy "Users can insert their own mood logs."
+  on mood_logs for insert with check (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own mood logs." ON mood_logs
-  FOR UPDATE USING (auth.uid() = user_id);
+create policy "Users can update their own mood logs."
+  on mood_logs for update using (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete their own mood logs." ON mood_logs
-  FOR DELETE USING (auth.uid() = user_id);
+create policy "Users can delete their own mood logs."
+  on mood_logs for delete using (auth.uid() = user_id);
