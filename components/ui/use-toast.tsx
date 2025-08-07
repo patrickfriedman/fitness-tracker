@@ -37,6 +37,8 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
+let dispatch: React.Dispatch<Action> // Declare dispatch here
+
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
     return
@@ -112,14 +114,16 @@ const listeners: Array<(state: State) => void> = []
 
 let memoryState: State = { toasts: [] }
 
-function dispatch(action: Action) {
+function updateState(action: Action) {
   memoryState = reducer(memoryState, action)
   listeners.forEach((listener) => listener(memoryState))
 }
 
+dispatch = updateState; // Assign updateState to dispatch
+
 type Toast = Pick<ToastProps, "id" | "title" | "description" | "variant">
 
-function useToast() {
+export function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
@@ -158,4 +162,4 @@ function useToast() {
   }
 }
 
-export { useToast, reducer as toastReducer }
+export { reducer as toastReducer }

@@ -1,7 +1,4 @@
 import * as React from "react"
-import { useToast as useToastOriginal } from "@/components/ui/toast"
-import { toast as showToast } from '@/components/ui/use-toast'
-import { ToastAction } from '@/components/ui/toast'
 
 import { type ToastProps } from "@/components/ui/toast"
 
@@ -39,6 +36,8 @@ interface State {
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+
+let dispatch: React.Dispatch<Action> // Declare dispatch here
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
@@ -115,15 +114,52 @@ const listeners: Array<(state: State) => void> = []
 
 let memoryState: State = { toasts: [] }
 
-function dispatch(action: Action) {
+function updateState(action: Action) {
   memoryState = reducer(memoryState, action)
   listeners.forEach((listener) => listener(memoryState))
 }
 
-type Toast = typeof showToast
+dispatch = updateState; // Assign updateState to dispatch
 
-function useToast(): { toast: Toast } {
-  return { toast: showToast }
+type Toast = Pick<ToastProps, "id" | "title" | "description" | "variant">
+
+export function useToast() {
+  const [state, setState] = React.useState<State>(memoryState)
+
+  React.useEffect(() => {
+    listeners.push(setState)
+    return () => {
+      const index = listeners.indexOf(setState)
+      if (index > -1) {
+        listeners.splice(index, 1)
+      }
+    }
+  }, [state])
+
+  return {
+    ...state,
+    toast: React.useCallback((props: Toast) => {
+      const id = props.id || crypto.randomUUID()
+
+      dispatch({
+        type: "ADD_TOAST",
+        toast: {
+          ...props,
+          id,
+          open: true,
+          onOpenChange: (open) => {
+            if (!open) {
+              dispatch({ type: "DISMISS_TOAST", toastId: id })
+            }
+          },
+        },
+      })
+
+      return {
+        id: id,
+      }
+    }, []),
+  }
 }
 
-export { useToast, reducer as toastReducer, ToastAction }
+export { reducer as toastReducer }

@@ -5,14 +5,14 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { login, signup } from '@/app/actions/auth-actions' // Corrected import
-import { useToast } from '@/hooks/use-toast'
+import { signIn, signUp, demoLogin } from '@/app/actions/auth-actions'
+import { useToast } from '@/components/ui/use-toast' // Corrected import path
 import { Loader2 } from 'lucide-react'
 
 export default function LoginScreen() {
   const [isLogin, setIsLogin] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
+  const { toast } = useToast() // Corrected usage
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -34,9 +34,9 @@ export default function LoginScreen() {
     try {
       let result
       if (isLogin) {
-        result = await login(formData)
+        result = await signIn(formData)
       } else {
-        result = await signup(formData)
+        result = await signUp(formData)
       }
 
       if (result?.error) {

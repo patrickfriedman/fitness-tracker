@@ -2,19 +2,19 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase-server' // Ensure this path is correct
+import { createClient } from '@/lib/supabase-server'
 
-export async function login(formData: FormData) {
+export async function signIn(formData: FormData) {
   const supabase = createClient()
-  const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  }
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
 
-  const { error } = await supabase.auth.signInWithPassword(data)
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
 
   if (error) {
-    console.error('Login error:', error.message)
     return { error: error.message }
   }
 
@@ -22,20 +22,50 @@ export async function login(formData: FormData) {
   redirect('/')
 }
 
-export async function signup(formData: FormData) {
+export async function signUp(formData: FormData) {
   const supabase = createClient()
-  const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  }
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
 
-  const { error } = await supabase.auth.signUp(data)
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    },
+  })
 
   if (error) {
-    console.error('Signup error:', error.message)
+    return { error: error.message, success: false }
+  }
+
+  revalidatePath('/', 'layout')
+  return { success: true, message: 'Please check your email to confirm your account.' }
+}
+
+export async function demoLogin() {
+  const supabase = createClient()
+  const { error } = await supabase.auth.signInWithPassword({
+    email: 'demo@example.com',
+    password: 'password', // Replace with a secure demo password or method
+  })
+
+  if (error) {
     return { error: error.message }
   }
 
   revalidatePath('/', 'layout')
-  redirect('/') // Or redirect to a confirmation page
+  redirect('/')
+}
+
+export async function signOut() {
+  const supabase = createClient()
+  const { error } = await supabase.auth.signOut()
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath('/', 'layout')
+  redirect('/login')
 }
