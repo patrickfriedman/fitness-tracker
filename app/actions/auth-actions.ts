@@ -2,9 +2,8 @@
 
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
 
-export async function signIn(formData: FormData) {
+export async function signInWithEmail(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const supabase = createClient()
@@ -16,14 +15,13 @@ export async function signIn(formData: FormData) {
 
   if (error) {
     console.error('Sign-in error:', error.message)
-    return { error: error.message }
+    return { success: false, message: error.message }
   }
 
-  revalidatePath('/', 'layout')
-  redirect('/')
+  return { success: true, message: 'Signed in successfully!' }
 }
 
-export async function signUp(formData: FormData) {
+export async function signUpWithEmail(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const supabase = createClient()
@@ -31,18 +29,14 @@ export async function signUp(formData: FormData) {
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-    },
   })
 
   if (error) {
     console.error('Sign-up error:', error.message)
-    return { error: error.message }
+    return { success: false, message: error.message }
   }
 
-  revalidatePath('/', 'layout')
-  redirect('/login?message=Check email to verify account')
+  return { success: true, message: 'Signed up successfully! Please check your email for verification.' }
 }
 
 export async function signOut() {
@@ -51,15 +45,19 @@ export async function signOut() {
 
   if (error) {
     console.error('Sign-out error:', error.message)
-    return { error: error.message }
+    return { success: false, message: error.message }
   }
 
-  revalidatePath('/', 'layout')
   redirect('/login')
 }
 
 export async function getSession() {
   const supabase = createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { session }, error } = await supabase.auth.getSession()
+
+  if (error) {
+    console.error('Error getting session:', error.message)
+    return null
+  }
   return session
 }

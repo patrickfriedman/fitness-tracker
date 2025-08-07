@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
-import { getDailyNutritionLogs, addNutritionLog, updateNutritionLog, deleteNutritionLog } from '@/app/actions/nutrition-actions' // Assuming these actions exist
+import { getDailyNutritionLogs, addNutritionLog, updateNutritionLog, deleteNutritionLog } from '@/app/actions/nutrition-actions'
 import { NutritionLog } from '@/types/fitness'
 import { useAuth } from '@/contexts/auth-context'
 
